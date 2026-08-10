@@ -10,6 +10,7 @@
 # tools/package.ps1 以 git archive 為來源，因此這份清單就是實際的出貨白名單依據。
 /tools              export-ignore
 /tests              export-ignore
+/docs               export-ignore
 /.claude            export-ignore
 /AGENTS.md          export-ignore
 /PROJECT_STATUS.md  export-ignore
