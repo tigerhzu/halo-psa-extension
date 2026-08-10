@@ -1,0 +1,446 @@
+/*
+ * editor.css — 獨立 Note 編輯視窗。
+ * 只作用在這個擴充功能頁面，不會影響 HaloPSA。
+ * 工具列按鈕沿用 toolbar.css 的 .hpx-toolbar / .hpx-tb-btn，維持與頁內工具列一致的外觀。
+ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+  font-size: 14px;
+  color: #1f2933;
+  background: #f7f9fb;
+}
+
+.hpx-ew {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 12px 14px 10px;
+  gap: 8px;
+}
+
+/* ── 標題 ── */
+.hpx-ew__header {
+  flex: 0 0 auto;
+}
+
+.hpx-ew__title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hpx-ew__subtitle {
+  font-size: 12px;
+  color: #67707a;
+  margin-top: 2px;
+}
+
+/* ── 提示 / 錯誤條 ── */
+.hpx-ew__notice {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  border: 1px solid #f0d58c;
+  background: #fdf6e3;
+  color: #7a5b06;
+}
+
+.hpx-ew__notice--error {
+  border-color: #f0aeae;
+  background: #fdeaea;
+  color: #8c2020;
+}
+
+.hpx-ew__notice--info {
+  border-color: #bcd7f5;
+  background: #eef5fd;
+  color: #1f4f85;
+}
+
+.hpx-ew__notice--hidden {
+  display: none;
+}
+
+/* ── 工具列 ── */
+.hpx-ew__format-toolbar {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  min-height: 34px;
+  padding: 4px 6px;
+  margin: 0;
+  background: #f4f6f9;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  color: #2a2f36;
+}
+
+.hpx-ew__format-toolbar[aria-disabled="true"] {
+  opacity: 0.62;
+}
+
+.hpx-ew-format-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 4px;
+  margin-right: 2px;
+  border-right: 1px solid #e0e4ea;
+}
+
+.hpx-ew-format-group:last-child {
+  padding-right: 0;
+  margin-right: 0;
+  border-right: 0;
+}
+
+.hpx-ew-format-btn,
+.hpx-ew-format-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 26px;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #303943;
+  cursor: pointer;
+  font: 600 13px/1.2 "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.hpx-ew-format-btn:hover,
+.hpx-ew-format-toggle:hover,
+.hpx-ew-format-toggle[aria-expanded="true"] {
+  background: #e7edf5;
+  border-color: #c5ccd6;
+}
+
+.hpx-ew-format-btn:focus-visible,
+.hpx-ew-format-toggle:focus-visible,
+.hpx-ew-format-menu button:focus-visible {
+  outline: 2px solid #3a82f7;
+  outline-offset: 1px;
+}
+
+.hpx-ew-format-btn:active,
+.hpx-ew-format-toggle:active {
+  background: #dce5f0;
+}
+
+.hpx-ew-format-btn[disabled],
+.hpx-ew-format-toggle[disabled],
+.hpx-ew-format-menu button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hpx-ew-format-btn--icon {
+  width: 30px;
+  padding-inline: 3px;
+  font-size: 16px;
+}
+
+.hpx-ew-format-btn--source {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+}
+
+.hpx-ew-format-btn--active {
+  background: #dce8ff;
+  border-color: #9bb8ec;
+  color: #174e9e;
+}
+
+.hpx-ew-format-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.hpx-ew-format-toggle::after {
+  content: "▾";
+  margin-left: 5px;
+  font-size: 9px;
+  color: #687483;
+}
+
+.hpx-ew-format-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  display: none;
+  min-width: 148px;
+  max-height: min(420px, 70vh);
+  overflow-y: auto;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  box-shadow: 0 7px 18px rgba(20, 30, 45, 0.16);
+}
+
+.hpx-ew-format-menu--open {
+  display: block;
+}
+
+.hpx-ew-format-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #303943;
+  cursor: pointer;
+  font: 13px/1.35 "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.hpx-ew-format-menu button:hover {
+  background: #eef4ff;
+}
+
+.hpx-ew-format-menu__separator {
+  height: 1px;
+  margin: 4px 2px;
+  background: #e5e9ee;
+}
+
+.hpx-ew-format-menu--wide {
+  min-width: 220px;
+}
+
+.hpx-ew-format-char-grid {
+  display: grid !important;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  min-width: 214px;
+}
+
+.hpx-ew-format-menu .hpx-ew-format-char-grid button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 30px;
+  height: 28px;
+  padding: 2px;
+  text-align: center;
+}
+
+.hpx-ew__toolbar {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.hpx-ew__hint {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: #7a838e;
+  line-height: 1.5;
+}
+
+/* ── 編輯區 ── */
+.hpx-ew__editor {
+  flex: 1 1 auto;
+  min-height: 200px;
+  overflow: auto;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #d8dee6;
+  border-radius: 8px;
+  line-height: 1.7;
+  outline: none;
+}
+
+.hpx-ew__editor:focus {
+  border-color: var(--hpx-accent, #3a82f7);
+  box-shadow: 0 0 0 3px rgba(58, 130, 247, 0.12);
+}
+
+.hpx-ew__editor--source {
+  overflow: auto;
+  background: #fbfcfe;
+  color: #273444;
+  font: 13px/1.55 Consolas, "Courier New", monospace;
+  white-space: pre-wrap;
+  tab-size: 2;
+}
+
+.hpx-ew--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+  min-height: 100vh;
+  padding: 16px 18px 14px;
+  background: #f7f9fb;
+}
+
+.hpx-ew--fullscreen .hpx-ew__editor {
+  min-height: 0;
+}
+
+/* 內容樣式：讓 Halo 的富文字在這裡看起來合理 */
+.hpx-ew__editor p { margin: 0 0 0.7em; }
+.hpx-ew__editor ul,
+.hpx-ew__editor ol { margin: 0 0 0.7em; padding-left: 1.8em; }
+.hpx-ew__editor blockquote {
+  margin: 0 0 0.7em;
+  padding-left: 12px;
+  border-left: 3px solid #d8dee6;
+  color: #55606c;
+}
+.hpx-ew__editor pre {
+  background: #f4f6f9;
+  padding: 10px 12px;
+  border-radius: 6px;
+  overflow: auto;
+}
+.hpx-ew__editor table {
+  border-collapse: collapse;
+  margin: 0 0 0.7em;
+  max-width: 100%;
+}
+.hpx-ew__editor th,
+.hpx-ew__editor td {
+  border: 1px solid #c8d0da;
+  padding: 5px 9px;
+}
+.hpx-ew__editor th {
+  background: #f2f5f8;
+}
+.hpx-ew__editor a {
+  color: #1a6fd4;
+}
+
+/*
+ * 圖片佔位（R2 方案 A）。
+ * HaloPSA 附件圖片需要登入 session，在 chrome-extension:// origin 一定載不出來，
+ * 所以顯示成方塊；原始 <img> HTML 完整保存在 data-hpx-img，套用時原樣還原。
+ */
+.hpx-img-placeholder {
+  display: inline-block;
+  max-width: 100%;
+  margin: 2px 1px;
+  padding: 3px 9px;
+  border: 1px dashed #9db4cc;
+  border-radius: 6px;
+  background: #eef4fb;
+  color: #33587f;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  user-select: all;
+  cursor: default;
+}
+
+/* ── 底部動作列 ── */
+.hpx-ew__footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.hpx-ew__status {
+  font-size: 12px;
+  color: #67707a;
+  min-height: 18px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hpx-ew__status--busy {
+  color: #1f4f85;
+}
+
+.hpx-ew__actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.hpx-ew button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 確認對話框（破壞性操作 / 覆蓋衝突）── */
+.hpx-ew-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 26, 33, 0.45);
+  padding: 24px;
+}
+
+.hpx-ew-confirm__box {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+}
+
+.hpx-ew-confirm__title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.hpx-ew-confirm__body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #3c4753;
+  white-space: pre-wrap;
+  margin-bottom: 18px;
+}
+
+.hpx-ew-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.hpx-btn--danger {
+  background: #c0392b;
+  border-color: #a93226;
+  color: #fff;
+}
+
+.hpx-btn--danger:hover {
+  background: #a93226;
+}

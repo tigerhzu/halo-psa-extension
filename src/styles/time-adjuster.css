@@ -1,0 +1,158 @@
+/* time-adjuster.css — Time Taken 快速調整工具列。
+   全部使用 hpx-tta- 前綴，只作用在本擴充插入的節點，不影響 HaloPSA 既有樣式。
+
+   版面原則：
+   1. 放在完整的「時：分：秒」欄位正下方，靠左，獨立一行。
+      絕不插進欄位之間，HaloPSA 原本的欄位排列必須保持完整。
+   2. 單一橫向緊湊長條（無邊框、無底色、不換行），不是方塊面板。
+
+   關於選擇器權重：本檔的節點是「注入到 HaloPSA 自己的表單裡」，
+   Halo 表單常有 `.xxx input { width: 100% }` 這類規則會蓋過單一 class。
+   因此版面關鍵屬性（寬度、flex、display）刻意提高權重並加 !important，
+   其餘外觀屬性維持一般權重，方便日後覆寫。 */
+
+.hpx-tta {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #1f2933;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* 預設：完整 Time Taken 欄位的正下方，靠左，自成一行。 */
+.hpx-tta.hpx-tta--block {
+  display: flex !important;
+  width: 100% !important;
+  /* 萬一還是落在 flex row 容器裡，這行會把自己擠到下一整行 */
+  flex: 1 0 100% !important;
+  justify-content: flex-start;
+  margin: 5px 0 2px;
+}
+
+/* 選用：和欄位同一行（INSERT_MODE: 'beside'）。 */
+.hpx-tta.hpx-tta--inline {
+  display: inline-flex !important;
+  width: auto !important;
+  flex: 0 0 auto !important;
+  margin: 0 0 0 10px;
+  vertical-align: middle;
+  align-self: center;
+}
+
+/* 項目之間的細分隔線（對應「目前 55 分鐘｜-5 分｜…」的視覺分隔）。 */
+.hpx-tta > .hpx-tta-sep {
+  flex: 0 0 auto !important;
+  width: 1px !important;
+  min-width: 1px;
+  height: 14px;
+  padding: 0;
+  background: #d5dce5;
+}
+
+.hpx-tta > .hpx-tta-summary {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #1f2933;
+}
+.hpx-tta > .hpx-tta-summary.is-invalid {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.hpx-tta > .hpx-tta-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #2c6cd6;
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+  transition: background .12s ease, color .12s ease;
+}
+.hpx-tta > .hpx-tta-btn:hover {
+  background: var(--hpx-accent, #3a82f7);
+  border-color: var(--hpx-accent, #3a82f7);
+  color: #fff;
+}
+.hpx-tta > .hpx-tta-btn:focus-visible {
+  outline: 2px solid var(--hpx-accent, #3a82f7);
+  outline-offset: 1px;
+}
+.hpx-tta > .hpx-tta-btn:active { transform: translateY(1px); }
+
+.hpx-tta > .hpx-tta-btn--reset { color: #6b7480; }
+.hpx-tta > .hpx-tta-btn--reset:hover {
+  background: #6b7480;
+  border-color: #6b7480;
+}
+
+.hpx-tta > .hpx-tta-btn--apply {
+  border-color: #cfdcf2;
+  background: #eef4fe;
+  font-weight: 650;
+}
+.hpx-tta > .hpx-tta-btn--apply:hover {
+  background: var(--hpx-accent, #3a82f7);
+  border-color: var(--hpx-accent, #3a82f7);
+  color: #fff;
+}
+
+/* 分鐘輸入框：固定小尺寸。
+   Halo 表單的 `input { width: 100% }` 會把它拉滿整行，把「套用」推到畫面最右側，
+   所以這裡三個寬度屬性一起鎖死。 */
+.hpx-tta > .hpx-tta-input {
+  flex: 0 0 auto !important;
+  width: 56px !important;
+  min-width: 56px !important;
+  max-width: 56px !important;
+  padding: 2px 6px;
+  border: 1px solid #d5dce5;
+  border-radius: 5px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  color: inherit;
+  text-align: center;
+  box-sizing: border-box;
+}
+.hpx-tta > .hpx-tta-input:focus-visible {
+  outline: 2px solid var(--hpx-accent, #3a82f7);
+  outline-offset: -1px;
+}
+.hpx-tta > .hpx-tta-input.is-invalid {
+  border-color: #e79a9a;
+  background: #fef2f2;
+}
+/* 數字微調箭頭佔空間又難點，橫向長條裡直接隱藏。 */
+.hpx-tta > .hpx-tta-input::-webkit-outer-spin-button,
+.hpx-tta > .hpx-tta-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.hpx-tta > .hpx-tta-input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hpx-tta > .hpx-tta-btn { transition: none; }
+  .hpx-tta > .hpx-tta-btn:active { transform: none; }
+}

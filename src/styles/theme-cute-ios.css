@@ -1,0 +1,369 @@
+/*
+ * theme-cute-ios.css — 「Cute iOS」外觀主題（Glassmorphism / Apple HIG 風）
+ *
+ * 像 iPhone App：乾淨、精緻、柔和。毛玻璃、圓角卡片、浮動陰影、淺色背景、柔和 Accent。
+ * 視覺參考：Notion + iOS / Arc Browser / Apple Settings / Linear。
+ *
+ * 可調：
+ *  - Accent Color：--hpx-accent（單一 hex，由 JS 設定；其餘色階用 color-mix 推導）
+ *  - 透明度：--hpx-glass-opacity（0.40 ~ 1.00，由 theme.js / 設定頁設定）
+ *
+ * 安全範圍：只命中本擴充自己的 .hpx-* 元件，以及設定頁 .hpx-options，不碰 HaloPSA。
+ */
+
+/*
+ * Accent 由 JS 直接設成單一 hex 變數 --hpx-accent（theme.js / options.js）。
+ * 其它色階一律由它推導（color-mix），所以「換一個 accent，所有自訂 UI 一起變」。
+ * --hpx-opacity（0~1）控制主題覆蓋層的不透明度。
+ */
+html {
+  --hpx-accent: #3a82f7;
+  --hpx-accent-2: color-mix(in srgb, var(--hpx-accent), #000 14%);
+  --hpx-accent-soft: color-mix(in srgb, var(--hpx-accent) 18%, transparent);
+  --hpx-glass-opacity: 0.85;
+  --hpx-opacity: 1;
+}
+
+html[data-hpx-theme="cute-ios"] {
+  --hpx-radius-lg: 18px;
+  --hpx-radius-md: 14px;
+  --hpx-radius-sm: 12px;
+  --hpx-glass: rgba(255, 255, 255, var(--hpx-glass-opacity, 0.85));
+  --hpx-ink: #2c3242;
+  --hpx-ink-soft: #828aa0;
+  --hpx-line: rgba(150, 160, 190, 0.18);
+  --hpx-shadow: 0 8px 24px rgba(90, 100, 140, 0.16);
+  --hpx-shadow-lg: 0 18px 44px rgba(70, 80, 120, 0.22);
+}
+
+/* ════════ 1. AI 工具列 ════════ */
+html[data-hpx-theme="cute-ios"] .hpx-toolbar {
+  background: var(--hpx-glass);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  backdrop-filter: blur(14px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--hpx-radius-md);
+  box-shadow: var(--hpx-shadow);
+  padding: 8px 10px;
+  gap: 8px;
+  color: var(--hpx-ink);
+}
+
+/*
+ * 聯絡人名單會插在 HaloPSA 的 To / CC 欄位前方。一般 Cute 工具列的
+ * backdrop-filter 會建立新的 stacking context，導致下拉選單即使有很高的
+ * z-index，仍被後面的收件人欄位蓋住。這一條工具列不需要模糊背景：保留
+ * Cute 配色，維持正常流高度，並把整條工具列提升到欄位上層。
+ */
+html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar {
+  position: relative !important;
+  z-index: 2147483645 !important;
+  overflow: visible !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  padding: 6px 8px;
+  gap: 6px;
+}
+html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown,
+html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown-menu {
+  position: relative;
+  z-index: 2147483646 !important;
+}
+html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown-menu {
+  position: absolute;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-group {
+  border-right: 1px solid var(--hpx-line);
+  padding-right: 8px;
+  gap: 6px;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-group:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-group-label {
+  color: var(--hpx-ink-soft);
+}
+
+/* iOS pill 按鈕 */
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn {
+  border: 1px solid rgba(180, 190, 215, 0.45);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--hpx-ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(120, 130, 160, 0.12);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.14s ease, background 0.14s ease;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(120, 130, 160, 0.24);
+  background: #ffffff;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 1px 2px rgba(120, 130, 160, 0.2);
+}
+/* 功能鍵以 accent 點綴 */
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--ai,
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--font,
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--besties,
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--template,
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--format {
+  background: var(--hpx-accent-soft);
+  border-color: transparent;
+  color: var(--hpx-ink);
+}
+
+/* 下拉選單 */
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-menu {
+  border-radius: var(--hpx-radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.96);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: var(--hpx-shadow-lg);
+  padding: 6px;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-item {
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 500;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-item:hover {
+  background: var(--hpx-accent-soft);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-divider {
+  background: var(--hpx-line);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-select {
+  border-radius: 10px;
+  border: 1px solid rgba(180, 190, 215, 0.55);
+  padding: 7px 9px;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-select:focus {
+  outline: none;
+  border-color: var(--hpx-accent);
+  box-shadow: 0 0 0 3px var(--hpx-accent-soft);
+}
+
+/* ════════ 2. AI 彈出視窗 ════════ */
+html[data-hpx-theme="cute-ios"] .hpx-modal-overlay {
+  background: rgba(40, 46, 60, 0.32);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal {
+  border-radius: var(--hpx-radius-lg);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--hpx-shadow-lg);
+  overflow: hidden;
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal__header {
+  border-bottom: 1px solid var(--hpx-line);
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal__note {
+  background: var(--hpx-accent-soft);
+  color: var(--hpx-ink);
+  border-bottom: 1px solid var(--hpx-line);
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal__textarea {
+  border-radius: var(--hpx-radius-sm);
+  border: 1px solid rgba(180, 190, 215, 0.5);
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal__textarea:focus {
+  border-color: var(--hpx-accent);
+  box-shadow: 0 0 0 4px var(--hpx-accent-soft);
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal__diff-box {
+  border-radius: var(--hpx-radius-sm);
+  background: #fbfcff;
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal__close {
+  border-radius: 999px;
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal__close:hover {
+  background: var(--hpx-accent-soft);
+}
+html[data-hpx-theme="cute-ios"] .hpx-btn {
+  border-radius: 999px;
+  font-weight: 600;
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+html[data-hpx-theme="cute-ios"] .hpx-btn--primary {
+  background: linear-gradient(135deg, var(--hpx-accent), var(--hpx-accent-2));
+  border: none;
+  box-shadow: 0 6px 16px var(--hpx-accent-soft);
+}
+html[data-hpx-theme="cute-ios"] .hpx-btn--primary:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 10px 24px var(--hpx-accent-soft);
+}
+html[data-hpx-theme="cute-ios"] .hpx-btn--primary:active {
+  transform: translateY(0) scale(0.98);
+}
+html[data-hpx-theme="cute-ios"] .hpx-btn--secondary {
+  background: #ffffff;
+  border: 1px solid rgba(180, 190, 215, 0.6);
+}
+html[data-hpx-theme="cute-ios"] .hpx-btn--secondary:hover {
+  background: #f4f7ff;
+  transform: translateY(-1px);
+}
+
+/* ════════ 3. Toast ════════ */
+html[data-hpx-theme="cute-ios"] .hpx-toast {
+  border-radius: var(--hpx-radius-md);
+  font-weight: 600;
+  color: #ffffff;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 26px rgba(60, 70, 100, 0.26);
+}
+html[data-hpx-theme="cute-ios"] .hpx-toast--info {
+  background: rgba(58, 66, 80, 0.92);
+}
+html[data-hpx-theme="cute-ios"] .hpx-toast--success {
+  background: linear-gradient(135deg, #34c77b, #22b39a);
+}
+html[data-hpx-theme="cute-ios"] .hpx-toast--error {
+  background: linear-gradient(135deg, #ff8aa3, #ef6b86);
+}
+
+/* ════════ 4. 小老虎 Loading ════════ */
+html[data-hpx-theme="cute-ios"] .hpx-loader {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  backdrop-filter: blur(14px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 12px 30px rgba(90, 100, 140, 0.28);
+  color: var(--hpx-ink);
+  font-weight: 600;
+  padding: 11px 18px;
+}
+html[data-hpx-theme="cute-ios"] .hpx-loader--done {
+  background: linear-gradient(135deg, #d8f5e6, #cdeeff);
+  color: #1f8a5b;
+}
+html[data-hpx-theme="cute-ios"] .hpx-loader__tiger {
+  font-size: 20px;
+  animation: hpx-tiger-run 0.7s ease-in-out infinite;
+}
+html[data-hpx-theme="cute-ios"] .hpx-loader--done .hpx-loader__tiger {
+  animation: hpx-tiger-pop 0.4s ease;
+}
+@keyframes hpx-tiger-run {
+  0% { transform: translateY(0) rotate(-8deg) scale(1); }
+  25% { transform: translateY(-5px) rotate(7deg) scale(1.08); }
+  50% { transform: translateY(0) rotate(-4deg) scale(1); }
+  75% { transform: translateY(-3px) rotate(8deg) scale(1.05); }
+  100% { transform: translateY(0) rotate(-8deg) scale(1); }
+}
+
+/* ════════ 5. HaloPSA 左側 Sidebar（Cute iOS：深色玻璃 + accent 光暈）════════ */
+html[data-hpx-theme="cute-ios"] .hpx-theme-wrap,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar,
+html[data-hpx-theme="cute-ios"] #halo-tree,
+html[data-hpx-theme="cute-ios"] #app-nav-menu {
+  isolation: isolate;
+  background-color: color-mix(in srgb, var(--hpx-accent) 30%, #101827) !important;
+  background-image:
+    radial-gradient(
+      100% 58% at 100% 0%,
+      color-mix(in srgb, var(--hpx-accent) 48%, transparent),
+      transparent 68%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--hpx-accent) 38%, #172033) 0%,
+      color-mix(in srgb, var(--hpx-accent) 18%, #0d1424) 100%
+    ) !important;
+  background-attachment: local !important;
+}
+/* 內部結構透明，讓玻璃感透出；文字維持淺色可讀 */
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar ul,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar li,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar nav,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar section,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar a,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar > div {
+  background-color: transparent !important;
+}
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar a,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar span,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar i,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar label {
+  color: #eaf0ff !important;
+}
+/* 選中項目吃 accent */
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar a.active,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar a[class*="active" i],
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar li.active,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar li[class*="active" i],
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar .router-link-active {
+  background: color-mix(in srgb, var(--hpx-accent) 32%, transparent) !important;
+  border-radius: 10px !important;
+}
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar input {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-radius: 10px !important;
+  color: #2c3242 !important;
+}
+
+/* ════════ 6. 設定頁（只在 .hpx-options 內）════════ */
+html[data-hpx-theme="cute-ios"] .hpx-options {
+  background:
+    radial-gradient(80% 50% at 100% 0%, var(--hpx-accent-soft), transparent 60%),
+    linear-gradient(180deg, #f6f8ff 0%, #fdf6fb 100%);
+}
+html[data-hpx-theme="cute-ios"] .hpx-options .card {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--hpx-radius-lg);
+  background: rgba(255, 255, 255, var(--hpx-glass-opacity, 0.88));
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  box-shadow: var(--hpx-shadow);
+}
+html[data-hpx-theme="cute-ios"] .hpx-options input[type="text"],
+html[data-hpx-theme="cute-ios"] .hpx-options input[type="password"],
+html[data-hpx-theme="cute-ios"] .hpx-options select {
+  border-radius: var(--hpx-radius-sm);
+  border: 1px solid rgba(180, 190, 215, 0.55);
+}
+html[data-hpx-theme="cute-ios"] .hpx-options input:focus,
+html[data-hpx-theme="cute-ios"] .hpx-options select:focus {
+  outline: none;
+  border-color: var(--hpx-accent);
+  box-shadow: 0 0 0 3px var(--hpx-accent-soft);
+}
+html[data-hpx-theme="cute-ios"] .hpx-options .group {
+  border-radius: var(--hpx-radius-md);
+  background: rgba(250, 250, 255, 0.7);
+  border-color: rgba(200, 208, 230, 0.6);
+}
+html[data-hpx-theme="cute-ios"] .hpx-options button {
+  border-radius: 999px;
+  font-weight: 600;
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+html[data-hpx-theme="cute-ios"] .hpx-options button:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 14px rgba(120, 130, 160, 0.2);
+}
+html[data-hpx-theme="cute-ios"] .hpx-options button:active {
+  transform: translateY(0) scale(0.98);
+}
+html[data-hpx-theme="cute-ios"] .hpx-options button.primary {
+  background: linear-gradient(135deg, var(--hpx-accent), var(--hpx-accent-2));
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 6px 16px var(--hpx-accent-soft);
+}
+html[data-hpx-theme="cute-ios"] .hpx-options .font-preview {
+  border-radius: var(--hpx-radius-sm);
+  background: rgba(247, 249, 255, 0.8);
+}

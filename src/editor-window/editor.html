@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-hpx-theme="cute-ios">
+<head>
+  <meta charset="UTF-8" />
+  <title>Note 編輯器</title>
+  <!--
+    獨立 Note 編輯視窗（chrome.windows.create 的 popup）。
+
+    這個頁面刻意不認識 HaloPSA：它只拿到「一段 HTML」，改完再交回去。
+    所有 HaloPSA DOM 的讀寫都留在 content script（src/features/note-window.js）。
+
+    MV3 的預設 CSP 不允許 inline script / inline event handler，
+    所以所有邏輯都在 editor.js，這裡只有結構。
+  -->
+  <link rel="stylesheet" href="../styles/toolbar.css" />
+  <link rel="stylesheet" href="../styles/modal.css" />
+  <link rel="stylesheet" href="editor.css" />
+</head>
+<body>
+  <div class="hpx-ew">
+    <header class="hpx-ew__header">
+      <div class="hpx-ew__title" id="hpx-ew-title">Note 編輯器</div>
+      <div class="hpx-ew__subtitle">
+        套用只會把內容放回 HaloPSA 的編輯框，<strong>不會自動儲存</strong>；請自行按 Halo 的儲存鍵。
+      </div>
+    </header>
+
+    <div class="hpx-ew__notice hpx-ew__notice--hidden" id="hpx-ew-notice"></div>
+
+    <div
+      class="hpx-ew__format-toolbar"
+      id="hpx-ew-format-toolbar"
+      role="toolbar"
+      aria-label="文字格式工具列"
+    ></div>
+
+    <div class="hpx-toolbar hpx-ew__toolbar" id="hpx-ew-toolbar"></div>
+
+    <div class="hpx-ew__hint" id="hpx-ew-selhint">
+      上方工具列可直接編輯文字格式；AI 與整理格式預設<strong>只處理選取的文字</strong>，未選取的部分連同表格、圖片、連結原樣保留。
+    </div>
+
+    <div
+      class="hpx-ew__editor"
+      id="hpx-ew-editor"
+      contenteditable="true"
+      spellcheck="false"
+      role="textbox"
+      aria-multiline="true"
+    ></div>
+
+    <footer class="hpx-ew__footer">
+      <div class="hpx-ew__status" id="hpx-ew-status"></div>
+      <div class="hpx-ew__actions">
+        <button type="button" class="hpx-btn hpx-btn--secondary" id="hpx-ew-cancel">取消</button>
+        <button type="button" class="hpx-btn hpx-btn--primary" id="hpx-ew-apply">套用回 HaloPSA</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 載入順序即相依關係，與 manifest 的 content_scripts 同理 -->
+  <script src="../core/namespace.js"></script>
+  <script src="../config/format-rules.js"></script>
+  <script src="../config/template-data.js"></script>
+  <script src="../config/ai-actions.js"></script>
+  <script src="../core/html-sanitizer.js"></script>
+  <script src="../core/html-fidelity.js"></script>
+  <script src="../core/image-placeholder.js"></script>
+  <script src="../ai/ai-adapter.js"></script>
+  <script src="../features/format-cleanup.js"></script>
+  <script src="../ui/toast.js"></script>
+  <script src="../ui/preview-modal.js"></script>
+  <script src="editor.js"></script>
+</body>
+</html>

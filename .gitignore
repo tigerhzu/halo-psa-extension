@@ -1,0 +1,48 @@
+# Dependencies and local environment
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.temp
+
+# Credentials, exported browser data, and local profiles
+credentials/
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.har
+*.session
+*.code-workspace
+
+# Browser, test, and generated artifacts
+.playwright-mcp/
+/*.png
+/dist/
+/build/
+/coverage/
+/cache/
+/temp/
+/tmp/
+/logs/
+
+# Private evaluation inputs, reports, and handoff materials
+/evals/
+/tools/prompt-eval/
+/AIQ_REPORT_EVIDENCE.md
+/PROJECT_STATUS.md
+/eval-report*.md
+
+# Local AI-agent state
+.agents/
+.claude/
+AGENTS.md
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

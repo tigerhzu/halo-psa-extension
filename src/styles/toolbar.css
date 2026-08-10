@@ -1,0 +1,349 @@
+/* toolbar.css — 浮動工具列與 toast 樣式。所有 class 以 hpx- 前綴，避免與 HaloPSA 衝突。 */
+
+.hpx-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  margin: 4px 0;
+  background: #f4f6f9;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  font-family: Verdana, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  /* 不繼承 HaloPSA 可能的奇怪樣式 */
+  color: #2a2f36;
+}
+
+.hpx-toolbar * {
+  box-sizing: border-box;
+}
+
+.hpx-tb-group {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding-right: 6px;
+  border-right: 1px solid #e0e4ea;
+}
+
+.hpx-tb-group:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.hpx-tb-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a93a0;
+  margin-right: 2px;
+  user-select: none;
+}
+
+.hpx-tb-btn {
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid #c5ccd6;
+  background: #ffffff;
+  color: #2a2f36;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: Verdana, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  white-space: nowrap;
+}
+
+.hpx-tb-btn:hover {
+  background: #eef2f7;
+  border-color: #9aa6b5;
+}
+
+.hpx-tb-btn:active {
+  background: #e2e8f0;
+}
+
+/* 開啟獨立編輯視窗 —— 是這條工具列的主要入口，做得比其他鈕明顯一點 */
+.hpx-tb-btn--window {
+  border-color: #8fa8d8;
+  background: #e7eeff;
+  font-weight: 700;
+}
+.hpx-tb-btn--window:hover {
+  background: #d5e2ff;
+}
+
+.hpx-tb-btn--ai {
+  border-color: #b9c8e8;
+  background: #f0f5ff;
+}
+.hpx-tb-btn--ai:hover {
+  background: #e2ecff;
+}
+
+.hpx-tb-btn--format {
+  border-color: #b9e3c6;
+  background: #effaf2;
+}
+.hpx-tb-btn--format:hover {
+  background: #ddf3e3;
+}
+
+.hpx-tb-btn--template {
+  border-color: #e8d6b9;
+  background: #fdf6ea;
+}
+.hpx-tb-btn--template:hover {
+  background: #f7ebd6;
+}
+
+.hpx-tb-btn--font {
+  border-color: #c9c2e8;
+  background: #f3f1fb;
+}
+.hpx-tb-btn--font:hover {
+  background: #e8e3f7;
+}
+
+/* 字型下拉內的表單控制項 */
+.hpx-tb-font-menu {
+  min-width: 200px;
+  padding: 10px;
+}
+
+.hpx-tb-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7480;
+  margin: 6px 2px 4px;
+}
+
+.hpx-tb-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #c5ccd6;
+  border-radius: 4px;
+  background: #ffffff;
+  font-family: Verdana, sans-serif;
+  font-size: 12px;
+  color: #2a2f36;
+  margin-bottom: 4px;
+}
+
+.hpx-tb-font-menu .hpx-tb-dropdown-item--strong {
+  margin-top: 8px;
+  text-align: center;
+  font-weight: 700;
+  color: #5a4aa8;
+  background: #f3f1fb;
+}
+.hpx-tb-font-menu .hpx-tb-dropdown-item--strong:hover {
+  background: #e8e3f7;
+}
+
+/* 範本下拉 */
+.hpx-tb-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.hpx-tb-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 160px;
+  background: #ffffff;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(20, 30, 45, 0.16);
+  padding: 4px;
+  z-index: 2147483646;
+}
+
+.hpx-tb-dropdown-menu--open {
+  display: block;
+}
+
+.hpx-tb-dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  margin: 0;
+}
+
+.hpx-tb-dropdown-item:hover {
+  background: #f0f5ff;
+}
+
+/* 聯絡人名單（CC 快速加入）按鈕 */
+.hpx-tb-btn--besties {
+  border-color: #e0b9e8;
+  background: #fbf0fd;
+}
+.hpx-tb-btn--besties:hover {
+  background: #f4ddf8;
+}
+
+.hpx-besties-toolbar {
+  background: #faf5fc;
+  border-color: #e6cdee;
+}
+
+.hpx-tb-dropdown-divider {
+  height: 1px;
+  margin: 4px 2px;
+  background: #e6e9ee;
+}
+
+.hpx-tb-dropdown-item--strong {
+  font-weight: 700;
+  color: #7a3a8a;
+}
+
+.hpx-tb-dropdown-item--manage {
+  color: #6b7480;
+}
+
+/* 🐯 Loading 指示器（AI / 整理格式 執行中） */
+.hpx-loader {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #2b2f3a;
+  color: #ffffff;
+  font-family: Verdana, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 6px 18px rgba(20, 30, 45, 0.28);
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.22s ease;
+}
+
+.hpx-loader--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hpx-loader--done {
+  background: #2e8b57;
+}
+
+.hpx-loader__tiger {
+  font-size: 18px;
+  display: inline-block;
+  transform-origin: 50% 80%;
+  animation: hpx-tiger-bob 0.8s ease-in-out infinite;
+}
+
+.hpx-loader--done .hpx-loader__tiger {
+  animation: hpx-tiger-pop 0.35s ease;
+}
+
+@keyframes hpx-tiger-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(6deg);
+  }
+}
+
+@keyframes hpx-tiger-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Toast */
+.hpx-toast-container {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2147483647;
+  pointer-events: none;
+}
+
+.hpx-toast {
+  min-width: 160px;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-family: Verdana, sans-serif;
+  font-size: 13px;
+  color: #ffffff;
+  background: #3a4250;
+  box-shadow: 0 6px 18px rgba(20, 30, 45, 0.22);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.hpx-toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hpx-toast--success {
+  background: #2e8b57;
+}
+.hpx-toast--error {
+  background: #c0392b;
+}
+.hpx-toast--info {
+  background: #3a4250;
+}
+
+@media (max-width: 640px) {
+  .hpx-toolbar {
+    padding: 6px;
+    gap: 5px;
+  }
+
+  .hpx-tb-group {
+    flex: 1 1 100%;
+    padding: 0 0 5px;
+    border-right: 0;
+    border-bottom: 1px solid #e0e4ea;
+  }
+
+  .hpx-tb-group:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .hpx-tb-btn {
+    flex: 1 1 auto;
+    padding-inline: 8px;
+  }
+}

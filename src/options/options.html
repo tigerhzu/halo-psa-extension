@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#3a82f7;--hpx-opacity:1">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HaloPSA Writing Helper 設定</title>
+  <link rel="stylesheet" href="../styles/theme-cute-ios.css" />
+  <style>
+    :root {
+      --fg: #1f2933;
+      --muted: #67707a;
+      --line: #e2e6ea;
+      --brand: var(--hpx-accent, #2563eb);
+      --brand-dark: var(--hpx-accent, #1d4ed8);
+      --ok: #15803d;
+      --err: #b91c1c;
+      --bg-soft: #f7f9fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+      color: var(--fg);
+      background: #fff;
+      line-height: 1.6;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 32px 24px 64px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 { font-size: 15px; margin: 0 0 12px; }
+    label { display: block; font-weight: 600; font-size: 13px; margin: 14px 0 6px; }
+    .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+    input[type="text"], input[type="password"], select {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:focus, select:focus { outline: 2px solid var(--brand); border-color: var(--brand); }
+    .key-row { display: flex; gap: 8px; }
+    .key-row input { flex: 1; }
+    .checkbox-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 16px; }
+    .checkbox-row input { margin-top: 4px; }
+    .checkbox-row label { margin: 0; font-weight: 600; }
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--fg);
+      padding: 9px 14px;
+      cursor: pointer;
+    }
+    button:hover { background: var(--bg-soft); }
+    button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    button.primary:hover { background: var(--brand-dark); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
+    .status { font-size: 13px; min-height: 20px; }
+    .status.ok { color: var(--ok); }
+    .status.err { color: var(--err); }
+    .status.busy { color: var(--muted); }
+    ol { margin: 8px 0 0; padding-left: 20px; }
+    ol li { margin-bottom: 6px; font-size: 13px; }
+    a { color: var(--brand); }
+    code {
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 12px;
+    }
+    /* 聯絡人名單管理 */
+    .group {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 14px;
+      background: var(--bg-soft);
+    }
+    .group-head { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .group-head input { flex: 1; font-weight: 600; }
+    .member-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .member-row .m-name { flex: 0 0 34%; }
+    .member-row .m-email { flex: 1; }
+    .btn-sm { padding: 6px 10px; font-size: 13px; }
+    .btn-danger { color: var(--err); border-color: #f0c5c5; }
+    .btn-danger:hover { background: #fef2f2; }
+    .group-actions { margin-top: 6px; }
+    .empty-hint { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
+    /* 外觀面板：Accent 色票 / 透明度 / 預覽 */
+    .swatches { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 4px; max-width: 500px; }
+    .swatch {
+      width: 30px; height: 30px; border-radius: 999px;
+      border: 2px solid rgba(0,0,0,0.06);
+      background: var(--sw); cursor: pointer; padding: 0;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .swatch:hover { transform: translateY(-2px) scale(1.06); }
+    .swatch.active {
+      box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--sw);
+    }
+    input[type="range"] {
+      width: 100%; accent-color: var(--hpx-accent, #3a82f7);
+    }
+    #opacityValue { color: var(--muted); font-weight: 600; }
+    .theme-preview {
+      margin-top: 4px; padding: 18px; border-radius: 14px;
+      background:
+        radial-gradient(70% 60% at 100% 0%, var(--hpx-accent-soft, rgba(58,130,247,.16)), transparent 60%),
+        linear-gradient(180deg, #eef2fb, #f7eef7);
+      border: 1px solid var(--line);
+    }
+    .preview-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: 14px;
+      background: rgba(255,255,255, var(--hpx-glass-opacity, 0.85));
+      box-shadow: 0 10px 26px rgba(80,90,130,0.16);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+    .preview-dot {
+      width: 26px; height: 26px; border-radius: 999px; flex: 0 0 auto;
+      background: linear-gradient(135deg, var(--hpx-accent, #3a82f7), var(--hpx-accent-2, #6a5cff));
+    }
+    .preview-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .preview-lines i { height: 7px; border-radius: 999px; background: #d7deea; display: block; }
+    .preview-lines i:first-child { width: 70%; }
+    .preview-lines i:last-child { width: 45%; }
+    .preview-btn {
+      border: none; border-radius: 999px; padding: 7px 14px; cursor: pointer;
+      font-weight: 700; color: #fff;
+      background: linear-gradient(135deg, var(--hpx-accent, #3a82f7), var(--hpx-accent-2, #6a5cff));
+      box-shadow: 0 6px 14px var(--hpx-accent-soft, rgba(58,130,247,.25));
+    }
+  </style>
+</head>
+<body class="hpx-options">
+  <div class="wrap">
+    <h1>HaloPSA Writing Helper 設定</h1>
+    <p class="sub">支援 Azure OpenAI 與 Gemini；連線資料只儲存在目前瀏覽器。</p>
+
+    <div class="card">
+      <h2>外觀 Appearance</h2>
+      <p class="hint">即時生效、不需重新整理、不開新分頁。只套用在本擴充自己的 UI，<strong>不影響 HaloPSA 介面</strong>。</p>
+
+      <label for="theme">主題 Theme</label>
+      <select id="theme">
+        <option value="cute-ios">Cute iOS（毛玻璃・圓角・柔和）</option>
+        <option value="default">Default（原始外觀）</option>
+      </select>
+
+      <label>Accent Color</label>
+      <div class="swatches" id="accentRow">
+        <button class="swatch" data-accent="#ff7a1a" style="--sw:#ff7a1a" title="Orange" type="button"></button>
+        <button class="swatch" data-accent="#f5b82e" style="--sw:#f5b82e" title="Amber" type="button"></button>
+        <button class="swatch" data-accent="#ef4444" style="--sw:#ef4444" title="Red" type="button"></button>
+        <button class="swatch" data-accent="#ff6fa5" style="--sw:#ff6fa5" title="Pink" type="button"></button>
+        <button class="swatch" data-accent="#9b6bff" style="--sw:#9b6bff" title="Purple" type="button"></button>
+        <button class="swatch" data-accent="#6366f1" style="--sw:#6366f1" title="Indigo" type="button"></button>
+        <button class="swatch" data-accent="#3a82f7" style="--sw:#3a82f7" title="Blue" type="button"></button>
+        <button class="swatch" data-accent="#06b6d4" style="--sw:#06b6d4" title="Cyan" type="button"></button>
+        <button class="swatch" data-accent="#14b8a6" style="--sw:#14b8a6" title="Teal" type="button"></button>
+        <button class="swatch" data-accent="#2fb968" style="--sw:#2fb968" title="Green" type="button"></button>
+        <button class="swatch" data-accent="#84cc16" style="--sw:#84cc16" title="Lime" type="button"></button>
+        <button class="swatch" data-accent="#64748b" style="--sw:#64748b" title="Slate" type="button"></button>
+      </div>
+
+      <label for="opacity">透明度 Opacity　<span id="opacityValue">100%</span></label>
+      <input type="range" id="opacity" min="40" max="100" step="1" value="100" />
+
+      <label>即時預覽 Preview</label>
+      <div class="theme-preview">
+        <div class="preview-card">
+          <span class="preview-dot"></span>
+          <div class="preview-lines"><i></i><i></i></div>
+          <button class="preview-btn" type="button">Aa</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="saveAppearance" class="primary" type="button">Save Settings</button>
+        <span id="themeStatus" class="status"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>如何取得免費的 Gemini API Key</h2>
+      <ol>
+        <li>前往 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → API Keys</a>（aistudio.google.com/apikey）。</li>
+        <li>用 Google 帳號登入，點選 <strong>「Create API key」</strong>。</li>
+        <li>可選「Create API key in new project」自動建立專案，或選現有專案。</li>
+        <li>複製產生的金鑰（格式類似 <code>AIza…</code>），貼到下方欄位並儲存。</li>
+      </ol>
+      <p class="hint">
+        透過 AI Studio 取得的金鑰預設使用 <strong>免費額度</strong>（free tier）；
+        只要不在 Google Cloud 啟用付費結算，就不會產生費用。免費額度有每分鐘 / 每日請求上限，
+        個人撰寫工單的用量通常綽綽有餘。
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>API 設定</h2>
+
+      <label for="provider">AI Provider</label>
+      <select id="provider">
+        <option value="azure-deepseek">Azure OpenAI（預設）</option>
+        <option value="gemini">Google Gemini（備用）</option>
+      </select>
+
+      <!-- Azure OpenAI 設定區塊 -->
+      <div id="azureSection">
+        <label for="azureEndpoint">Azure Endpoint</label>
+        <input id="azureEndpoint" type="text" inputmode="url" placeholder="https://your-resource.openai.azure.com" autocomplete="off" spellcheck="false" />
+
+        <label for="azureDeployment">Azure Deployment Name</label>
+        <input id="azureDeployment" type="text" placeholder="例如：gpt-4.1 或自訂部署名稱" autocomplete="off" spellcheck="false" />
+
+        <label for="azureApiKey">Azure OpenAI API Key</label>
+        <div class="key-row">
+          <input id="azureApiKey" type="password" placeholder="貼上 Azure OpenAI API Key" autocomplete="off" spellcheck="false" />
+          <button id="toggleAzureKey" type="button">顯示</button>
+        </div>
+        <p class="hint">
+          Endpoint、Deployment 與金鑰只儲存在本機瀏覽器（chrome.storage.local），
+          不會寫入專案檔案或出現在 HaloPSA 頁面。
+        </p>
+      </div>
+
+      <!-- Gemini 設定區塊（切換 provider 後顯示）-->
+      <div id="geminiSection" style="display:none">
+        <label for="apiKey">Gemini API Key</label>
+        <div class="key-row">
+          <input id="apiKey" type="password" placeholder="貼上 AIza… 開頭的金鑰" autocomplete="off" spellcheck="false" />
+          <button id="toggleKey" type="button">顯示</button>
+        </div>
+        <p class="hint">金鑰只儲存在本機瀏覽器（chrome.storage.local），並只在背景服務中使用，不會出現在 HaloPSA 頁面。</p>
+
+        <label for="model">Gemini 模型</label>
+        <select id="model">
+          <option value="gemini-2.5-flash">gemini-2.5-flash（推薦，速度與品質均衡，免費額度可用）</option>
+          <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（更快更省，免費額度可用）</option>
+          <option value="gemini-2.0-flash">gemini-2.0-flash（上一代，免費額度可用）</option>
+        </select>
+        <p class="hint">以上模型皆在 Google AI Studio 免費額度範圍內。</p>
+      </div>
+
+      <div class="checkbox-row">
+        <input id="useStub" type="checkbox" />
+        <div>
+          <label for="useStub">測試模式（不呼叫真實 AI）</label>
+          <p class="hint">勾選後一律回傳示意文字，方便在沒有金鑰時測試介面流程。</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="save" class="primary" type="button">儲存設定</button>
+        <button id="test" type="button">測試連線</button>
+        <span id="status" class="status"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>聯絡人名單（寄信 CC 快速加入）</h2>
+      <p class="hint">
+        在 HaloPSA 寄信視窗（Email / Reply / Send Email / Email Customer）的「聯絡人」工具列，
+        可一鍵把整個群組或單一成員加入 <strong>CC</strong>（已存在者不重複、不覆蓋其他人）。
+        新增群組（例如 <code>主管</code>、<code>同事</code>、<code>專案經理</code>）後，
+        寄信視窗會自動多出對應按鈕 —— <strong>不需要改任何程式</strong>。
+      </p>
+
+      <div id="groups"></div>
+
+      <div class="actions">
+        <button id="addGroup" type="button">＋ 新增群組</button>
+        <button id="saveGroups" class="primary" type="button">儲存名單</button>
+        <span id="groupsStatus" class="status"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

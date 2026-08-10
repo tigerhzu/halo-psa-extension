@@ -1,0 +1,193 @@
+/* modal.css — 預覽視窗樣式。所有 class 以 hpx- 前綴。 */
+
+.hpx-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 28, 40, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483647;
+  font-family: Verdana, sans-serif;
+}
+
+.hpx-modal {
+  width: min(880px, 92vw);
+  max-height: 86vh;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(15, 23, 36, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #222831;
+  box-sizing: border-box;
+}
+
+.hpx-modal * {
+  box-sizing: border-box;
+}
+
+.hpx-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e6e9ee;
+}
+
+.hpx-modal__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hpx-modal__close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  color: #8a93a0;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.hpx-modal__close:hover {
+  background: #f0f2f5;
+  color: #2a2f36;
+}
+
+.hpx-modal__note {
+  padding: 8px 18px;
+  background: #fff8e6;
+  color: #8a6d1a;
+  font-size: 12px;
+  border-bottom: 1px solid #f0e6c8;
+}
+
+/* ── 差異面板（整理格式）── */
+.hpx-modal__diff {
+  padding: 14px 18px 0;
+}
+
+.hpx-modal__diff-legend {
+  font-weight: 400;
+  margin-left: 8px;
+}
+
+.hpx-modal__diff-box {
+  border: 1px solid #d3d9e0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  max-height: 180px;
+  overflow: auto;
+  background: #fbfcfd;
+  font-family: Verdana, sans-serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #222831;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.hpx-diff-ins {
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.hpx-diff-del {
+  background: #fee2e2;
+  color: #991b1b;
+  text-decoration: line-through;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.hpx-modal__body {
+  display: flex;
+  gap: 14px;
+  padding: 16px 18px;
+  overflow: auto;
+}
+
+.hpx-modal__col {
+  flex: 1 1 50%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hpx-modal__col-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7480;
+  margin-bottom: 6px;
+}
+
+.hpx-modal__textarea {
+  width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  border: 1px solid #d3d9e0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: Verdana, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #222831;
+  box-sizing: border-box;
+}
+
+.hpx-modal__textarea:focus {
+  outline: none;
+  border-color: #5b8def;
+  box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.2);
+}
+
+.hpx-modal__textarea--readonly {
+  background: #f6f8fa;
+  color: #4a525c;
+}
+
+.hpx-modal__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 18px;
+  border-top: 1px solid #e6e9ee;
+}
+
+.hpx-btn {
+  appearance: none;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-family: Verdana, sans-serif;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.hpx-btn--secondary {
+  background: #ffffff;
+  border-color: #c5ccd6;
+  color: #2a2f36;
+}
+.hpx-btn--secondary:hover {
+  background: #eef2f7;
+}
+
+.hpx-btn--primary {
+  background: #3a6df0;
+  color: #ffffff;
+}
+.hpx-btn--primary:hover {
+  background: #2f5fd6;
+}
+
+@media (max-width: 640px) {
+  .hpx-modal__body {
+    flex-direction: column;
+  }
+}
