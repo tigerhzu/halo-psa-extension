@@ -1,5 +1,9 @@
 # HaloPSA Writing Helper
 
+<p align="center">
+  <img src="assets/branding/halopsa-logo.png" alt="HaloPSA Writing Helper Logo" width="160">
+</p>
+
 以 Manifest V3 實作的瀏覽器擴充功能，為 HaloPSA 頁面的文字編輯、Activity Note、Timesheet 與寄信流程提供輔助工具。專案採無建置步驟的原生 JavaScript 架構，可直接以 Chrome 的「載入未封裝項目」安裝。
 
 > 專案不內建公司租戶網址、聯絡人、Ticket 資料或 API 金鑰。可識別資料與金鑰只應存在於使用者本機瀏覽器的設定中。
