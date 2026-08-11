@@ -8,6 +8,7 @@
   'use strict';
   const REQUEST_EVENT = 'hpx:timesheet:move';
   const RESULT_EVENT = 'hpx:timesheet:move-result';
+  const MOVE_TARGET_ATTR = 'data-hpx-timesheet-move-token';
   const RANGE_RE = /^\s*(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})\s*$/;
 
   function normalizeText(text) {
@@ -60,6 +61,15 @@
     return props && props.event;
   }
 
+  function eventDropHandler(node) {
+    const owner = walkOwners(reactFiber(node), function (fiber) {
+      const props = fiber.memoizedProps || fiber.pendingProps;
+      return !!(props && typeof props.onEventDrop === 'function');
+    });
+    const props = owner && (owner.memoizedProps || owner.pendingProps);
+    return props && props.onEventDrop;
+  }
+
   function timesheetInstance(screen) {
     const owner = walkOwners(reactFiber(screen), function (fiber) {
       return !!(fiber.stateNode && typeof fiber.stateNode.moveEvent === 'function');
@@ -68,12 +78,18 @@
   }
 
   function findEventNode(screen, detail) {
-    return Array.from(screen.querySelectorAll('.rbc-event')).find(function (node) {
+    const markedTarget = detail.targetToken && screen.querySelector(
+      '.rbc-event[' + MOVE_TARGET_ATTR + '="' + detail.targetToken + '"]'
+    );
+    if (markedTarget) return markedTarget;
+
+    const matches = Array.from(screen.querySelectorAll('.rbc-event')).filter(function (node) {
       const label = node.querySelector('.rbc-event-label');
       const content = node.querySelector('.rbc-event-content');
       return normalizedLabel(label && label.textContent) === detail.originalLabel &&
         textHash(content && content.textContent) === detail.fingerprintHash;
-    }) || null;
+    });
+    return matches[0] || null;
   }
 
   function dateAtMinutes(base, minutes) {
@@ -91,6 +107,22 @@
         reason: reason || '',
       },
     }));
+  }
+
+  function invokeMove(node, instance, event, start, end) {
+    const onEventDrop = eventDropHandler(node);
+    if (onEventDrop) {
+      // 這是 React Big Calendar DnD 元件實際使用的公開 callback；優先走它，
+      // 可避免直接猜測某個 HaloPSA 元件私有 moveEvent 的參數形式。
+      return onEventDrop({ event: event, start: start, end: end, isAllDay: false });
+    }
+    // HaloPSA releases have exposed both moveEvent({ event, start, end }) and
+    // moveEvent(event, start, end). Select by declared arity while preserving
+    // the component as `this` for class-method implementations.
+    if (instance.moveEvent.length >= 3) {
+      return instance.moveEvent.call(instance, event, start, end);
+    }
+    return instance.moveEvent.call(instance, { event: event, start: start, end: end });
   }
 
   document.addEventListener(REQUEST_EVENT, function (request) {
@@ -123,7 +155,7 @@
         return;
       }
       const instance = timesheetInstance(screen);
-      if (!instance) {
+      if (!instance && !eventDropHandler(node)) {
         respond(requestId, false, '無法連接 HaloPSA Timesheet 更新功能。');
         return;
       }
@@ -137,8 +169,17 @@
         return;
       }
 
-      instance.moveEvent({ event: event, start: start, end: end });
-      respond(requestId, true, '');
+      const result = invokeMove(node, instance, event, start, end);
+      if (result && typeof result.then === 'function') {
+        // 不等待 HaloPSA 的背景儲存 Promise：它可能比橋接逾時時間長。
+        // Content script 會接著以日曆畫面是否真的更新判斷結果；此處只
+        // 消化 rejection，避免頁面出現未處理的 Promise error。
+        result.then(null, function () {});
+        respond(requestId, true, '');
+      } else {
+        respond(requestId, result === false ? false : true,
+          result === false ? 'HaloPSA 未接受這次時間調整。' : '');
+      }
     } catch (error) {
       respond(requestId, false, error && error.message ? error.message : 'HaloPSA 更新失敗。');
     }

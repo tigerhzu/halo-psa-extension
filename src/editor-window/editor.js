@@ -40,6 +40,9 @@
   let sourceMode = false;
   let sourceToggleBtn = null;
   let formatMenuDocumentBound = false;
+  let selectedImageTarget = null;
+  let imageResizeHandle = null;
+  let imageResizeState = null;
 
   // ── 基礎工具 ────────────────────────────────────────────────────────────
 
@@ -364,6 +367,26 @@
     editorEl.focus();
   }
 
+  /** 套用由本程式產生且已清理過的安全 HTML（目前用於工單語意標籤上色）。 */
+  function applyHtmlResult(scope, html) {
+    const template = document.createElement('template');
+    template.innerHTML = String(html || '');
+
+    if (scope.mode === 'selection') {
+      if (!editorEl.contains(scope.range.commonAncestorContainer)) {
+        showNotice('選取範圍在處理期間失效了，結果沒有套用。請重新選取後再試一次。', 'error');
+        return;
+      }
+      scope.range.deleteContents();
+      scope.range.insertNode(template.content.cloneNode(true));
+      savedRange = null;
+    } else {
+      editorEl.replaceChildren(template.content.cloneNode(true));
+    }
+    dispatchEditorInput();
+    editorEl.focus();
+  }
+
   /** 共用：跑一個文字處理動作 → 預覽 → 套用 */
   async function runTextAction(opts) {
     if (busy) return;
@@ -397,7 +420,12 @@
     });
 
     if (finalText == null) return;
-    applyResult(scope, finalText);
+    if (typeof opts.toHtml === 'function') {
+      const safeHtml = NS.core.htmlSanitizer.sanitize(opts.toHtml(finalText));
+      applyHtmlResult(scope, safeHtml);
+    } else {
+      applyResult(scope, finalText);
+    }
     NS.ui.toast.show('已套用到編輯視窗（尚未寫回 HaloPSA）', { type: 'success' });
   }
 
@@ -411,6 +439,10 @@
       label: def.title,
       title: 'AI 潤稿：' + def.title,
       loading: def.loading,
+      toHtml:
+        key === 'professional' && NS.features.ticketRichFormat
+          ? NS.features.ticketRichFormat.toHtml
+          : null,
       process: function (text) {
         return NS.ai.adapter
           .request({ action: def.action || key, text: text, targetLang: def.targetLang })
@@ -643,6 +675,162 @@
     insertHtmlAtSelection(image.outerHTML);
   }
 
+  function isImageTarget(node) {
+    return !!(
+      node &&
+      node.nodeType === Node.ELEMENT_NODE &&
+      (node.tagName.toLowerCase() === 'img' || node.hasAttribute(NS.core.imagePlaceholder.ATTR))
+    );
+  }
+
+  function selectImageTarget(target) {
+    if (selectedImageTarget && selectedImageTarget !== target) {
+      selectedImageTarget.classList.remove('hpx-ew__image-selected');
+    }
+    selectedImageTarget = target;
+    if (selectedImageTarget) selectedImageTarget.classList.add('hpx-ew__image-selected');
+    updateImageResizeHandle();
+  }
+
+  function removeImageResizeHandle() {
+    if (imageResizeHandle && imageResizeHandle.parentNode) {
+      imageResizeHandle.parentNode.removeChild(imageResizeHandle);
+    }
+    imageResizeHandle = null;
+  }
+
+  function updateImageResizeHandle() {
+    if (
+      !selectedImageTarget ||
+      !editorEl.contains(selectedImageTarget) ||
+      selectedImageTarget.tagName.toLowerCase() !== 'img'
+    ) {
+      removeImageResizeHandle();
+      return;
+    }
+
+    const rect = selectedImageTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      removeImageResizeHandle();
+      return;
+    }
+    if (!imageResizeHandle) {
+      imageResizeHandle = document.createElement('button');
+      imageResizeHandle.type = 'button';
+      imageResizeHandle.className = 'hpx-ew-image-resize-handle';
+      imageResizeHandle.title = '拖曳調整圖片大小';
+      imageResizeHandle.setAttribute('aria-label', '拖曳調整圖片大小');
+      imageResizeHandle.addEventListener('pointerdown', beginImageResize);
+      document.body.appendChild(imageResizeHandle);
+    }
+    imageResizeHandle.style.left = Math.round(rect.right - 8) + 'px';
+    imageResizeHandle.style.top = Math.round(rect.bottom - 8) + 'px';
+  }
+
+  function beginImageResize(event) {
+    const image = selectedImageTarget;
+    if (!image || image.tagName.toLowerCase() !== 'img') return;
+    event.preventDefault();
+    imageResizeState = {
+      image: image,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: image.getBoundingClientRect().width,
+      minWidth: 16,
+      maxWidth: Math.max(16, editorEl.getBoundingClientRect().width - 32),
+    };
+    if (imageResizeHandle && imageResizeHandle.setPointerCapture) {
+      imageResizeHandle.setPointerCapture(event.pointerId);
+    }
+    document.addEventListener('pointermove', moveImageResize);
+    document.addEventListener('pointerup', endImageResize);
+    document.addEventListener('pointercancel', endImageResize);
+  }
+
+  function moveImageResize(event) {
+    if (!imageResizeState || event.pointerId !== imageResizeState.pointerId) return;
+    const width = Math.max(
+      imageResizeState.minWidth,
+      Math.min(imageResizeState.maxWidth, imageResizeState.startWidth + event.clientX - imageResizeState.startX)
+    );
+    applyImageWidth(imageResizeState.image, Math.round(width) + 'px');
+    updateImageResizeHandle();
+  }
+
+  function endImageResize(event) {
+    if (!imageResizeState || event.pointerId !== imageResizeState.pointerId) return;
+    document.removeEventListener('pointermove', moveImageResize);
+    document.removeEventListener('pointerup', endImageResize);
+    document.removeEventListener('pointercancel', endImageResize);
+    imageResizeState = null;
+    dispatchEditorInput();
+    setStatus('圖片大小已調整，可繼續拖曳微調。');
+    updateImageResizeHandle();
+  }
+
+  function normalizeImageWidth(value) {
+    const raw = String(value == null ? '' : value).trim().toLowerCase();
+    if (raw === 'auto') return 'auto';
+    const percent = raw.match(/^(\d{1,3}(?:\.\d+)?)%$/);
+    if (percent) {
+      const number = Number(percent[1]);
+      return number > 0 && number <= 100 ? number + '%' : '';
+    }
+    const pixels = raw.match(/^(\d{1,4}(?:\.\d+)?)(?:px)?$/);
+    if (pixels) {
+      const number = Number(pixels[1]);
+      return number >= 16 && number <= 5000 ? Math.round(number) + 'px' : '';
+    }
+    return '';
+  }
+
+  function applyImageWidth(image, width) {
+    image.style.maxWidth = '100%';
+    image.style.height = 'auto';
+    if (width === 'auto') {
+      image.style.removeProperty('width');
+      image.removeAttribute('width');
+      return;
+    }
+    image.style.width = width;
+    if (/px$/.test(width)) image.setAttribute('width', String(parseInt(width, 10)));
+    else image.removeAttribute('width');
+  }
+
+  function resizeSelectedImage() {
+    if (busy || sourceMode) return;
+    if (!selectedImageTarget || !editorEl.contains(selectedImageTarget)) {
+      showNotice('請先點選要調整的圖片，再按「圖片大小」。', 'info');
+      return;
+    }
+
+    const entered = window.prompt('輸入圖片寬度：例如 50%、320px，或 auto 還原原始大小。', '50%');
+    if (entered == null) return;
+    const width = normalizeImageWidth(entered);
+    if (!width) {
+      showNotice('圖片寬度請填 1–100% 或 16–5000px，也可填 auto。', 'error');
+      return;
+    }
+
+    if (selectedImageTarget.tagName.toLowerCase() === 'img') {
+      applyImageWidth(selectedImageTarget, width);
+    } else {
+      const original = selectedImageTarget.getAttribute(NS.core.imagePlaceholder.ATTR);
+      const doc = new DOMParser().parseFromString('<body>' + String(original || '') + '</body>', 'text/html');
+      const image = doc.body.querySelector('img');
+      if (!image) {
+        showNotice('找不到圖片資料，無法調整大小。', 'error');
+        return;
+      }
+      applyImageWidth(image, width);
+      selectedImageTarget.setAttribute(NS.core.imagePlaceholder.ATTR, image.outerHTML);
+    }
+
+    dispatchEditorInput();
+    setStatus('圖片大小已調整為 ' + width + '。');
+    updateImageResizeHandle();
+  }
+
   function insertTable() {
     if (busy || sourceMode) return;
 
@@ -791,6 +979,7 @@
 
     const richGroup = document.createElement('div');
     richGroup.className = 'hpx-ew-format-group';
+    richGroup.appendChild(makeFormatButton('↔', '調整選取圖片的大小', resizeSelectedImage, 'hpx-ew-format-btn--icon'));
     richGroup.appendChild(makeFormatButton('🔗', '插入或編輯連結', insertLink, 'hpx-ew-format-btn--icon'));
     richGroup.appendChild(makeFormatButton('▧', '插入圖片（網址）', insertImage, 'hpx-ew-format-btn--icon'));
     richGroup.appendChild(makeFormatButton('▦', '插入表格', insertTable, 'hpx-ew-format-btn--icon'));
@@ -869,6 +1058,24 @@
     tplGroup.appendChild(wrap);
     toolbarEl.appendChild(tplGroup);
   }
+
+  editorEl.addEventListener('click', function (event) {
+    const target = event.target;
+    const imageTarget = target && target.closest ? target.closest('img, [data-hpx-img]') : null;
+    if (imageTarget && editorEl.contains(imageTarget) && isImageTarget(imageTarget)) {
+      selectImageTarget(imageTarget);
+      setStatus('已選取圖片，可按「圖片大小」調整。');
+      return;
+    }
+    if (selectedImageTarget) {
+      selectedImageTarget.classList.remove('hpx-ew__image-selected');
+      selectedImageTarget = null;
+      removeImageResizeHandle();
+    }
+  });
+
+  editorEl.addEventListener('scroll', updateImageResizeHandle);
+  window.addEventListener('resize', updateImageResizeHandle);
 
   // ── 套用 / 取消 ─────────────────────────────────────────────────────────
 

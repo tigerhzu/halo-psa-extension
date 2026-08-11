@@ -12,6 +12,10 @@
 (function () {
   'use strict';
   const NS = window.__HPX;
+  const FRAMEWORK_WRITE_REQUEST = 'hpx:editor:write';
+  const FRAMEWORK_WRITE_RESULT = 'hpx:editor:write-result';
+  const FRAMEWORK_WRITE_ATTR = 'data-hpx-framework-write';
+  let frameworkWriteSequence = 0;
 
   /** 判斷元素型態 */
   function getKind(el) {
@@ -82,6 +86,83 @@
     } catch (e) {
       /* 部分環境不支援 KeyboardEvent 建構子，可忽略 */
     }
+  }
+
+  function writeHtmlThroughFramework(el, html, op) {
+    return new Promise(function (resolve) {
+      if (!el || !document.contains(el)) {
+        resolve({ ok: false, error: 'Target editor no longer exists.' });
+        return;
+      }
+
+      frameworkWriteSequence += 1;
+      const requestId = 'write-' + frameworkWriteSequence;
+      let settled = false;
+
+      function onResult(event) {
+        const data = event.detail || {};
+        if (data.requestId !== requestId || settled) return;
+        settled = true;
+        clearTimeout(timer);
+        document.removeEventListener(FRAMEWORK_WRITE_RESULT, onResult);
+        el.removeAttribute(FRAMEWORK_WRITE_ATTR);
+        resolve(data);
+      }
+
+      const timer = setTimeout(function () {
+        onResult({ detail: { requestId: requestId, ok: false, error: 'Editor bridge timed out.' } });
+      }, 250);
+
+      document.addEventListener(FRAMEWORK_WRITE_RESULT, onResult);
+      el.setAttribute(FRAMEWORK_WRITE_ATTR, '1');
+      document.dispatchEvent(
+        new CustomEvent(FRAMEWORK_WRITE_REQUEST, {
+          detail: { requestId: requestId, html: html, op: op || 'write' },
+        })
+      );
+    });
+  }
+
+  function insertTextDirect(el, text) {
+    const kind = getKind(el);
+    if (kind === 'textarea') {
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      let value;
+      let caret;
+      if (typeof start === 'number' && typeof end === 'number') {
+        value = el.value.slice(0, start) + text + el.value.slice(end);
+        caret = start + text.length;
+      } else {
+        value = (el.value || '') + ((el.value || '') ? '\n' : '') + text;
+        caret = value.length;
+      }
+      setTextareaValue(el, value);
+      if (typeof el.selectionStart === 'number') el.selectionStart = el.selectionEnd = caret;
+      notifyChange(el);
+      return;
+    }
+
+    const editable = kind === 'iframe' ? getIframeBody(el) : el;
+    if (!editable) return;
+    const ownerDoc = editable.ownerDocument || document;
+    const sel = ownerDoc.getSelection ? ownerDoc.getSelection() : window.getSelection();
+    const html = textToHtml(text);
+    const caretInside =
+      sel &&
+      sel.rangeCount > 0 &&
+      editable.contains(sel.getRangeAt(0).commonAncestorContainer);
+
+    if (caretInside) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const frag = range.createContextualFragment(html);
+      range.insertNode(frag);
+      sel.collapseToEnd();
+    } else {
+      editable.insertAdjacentHTML('beforeend', html);
+    }
+    notifyChange(editable);
   }
 
   const Adapter = {
@@ -160,8 +241,29 @@
       notifyChange(el);
     },
 
+    /**
+     * 優先透過 HaloPSA 頁面所使用的編輯器框架寫入 HTML，確保框架 model
+     * 與畫面同步；若頁面沒有可辨識的框架，再退回既有 DOM 寫入。
+     */
+    setHtmlReliable: function (el, html) {
+      const value = String(html == null ? '' : html);
+      const kind = getKind(el);
+      const adapter = this;
+
+      if (kind === 'textarea') {
+        adapter.setHtml(el, value);
+        return Promise.resolve({ ok: true, via: 'native-textarea' });
+      }
+
+      return writeHtmlThroughFramework(el, value, 'write').then(function (result) {
+        if (result && result.ok) return result;
+        adapter.setHtml(el, value);
+        return { ok: true, via: 'dom-fallback' };
+      });
+    },
+
     /** 在游標處插入文字；若無游標 / 無法定位則附加到結尾 */
-    insertText: function (el, text) {
+    insertTextDirectLegacy: function (el, text) {
       const kind = getKind(el);
 
       if (kind === 'textarea') {
@@ -203,6 +305,26 @@
         editable.insertAdjacentHTML('beforeend', html);
       }
       notifyChange(editable);
+    },
+
+    insertText: function (el, text) {
+      const content = String(text == null ? '' : text);
+      const kind = getKind(el);
+      if (kind === 'textarea') {
+        insertTextDirect(el, content);
+        return Promise.resolve({ ok: true, via: 'native-textarea' });
+      }
+
+      const insertHtml = textToHtml(content);
+      const nextHtml = this.getHtml(el) + insertHtml;
+      return writeHtmlThroughFramework(el, insertHtml, 'insert').then(function (result) {
+        if (result && result.ok) return result;
+        return writeHtmlThroughFramework(el, nextHtml, 'write').then(function (writeResult) {
+          if (writeResult && writeResult.ok) return writeResult;
+          insertTextDirect(el, content);
+          return { ok: true, via: 'dom-fallback' };
+        });
+      });
     },
 
     /**

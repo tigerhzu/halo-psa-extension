@@ -27,8 +27,16 @@
       const existing = NS.core.adapter.getText(editorEl);
       const prefix = existing && existing.trim().length ? '\n' : '';
 
-      NS.core.adapter.insertText(editorEl, prefix + tpl.content);
-      NS.ui.toast.show('已插入範本：' + tpl.label, { type: 'success' });
+      return Promise.resolve(NS.core.adapter.insertText(editorEl, prefix + tpl.content))
+        .then(function () {
+          NS.ui.toast.show('已插入範本：' + tpl.label, { type: 'success' });
+          return true;
+        })
+        .catch(function (error) {
+          NS.warn('Template insertion failed', error);
+          NS.ui.toast.show('範本插入失敗，請再試一次。', { type: 'error' });
+          return false;
+        });
     },
   };
 

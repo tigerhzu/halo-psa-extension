@@ -38,6 +38,9 @@ html[data-hpx-theme="cute-ios"] {
 
 /* ════════ 1. AI 工具列 ════════ */
 html[data-hpx-theme="cute-ios"] .hpx-toolbar {
+  position: relative;
+  z-index: 2147483645;
+  overflow: visible;
   background: var(--hpx-glass);
   -webkit-backdrop-filter: blur(14px) saturate(1.5);
   backdrop-filter: blur(14px) saturate(1.5);

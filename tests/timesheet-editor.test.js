@@ -53,8 +53,8 @@ const overlap = feature.validateManualEntries([
   { index: 0, start: 600, end: 630, nextStart: 600, nextEnd: 650 },
   { index: 1, start: 630, end: 660, nextStart: 640, nextEnd: 670 },
 ]);
-assert.equal(overlap.valid, false);
-assert.equal(overlap.overlaps.length, 1);
+assert.equal(overlap.valid, true);
+assert.equal(overlap.overlaps.length, 0);
 
 const invalid = feature.validateManualEntries([
   { index: 0, start: 600, end: 630, nextStart: 700, nextEnd: 690 },

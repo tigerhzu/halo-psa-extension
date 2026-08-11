@@ -1,19 +1,18 @@
 /**
  * timesheet-align.js
- * Detects overlapping HaloPSA React Big Calendar entries, previews a
- * duration-preserving schedule, then asks Halo's mounted Timesheet component
- * to perform its own normal update.
+ * Lets users manually adjust HaloPSA React Big Calendar entries through
+ * HaloPSA's own update flow.
  */
 (function () {
   'use strict';
   const NS = window.__HPX;
   const SELECTORS = NS.config.selectors.TIMESHEET;
   const TIME_RANGE_RE = /^\s*(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})\s*$/;
-  const MOUNT_ATTR = 'data-hpx-timesheet-align';
+  const MOUNT_ATTR = 'data-hpx-timesheet-editor';
+  const MOVE_TARGET_ATTR = 'data-hpx-timesheet-move-token';
   const BRIDGE_REQUEST = 'hpx:timesheet:move';
   const BRIDGE_RESULT = 'hpx:timesheet:move-result';
   let observer = null;
-  let refreshTimer = null;
   let applying = false;
 
   function toMinutes(hour, minute) {
@@ -102,9 +101,9 @@
       const details = parseEntryDetails(fingerprint || title);
       return {
         index: index,
+        eventEl: eventEl,
         start: range.start,
         end: range.end,
-        duration: range.end - range.start,
         originalLabel: formatRange(range.start, range.end),
         title: title,
         fingerprint: fingerprint,
@@ -118,40 +117,15 @@
     }).filter(Boolean);
   }
 
-  function planEntries(entries) {
-    const sorted = entries.slice().sort(function (a, b) {
-      return a.start - b.start || a.index - b.index;
-    });
-    let cursor = -1;
-    let overflow = false;
-    const planned = sorted.map(function (entry) {
-      const nextStart = cursor >= 0 && entry.start < cursor ? cursor : entry.start;
-      const nextEnd = nextStart + entry.duration;
-      if (nextEnd > 1440) overflow = true;
-      cursor = Math.max(cursor, nextEnd);
-      return Object.assign({}, entry, {
-        nextStart: nextStart,
-        nextEnd: nextEnd,
-        changed: nextStart !== entry.start,
-        nextLabel: formatRange(nextStart, nextEnd),
-      });
-    });
-    return {
-      entries: planned,
-      changes: planned.filter(function (entry) { return entry.changed; }),
-      overflow: overflow,
-    };
-  }
-
-  function analyze(screen) {
-    return planEntries(collectEntries(screen));
-  }
-
   function findSubmitButton(screen) {
     return Array.from(screen.querySelectorAll('button')).find(function (button) {
-      const label = normalizeText(button.textContent).toLowerCase();
+      const label = submitButtonLabel(button);
       return label === 'submit' || label === 'revert submit';
     }) || null;
+  }
+
+  function submitButtonLabel(button) {
+    return normalizeText(button && button.textContent).toLowerCase();
   }
 
   function removePreview() {
@@ -171,15 +145,22 @@
     setTimeout(function () { notice.remove(); }, 3600);
   }
 
+  function hasExpectedRange(eventEl, entry) {
+    const label = eventEl.querySelector(SELECTORS.eventLabel);
+    const range = parseRange(label && label.textContent);
+    const content = eventEl.querySelector(SELECTORS.eventContent);
+    return !!range &&
+      range.start === entry.nextStart &&
+      range.end === entry.nextEnd &&
+      textHash(content && content.textContent) === entry.fingerprintHash;
+  }
+
   function waitForLabel(screen, entry, timeout) {
     return new Promise(function (resolve) {
       const started = Date.now();
       const timer = setInterval(function () {
         const found = Array.from(screen.querySelectorAll(SELECTORS.event)).some(function (eventEl) {
-          const label = eventEl.querySelector(SELECTORS.eventLabel);
-          const content = eventEl.querySelector(SELECTORS.eventContent);
-          return normalizeText(label && label.textContent).replace('-', '–') === entry.nextLabel &&
-            textHash(content && content.textContent) === entry.fingerprintHash;
+          return hasExpectedRange(eventEl, entry);
         });
         if (found) {
           clearInterval(timer);
@@ -195,6 +176,9 @@
   function requestNativeMove(entry) {
     return new Promise(function (resolve) {
       const requestId = 'ts-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      const targetToken = requestId + '-target';
+      const eventEl = entry.eventEl;
+      const canMarkTarget = !!(eventEl && eventEl.isConnected);
       let settled = false;
       const timeout = setTimeout(function () {
         finish({ ok: false, reason: 'HaloPSA 更新橋接沒有回應。' });
@@ -205,6 +189,9 @@
         settled = true;
         clearTimeout(timeout);
         document.removeEventListener(BRIDGE_RESULT, onResult);
+        if (canMarkTarget && eventEl.getAttribute(MOVE_TARGET_ATTR) === targetToken) {
+          eventEl.removeAttribute(MOVE_TARGET_ATTR);
+        }
         resolve(result);
       }
 
@@ -215,11 +202,13 @@
       }
 
       document.addEventListener(BRIDGE_RESULT, onResult);
+      if (canMarkTarget) eventEl.setAttribute(MOVE_TARGET_ATTR, targetToken);
       document.dispatchEvent(new CustomEvent(BRIDGE_REQUEST, {
         detail: {
           requestId: requestId,
           originalLabel: entry.originalLabel,
           fingerprintHash: entry.fingerprintHash,
+          targetToken: targetToken,
           nextStart: entry.nextStart,
           nextEnd: entry.nextEnd,
         },
@@ -228,17 +217,24 @@
   }
 
   async function moveEntry(screen, entry) {
-    const bridgeResult = await requestNativeMove(entry);
-    if (!bridgeResult.ok) return bridgeResult;
-    const changed = await waitForLabel(screen, entry, 8000);
-    if (!changed) {
-      return { ok: false, reason: 'HaloPSA 已收到更新，但畫面沒有回寫新的時間。' };
+    // HaloPSA 會先更新 React state，再非同步儲存。前一筆剛重繪就送下一筆
+    // 時，偶爾會被元件略過；同一個目標時間的重送是冪等的，因此安全重試一次。
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const bridgeResult = await requestNativeMove(entry);
+      if (!bridgeResult.ok) return bridgeResult;
+      const changed = await waitForLabel(screen, entry, 9000);
+      if (changed) {
+        await new Promise(function (resolve) { setTimeout(resolve, 1000); });
+        return { ok: true, reason: '' };
+      }
+      if (attempt === 0) {
+        await new Promise(function (resolve) { setTimeout(resolve, 1000); });
+      }
     }
-    await new Promise(function (resolve) { setTimeout(resolve, 250); });
-    return { ok: true, reason: '' };
+    return { ok: false, reason: 'HaloPSA 已收到更新，但畫面沒有回寫新的時間。' };
   }
 
-  async function applyPlan(screen, plan, statusEl, applyButton) {
+  async function applyManualChanges(screen, plan, statusEl, applyButton) {
     if (applying) return;
     applying = true;
     applyButton.disabled = true;
@@ -256,8 +252,7 @@
       }
       statusEl.textContent = '全部完成';
       removePreview();
-      showResult('已完成 ' + completed + ' 筆 Timesheet 對齊。', 'success');
-      scheduleRefresh(screen, 300);
+      showResult('已完成 ' + completed + ' 筆工時調整；請自行按 HaloPSA Submit 送出。', 'success');
     } catch (error) {
       statusEl.textContent = '已完成 ' + completed + ' 筆後停止：' + error.message;
       statusEl.classList.add('hpx-ts-error');
@@ -266,72 +261,6 @@
       applying = false;
       if (backdrop && backdrop.isConnected) backdrop.classList.remove('hpx-ts-applying');
     }
-  }
-
-  function showPreview(screen, plan) {
-    removePreview();
-    const backdrop = document.createElement('div');
-    backdrop.className = 'hpx-ts-preview-backdrop';
-    backdrop.setAttribute('data-hpx-ignore-besties', '1');
-    const modal = document.createElement('section');
-    modal.className = 'hpx-ts-preview';
-    modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-modal', 'true');
-    modal.setAttribute('aria-label', 'Timesheet 自動對齊預覽');
-
-    const title = document.createElement('h2');
-    title.textContent = 'Timesheet 自動對齊';
-    const description = document.createElement('p');
-    description.className = 'hpx-ts-description';
-    description.textContent = '保留每筆原始時長，依開始時間排序，把重疊項目往後順延。';
-    const list = document.createElement('div');
-    list.className = 'hpx-ts-change-list';
-
-    plan.changes.forEach(function (entry) {
-      const row = document.createElement('div');
-      row.className = 'hpx-ts-change';
-      const times = document.createElement('div');
-      times.className = 'hpx-ts-change-times';
-      times.innerHTML = '<del>' + entry.originalLabel + '</del><span aria-hidden="true">→</span><strong>' + entry.nextLabel + '</strong>';
-      const name = document.createElement('div');
-      name.className = 'hpx-ts-change-title';
-      name.textContent = entry.title;
-      name.title = entry.title;
-      row.appendChild(times);
-      row.appendChild(name);
-      list.appendChild(row);
-    });
-
-    const status = document.createElement('div');
-    status.className = 'hpx-ts-status';
-    status.textContent = '將調整 ' + plan.changes.length + ' 筆；尚未修改 HaloPSA。';
-    const actions = document.createElement('div');
-    actions.className = 'hpx-ts-actions';
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'hpx-ts-cancel';
-    cancel.textContent = '取消';
-    cancel.addEventListener('click', removePreview);
-    const apply = document.createElement('button');
-    apply.type = 'button';
-    apply.className = 'hpx-ts-apply';
-    apply.textContent = '套用自動對齊';
-    apply.addEventListener('click', function () {
-      applyPlan(screen, plan, status, apply);
-    });
-    actions.appendChild(cancel);
-    actions.appendChild(apply);
-
-    modal.appendChild(title);
-    modal.appendChild(description);
-    modal.appendChild(list);
-    modal.appendChild(status);
-    modal.appendChild(actions);
-    backdrop.appendChild(modal);
-    backdrop.addEventListener('click', function (event) {
-      if (event.target === backdrop && !applying) removePreview();
-    });
-    document.body.appendChild(backdrop);
   }
 
   function validateManualEntries(entries) {
@@ -360,28 +289,16 @@
       };
     }
 
-    const sorted = normalized.slice().sort(function (a, b) {
-      return a.nextStart - b.nextStart || a.index - b.index;
-    });
-    const overlaps = [];
-    for (let index = 1; index < sorted.length; index += 1) {
-      if (sorted[index].nextStart < sorted[index - 1].nextEnd) {
-        overlaps.push({
-          previous: sorted[index - 1],
-          current: sorted[index],
-        });
-      }
-    }
     normalized.forEach(function (entry) {
       entry.changed = entry.nextStart !== entry.start || entry.nextEnd !== entry.end;
       entry.nextLabel = formatRange(entry.nextStart, entry.nextEnd);
     });
     return {
-      valid: overlaps.length === 0,
-      error: overlaps.length ? '仍有 ' + overlaps.length + ' 組時間重疊，請先調整後再套用。' : '',
+      valid: true,
+      error: '',
       entries: normalized,
       changes: normalized.filter(function (entry) { return entry.changed; }),
-      overlaps: overlaps,
+      overlaps: [],
       overflow: false,
     };
   }
@@ -424,7 +341,7 @@
     title.textContent = 'Timesheet 工時調整';
     const description = document.createElement('p');
     description.className = 'hpx-ts-description';
-    description.textContent = '直接修改每筆工作的開始與結束時間；有重疊時不會送出。';
+    description.textContent = '直接修改每筆工作的開始與結束時間。';
     headingCopy.appendChild(title);
     headingCopy.appendChild(description);
     const summary = document.createElement('div');
@@ -532,14 +449,6 @@
           ? Math.floor(minutes / 60) + ' 小時 ' + (minutes % 60) + ' 分'
           : '時間無效';
         item.row.classList.toggle('hpx-ts-editor-changed', start !== item.entry.start || end !== item.entry.end);
-        item.row.classList.remove('hpx-ts-editor-overlap');
-      });
-      plan.overlaps.forEach(function (pair) {
-        rows.forEach(function (item) {
-          if (item.entry.index === pair.previous.index || item.entry.index === pair.current.index) {
-            item.row.classList.add('hpx-ts-editor-overlap');
-          }
-        });
       });
       status.classList.toggle('hpx-ts-error', !plan.valid);
       if (!plan.valid) {
@@ -559,7 +468,7 @@
     });
     apply.addEventListener('click', function () {
       const plan = refreshEditor();
-      if (plan.valid && plan.changes.length) applyPlan(screen, plan, status, apply);
+      if (plan.valid && plan.changes.length) applyManualChanges(screen, plan, status, apply);
     });
 
     actions.appendChild(cancel);
@@ -576,49 +485,11 @@
     refreshEditor();
   }
 
-  function paintTrigger(screen, button) {
-    const plan = analyze(screen);
-    button.disabled = !plan.changes.length || plan.overflow || applying;
-    button.classList.toggle('hpx-ts-clear', !plan.changes.length);
-    if (plan.overflow) {
-      button.textContent = '無法自動對齊';
-      button.title = '調整後會超過午夜，請先手動移動部分紀錄。';
-    } else if (plan.changes.length) {
-      button.textContent = '自動對齊（' + plan.changes.length + '）';
-      button.title = '預覽並整理重疊的 Timesheet 時間';
-    } else {
-      button.textContent = '時間無重疊 ✓';
-      button.title = '目前 Timesheet 沒有重疊時間';
-    }
-  }
-
-  function scheduleRefresh(screen, delay) {
-    if (refreshTimer) clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(function () {
-      const button = screen.querySelector('.hpx-ts-align-trigger');
-      if (button) paintTrigger(screen, button);
-      const editorButton = screen.querySelector('.hpx-ts-edit-trigger');
-      if (editorButton) {
-        editorButton.disabled = !collectEntries(screen).length || applying;
-      }
-    }, typeof delay === 'number' ? delay : 120);
-  }
-
   function mount(screen) {
     if (!screen || screen.getAttribute(MOUNT_ATTR) === '1') return;
-    const calendar = screen.querySelector(SELECTORS.calendar);
     const submit = findSubmitButton(screen);
-    if (!calendar || !submit) return;
+    if (!submit) return;
     screen.setAttribute(MOUNT_ATTR, '1');
-
-    const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.className = 'hpx-ts-align-trigger';
-    trigger.addEventListener('click', function () {
-      const plan = analyze(screen);
-      if (plan.changes.length && !plan.overflow) showPreview(screen, plan);
-    });
-    submit.insertAdjacentElement('afterend', trigger);
 
     const editorTrigger = document.createElement('button');
     editorTrigger.type = 'button';
@@ -628,15 +499,7 @@
     editorTrigger.addEventListener('click', function () {
       showManualEditor(screen);
     });
-    trigger.insertAdjacentElement('afterend', editorTrigger);
-
-    paintTrigger(screen, trigger);
-    editorTrigger.disabled = !collectEntries(screen).length;
-
-    const calendarObserver = new MutationObserver(function () {
-      if (!applying) scheduleRefresh(screen);
-    });
-    calendarObserver.observe(calendar, { childList: true, subtree: true, characterData: true });
+    submit.insertAdjacentElement('afterend', editorTrigger);
   }
 
   function scan() {
@@ -650,7 +513,6 @@
       observer = new MutationObserver(scan);
       observer.observe(document.body, { childList: true, subtree: true });
     },
-    analyzeData: planEntries,
     parseEntryDetails: parseEntryDetails,
     validateManualEntries: validateManualEntries,
   };

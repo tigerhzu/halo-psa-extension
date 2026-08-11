@@ -1,19 +1,22 @@
 /**
  * settings-panel.js
- * 浮動設定面板（寵物 + 右側滑入面板）：主題 / 顏色快速切換。
+ * 浮動設定面板（寵物 + 右側滑入面板）：主題 / 顏色 / 快捷按鈕快速切換。
  * 點寵物 → 面板從右側滑出；拖曳可移動；選色立即預覽；Save Settings 才真正寫入 storage。
  */
 (function () {
   'use strict';
   const NS = window.__HPX;
   const STORAGE_KEY = 'hpx_settings';
+  const SHORTCUTS_FIELD = 'shortcutLinks';
+  const MAX_SHORTCUTS = 8;
 
   const DEFAULTS = {
     theme: 'cute-ios',
     accent: '#3a82f7',
     opacity: 100,
-    pet: 'soyo',
+    pet: 'claude-crab',
     petPosition: { right: 16, bottom: 16 },
+    shortcutLinks: [],
   };
   const ACCENT_LIST = [
     { name: 'Orange', hex: '#ff7a1a' },
@@ -32,7 +35,7 @@
 
   let panelEl = null;
   let petEl = null;
-  let activePetId = 'soyo';
+  let activePetId = 'claude-crab';
   let petIdleTimer = null;
   let petActionTimer = null;
   let petSpritePlayback = null;
@@ -51,6 +54,7 @@
       const settings = Object.assign({}, DEFAULTS, (data && data[STORAGE_KEY]) || {});
       if (settings.theme !== 'cute-ios' && settings.theme !== 'default') settings.theme = DEFAULTS.theme;
       settings.pet = petDefinition(settings.pet).id;
+      settings[SHORTCUTS_FIELD] = normalizeShortcutLinks(settings[SHORTCUTS_FIELD]);
       cb(settings);
     });
   }
@@ -62,6 +66,50 @@
         chrome.storage.local.set({ [STORAGE_KEY]: merged }, function () { resolve(merged); });
       });
     });
+  }
+
+  function normalizeShortcutUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw || /[\u0000-\u001f]/.test(raw)) return '';
+    try {
+      const parsed = new URL(raw, window.location.origin);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+      return parsed.href;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function normalizeShortcutLinks(value) {
+    if (!Array.isArray(value)) return [];
+    return value.slice(0, MAX_SHORTCUTS).map(function (item) {
+      const name = String(item && item.name || '').trim().slice(0, 32);
+      const url = normalizeShortcutUrl(item && item.url);
+      return name && url ? { name: name, url: url } : null;
+    }).filter(Boolean);
+  }
+
+  function validateShortcutLinks(value) {
+    const entries = Array.isArray(value) ? value : [];
+    const links = [];
+    for (const item of entries) {
+      const name = String(item && item.name || '').trim().slice(0, 32);
+      const rawUrl = String(item && item.url || '').trim();
+      if (!name && !rawUrl) continue;
+      const url = normalizeShortcutUrl(rawUrl);
+      if (!name || !url) {
+        return { valid: false, links: [], error: '每個快捷按鈕都需要名稱與有效的 URL。' };
+      }
+      links.push({ name: name, url: url });
+    }
+    return { valid: true, links: links.slice(0, MAX_SHORTCUTS), error: '' };
+  }
+
+  function openShortcut(url) {
+    const safeUrl = normalizeShortcutUrl(url);
+    if (!safeUrl) return false;
+    window.location.assign(safeUrl);
+    return true;
   }
 
   // ── 面板建構 ────────────────────────────────────────────────
@@ -348,6 +396,93 @@
     return section;
   }
 
+  function buildShortcutSection(draft) {
+    const section = el('div', 'hpx-sp-section hpx-sp-shortcuts');
+    const label = el('div', 'hpx-sp-label');
+    label.textContent = 'Quick Links';
+    const launcher = el('div', 'hpx-sp-shortcut-launcher');
+    const editor = el('div', 'hpx-sp-shortcut-editor');
+    const help = el('div', 'hpx-sp-shortcut-help');
+    help.textContent = '可使用 /tickets 等站內路徑，或完整 http/https URL。';
+
+    draft[SHORTCUTS_FIELD] = Array.isArray(draft[SHORTCUTS_FIELD])
+      ? draft[SHORTCUTS_FIELD].map(function (item) {
+        return { name: String(item && item.name || ''), url: String(item && item.url || '') };
+      })
+      : [];
+
+    function render() {
+      launcher.replaceChildren();
+      editor.replaceChildren();
+      const links = draft[SHORTCUTS_FIELD];
+
+      links.forEach(function (link, index) {
+        const quickButton = el('button', 'hpx-sp-shortcut-button');
+        quickButton.type = 'button';
+        quickButton.textContent = link.name.trim() || '未命名';
+        quickButton.title = link.url || '請設定 URL';
+        quickButton.disabled = !normalizeShortcutUrl(link.url);
+        quickButton.addEventListener('click', function () { openShortcut(link.url); });
+        launcher.appendChild(quickButton);
+
+        const row = el('div', 'hpx-sp-shortcut-row');
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.maxLength = 32;
+        nameInput.placeholder = '按鈕名稱';
+        nameInput.value = link.name;
+        nameInput.setAttribute('aria-label', '快捷按鈕名稱');
+        nameInput.addEventListener('input', function () {
+          link.name = nameInput.value;
+          quickButton.textContent = link.name.trim() || '未命名';
+        });
+
+        const urlInput = document.createElement('input');
+        urlInput.type = 'text';
+        urlInput.placeholder = '/tickets 或 https://…';
+        urlInput.value = link.url;
+        urlInput.setAttribute('aria-label', '快捷按鈕 URL');
+        urlInput.addEventListener('input', function () {
+          link.url = urlInput.value;
+          quickButton.title = link.url || '請設定 URL';
+          quickButton.disabled = !normalizeShortcutUrl(link.url);
+        });
+
+        const remove = el('button', 'hpx-sp-shortcut-remove');
+        remove.type = 'button';
+        remove.textContent = '×';
+        remove.title = '移除快捷按鈕';
+        remove.setAttribute('aria-label', '移除快捷按鈕');
+        remove.addEventListener('click', function () {
+          links.splice(index, 1);
+          render();
+        });
+
+        row.appendChild(nameInput);
+        row.appendChild(urlInput);
+        row.appendChild(remove);
+        editor.appendChild(row);
+      });
+
+      const add = el('button', 'hpx-sp-shortcut-add');
+      add.type = 'button';
+      add.textContent = '+ 新增快捷按鈕';
+      add.disabled = links.length >= MAX_SHORTCUTS;
+      add.addEventListener('click', function () {
+        links.push({ name: '', url: '' });
+        render();
+      });
+      editor.appendChild(add);
+    }
+
+    section.appendChild(label);
+    section.appendChild(launcher);
+    section.appendChild(editor);
+    section.appendChild(help);
+    render();
+    return section;
+  }
+
   function buildPanel(initialSettings) {
     const draft = Object.assign({}, initialSettings);
     draft.pet = petDefinition(draft.pet).id;
@@ -372,6 +507,7 @@
     body.appendChild(buildThemeSection(draft));
     body.appendChild(buildColorSection(draft));
     body.appendChild(buildPetSection(draft));
+    body.appendChild(buildShortcutSection(draft));
 
     // Save
     const actions = el('div', 'hpx-sp-actions');
@@ -381,6 +517,13 @@
     const statusEl = el('span', 'hpx-sp-status');
 
     saveBtn.addEventListener('click', function () {
+      const shortcutValidation = validateShortcutLinks(draft[SHORTCUTS_FIELD]);
+      if (!shortcutValidation.valid) {
+        statusEl.textContent = shortcutValidation.error;
+        statusEl.classList.add('hpx-sp-status-error');
+        return;
+      }
+      draft[SHORTCUTS_FIELD] = shortcutValidation.links;
       persistSettings(draft).then(function () {
         SettingsPanel.close();
       });

@@ -7,7 +7,7 @@
  *
  * 這條界線靠人記得會失效，所以改成機器檢查：
  *  1. src/**\/*.js 的每個 require() / importScripts() 目標都必須落在 src/ 之內。
- *  2. manifest.json 引用的每個路徑都必須存在，且只能落在 src/ 或 assets/。
+ *  2. manifest.json 引用的每個路徑都必須存在，且只能落在 src/、assets/ 或 pet/。
  *
  * 檢查的是「實際的載入呼叫」而不是字串比對，因此註解裡提到 tools/prompt-eval 不會誤判。
  */
@@ -64,7 +64,7 @@ for (const file of jsFiles) {
 // service worker 目前正是靠 importScripts 取得 prompt；掃不到任何載入呼叫代表規則失效了。
 assert.ok(checkedCalls > 0, '沒有掃到任何 require/importScripts 呼叫，檢查規則可能已失效');
 
-// ── 2. manifest.json 只能引用 src/ 與 assets/ ──────────────────────────────
+// ── 2. manifest.json 只能引用 src/、assets/ 與 pet/ ─────────────────────────
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
 const manifestPaths = [
   manifest.background && manifest.background.service_worker,
@@ -79,8 +79,8 @@ assert.ok(manifestPaths.length > 0, 'manifest.json 沒有解析到任何引用�
 
 for (const rel of manifestPaths) {
   assert.ok(
-    rel.startsWith('src/') || rel.startsWith('assets/'),
-    'manifest.json 引用了 src/ 與 assets/ 之外的路徑：' + rel
+    rel.startsWith('src/') || rel.startsWith('assets/') || rel.startsWith('pet/'),
+    'manifest.json 引用了 src/、assets/ 與 pet/ 之外的路徑：' + rel
   );
   if (rel.includes('*')) {
     const wildcardRoot = rel.slice(0, rel.indexOf('*'));

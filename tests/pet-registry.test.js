@@ -16,8 +16,9 @@ const sandbox = {
 vm.runInNewContext(source, sandbox, { filename: 'pet-registry.js' });
 
 const registry = sandbox.window.__HPX.core.petRegistry;
-assert.equal(JSON.stringify(registry.builtIns().map((pet) => pet.id)), JSON.stringify(['soyo', 'sakiko', 'rufus']));
+assert.equal(JSON.stringify(registry.builtIns().map((pet) => pet.id)), JSON.stringify(['soyo', 'sakiko', 'rufus', 'claude-crab']));
 assert.equal(registry.builtIns()[0].atlasRows, 9);
+assert.equal(registry.builtIns()[3].atlas, 'pet/claude-crab/spritesheet.webp');
 
 const imported = registry.normalizeManifest({
   id: 'moon-cat',
@@ -35,10 +36,25 @@ assert.equal(JSON.stringify(imported), JSON.stringify({
   imported: true,
 }));
 
+const legacyImported = registry.normalizeManifest({
+  id: 'pixel-crab',
+  displayName: 'Pixel Crab',
+  spritesheetPath: 'spritesheet.webp',
+}, 'pixel-crab', 'pet');
+assert.equal(JSON.stringify(legacyImported), JSON.stringify({
+  id: 'pixel-crab',
+  name: 'Pixel Crab',
+  atlas: 'pet/pixel-crab/spritesheet.webp',
+  atlasRows: 9,
+  spriteVersionNumber: 1,
+  actions: ['waving', 'waiting', 'review'],
+  imported: true,
+}));
+
 assert.equal(registry.normalizeManifest({
   id: 'bad',
   displayName: 'Bad',
-  spriteVersionNumber: 1,
+  spriteVersionNumber: 3,
   spritesheetPath: 'spritesheet.webp',
 }, 'bad'), null);
 assert.equal(registry.normalizeManifest({
@@ -48,4 +64,4 @@ assert.equal(registry.normalizeManifest({
   spritesheetPath: '../spritesheet.webp',
 }, 'bad-path'), null);
 
-console.log('pet-registry.test.js ✓ built-ins and Codex Pets v2 manifest validation passed');
+console.log('pet-registry.test.js ✓ built-ins and Codex Pets v1/v2 manifest validation passed');

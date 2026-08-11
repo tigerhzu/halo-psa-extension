@@ -1,5 +1,4 @@
-/* Timesheet overlap alignment — all styles are extension-scoped. */
-.hpx-ts-align-trigger,
+/* Timesheet manual time editor — all styles are extension-scoped. */
 .hpx-ts-edit-trigger {
   margin-left: 8px !important;
   padding: 7px 13px !important;
@@ -11,21 +10,14 @@
   cursor: pointer !important;
   box-shadow: 0 3px 10px rgba(15, 23, 42, .15) !important;
 }
-.hpx-ts-align-trigger:hover:not(:disabled) { filter: brightness(1.08); }
 .hpx-ts-edit-trigger {
   background: linear-gradient(135deg, #b97820, #8b5a1d) !important;
 }
-.hpx-ts-align-trigger:hover:not(:disabled),
 .hpx-ts-edit-trigger:hover:not(:disabled) { filter: brightness(1.08); }
-.hpx-ts-align-trigger:disabled,
 .hpx-ts-edit-trigger:disabled {
   cursor: default !important;
   opacity: .68;
 }
-.hpx-ts-align-trigger.hpx-ts-clear {
-  background: #238b57 !important;
-}
-
 .hpx-ts-preview-backdrop {
   position: fixed;
   inset: 0;
@@ -91,11 +83,6 @@
 .hpx-ts-editor-row.hpx-ts-editor-changed {
   border-color: rgba(185, 120, 32, .45);
   background: #fffbeb;
-}
-.hpx-ts-editor-row.hpx-ts-editor-overlap {
-  border-color: #ef4444;
-  background: #fff1f2;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, .1);
 }
 .hpx-ts-editor-info { min-width: 0; }
 .hpx-ts-editor-meta {
@@ -191,32 +178,6 @@
   font-size: 13px;
   line-height: 1.5;
 }
-.hpx-ts-change-list {
-  display: grid;
-  gap: 8px;
-}
-.hpx-ts-change {
-  padding: 11px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #f8fafc;
-}
-.hpx-ts-change-times {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 13px;
-}
-.hpx-ts-change-times del { color: #dc2626; }
-.hpx-ts-change-times strong { color: #16814c; }
-.hpx-ts-change-title {
-  margin-top: 5px;
-  overflow: hidden;
-  color: #475569;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .hpx-ts-status {
   min-height: 20px;
   margin-top: 13px;
@@ -274,10 +235,6 @@
   .hpx-ts-editor-row.hpx-ts-editor-changed {
     border-color: #a8702d;
     background: #332817;
-  }
-  .hpx-ts-editor-row.hpx-ts-editor-overlap {
-    border-color: #ef4444;
-    background: #3a1d24;
   }
   .hpx-ts-editor-meta strong,
   .hpx-ts-editor-case { color: #f1f5f9; }

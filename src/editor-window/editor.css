@@ -280,6 +280,32 @@ body {
   box-shadow: 0 0 0 3px rgba(58, 130, 247, 0.12);
 }
 
+.hpx-ew__editor img {
+  max-width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.hpx-ew__editor .hpx-ew__image-selected {
+  outline: 2px solid var(--hpx-accent, #3a82f7);
+  outline-offset: 3px;
+}
+
+.hpx-ew-image-resize-handle {
+  position: fixed;
+  z-index: 2147483001;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  background: var(--hpx-accent, #3a82f7);
+  box-shadow: 0 1px 4px rgba(20, 35, 55, 0.35);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
 .hpx-ew__editor--source {
   overflow: auto;
   background: #fbfcfe;

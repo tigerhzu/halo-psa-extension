@@ -19,6 +19,9 @@
     btn.className = 'hpx-tb-btn' + (extraClass ? ' ' + extraClass : '');
     btn.textContent = label;
     if (title) btn.title = title;
+    btn.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+    });
     btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();

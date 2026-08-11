@@ -55,7 +55,7 @@
       onRemoved: onEmailWindowRemoved,
     });
 
-    // Timesheet：偵測重疊時間、預覽並透過 Halo 原生更新流程套用。
+    // Timesheet：提供手動工時調整，並透過 Halo 原生更新流程套用。
     NS.features.timesheetAlign.start();
 
     // Time Taken 快速調整：在 Action 的原生時／分／秒欄位下方插入工具列。

@@ -331,6 +331,84 @@ button.hpx-sp-pet:active {
   white-space: nowrap;
 }
 
+/* ── Quick links ───────────────────────────────────────────── */
+.hpx-sp-shortcut-launcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.hpx-sp-shortcut-button,
+.hpx-sp-shortcut-add,
+.hpx-sp-shortcut-remove {
+  font-family: inherit;
+  cursor: pointer;
+}
+.hpx-sp-shortcut-button {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--hpx-accent, #3a82f7) 38%, #cbd5e1);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hpx-accent, #3a82f7) 9%, #fff);
+  color: #1e40af;
+  font-size: 11px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.hpx-sp-shortcut-button:hover:not(:disabled) { filter: brightness(.97); }
+.hpx-sp-shortcut-button:disabled { cursor: not-allowed; opacity: .5; }
+.hpx-sp-shortcut-editor { display: grid; gap: 6px; }
+.hpx-sp-shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(72px, .72fr) minmax(0, 1.28fr) 26px;
+  gap: 5px;
+  align-items: center;
+}
+.hpx-sp-shortcut-row input {
+  min-width: 0;
+  height: 30px;
+  padding: 5px 7px;
+  border: 1px solid #d7dee8;
+  border-radius: 7px;
+  background: #fff;
+  color: #1f2937;
+  font: 12px/1.2 inherit;
+}
+.hpx-sp-shortcut-row input:focus {
+  border-color: var(--hpx-accent, #3a82f7);
+  outline: 0;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--hpx-accent, #3a82f7) 18%, transparent);
+}
+.hpx-sp-shortcut-remove {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 18px;
+  line-height: 1;
+}
+.hpx-sp-shortcut-remove:hover { background: #fecaca; }
+.hpx-sp-shortcut-add {
+  justify-self: start;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--hpx-accent, #3a82f7);
+  font-size: 11px;
+  font-weight: 700;
+}
+.hpx-sp-shortcut-add:disabled { cursor: default; opacity: .45; }
+.hpx-sp-shortcut-help {
+  margin-top: 7px;
+  color: #6b7280;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 /* ── Actions ───────────────────────────────────────────────── */
 .hpx-sp-actions {
   display: flex;
@@ -361,3 +439,4 @@ button.hpx-sp-pet:active {
   font-weight: 600;
   white-space: nowrap;
 }
+.hpx-sp-status-error { color: #dc2626; }

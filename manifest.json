@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tiger 的第三隻手",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "minimum_chrome_version": "122",
   "description": "強化 HaloPSA 工單撰寫、Timesheet 與外觀。",
   "icons": {
@@ -71,6 +71,7 @@
         "src/ui/theme.js",
         "src/ui/preview-modal.js",
         "src/features/format-cleanup.js",
+        "src/features/ticket-rich-format.js",
         "src/features/ai-rewrite.js",
         "src/features/note-window.js",
         "src/features/templates.js",
@@ -91,7 +92,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["assets/codex-pets/*", "src/pets/*", "assets/icons/halo-logo48.png"],
+      "resources": ["assets/codex-pets/*", "pet/*", "src/pets/*", "assets/icons/halo-logo48.png"],
       "matches": [
         "https://*.halopsa.com/*",
         "https://*.haloitsm.com/*",
