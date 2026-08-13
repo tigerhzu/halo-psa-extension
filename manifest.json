@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tiger 的第三隻手",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "minimum_chrome_version": "122",
   "description": "強化 HaloPSA 工單撰寫、Timesheet 與外觀。",
   "icons": {
@@ -30,6 +30,18 @@
     "open_in_tab": true
   },
   "content_scripts": [
+    {
+      "matches": [
+        "https://*.halopsa.com/*",
+        "https://*.haloitsm.com/*",
+        "https://*.halocrm.com/*",
+        "https://*.haloservicedesk.com/*"
+      ],
+      "run_at": "document_start",
+      "all_frames": false,
+      "js": ["src/ultimate-mode/bootstrap.js"],
+      "css": ["src/ultimate-mode/ultimate.css"]
+    },
     {
       "matches": [
         "https://*.halopsa.com/*",
@@ -82,6 +94,14 @@
         "src/ui/toolbar.js",
         "src/ui/besties-toolbar.js",
         "src/ui/pet-animator.js",
+        "src/ultimate-mode/shared.js",
+        "src/ultimate-mode/sidebar.js",
+        "src/ultimate-mode/team-shortcuts.js",
+        "src/ultimate-mode/ticket-actions.js",
+        "src/ultimate-mode/ticket-info.js",
+        "src/ultimate-mode/user-info.js",
+        "src/ultimate-mode/observer.js",
+        "src/ultimate-mode/index.js",
         "src/ui/settings-panel.js",
         "src/core/editor-detector.js",
         "src/core/email-window-detector.js",
@@ -92,7 +112,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["assets/codex-pets/*", "pet/*", "src/pets/*", "assets/icons/halo-logo48.png"],
+      "resources": ["assets/codex-pets/*", "assets/ultimate-mode/*", "pet/*", "src/pets/*", "assets/icons/halo-logo48.png"],
       "matches": [
         "https://*.halopsa.com/*",
         "https://*.haloitsm.com/*",

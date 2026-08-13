@@ -214,6 +214,68 @@ button.hpx-sp-pet:active {
   margin-bottom: 8px;
 }
 
+/* ── Ultimate mode ────────────────────────────────────────── */
+.hpx-sp-ultimate {
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--hpx-accent, #3a82f7) 26%, #dbe3ee);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--hpx-accent, #3a82f7) 5%, #fff);
+}
+.hpx-sp-ultimate-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.hpx-sp-ultimate-copy { flex: 1; min-width: 0; }
+.hpx-sp-ultimate-title { color: #111827; font-size: 13px; font-weight: 750; }
+.hpx-sp-ultimate-description {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.hpx-sp-ultimate-status {
+  display: block;
+  min-height: 14px;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 10px;
+}
+.hpx-sp-toggle {
+  position: relative;
+  display: grid;
+  flex: 0 0 58px;
+  grid-template-columns: 22px 1fr;
+  align-items: center;
+  width: 58px;
+  height: 28px;
+  padding: 3px 5px 3px 3px;
+  border: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+  color: #475569;
+  cursor: pointer;
+  font: 800 9px/1 "Segoe UI", sans-serif;
+  transition: background .15s ease;
+}
+.hpx-sp-toggle-knob {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15,23,42,.24);
+  transition: transform .15s ease;
+}
+.hpx-sp-toggle-state { text-align: right; }
+.hpx-sp-toggle.hpx-sp-on {
+  grid-template-columns: 1fr 22px;
+  padding: 3px 3px 3px 5px;
+  background: var(--hpx-accent, #3a82f7);
+  color: #fff;
+}
+.hpx-sp-toggle.hpx-sp-on .hpx-sp-toggle-knob { grid-column: 2; }
+.hpx-sp-toggle.hpx-sp-on .hpx-sp-toggle-state { grid-column: 1; grid-row: 1; text-align: left; }
+
 /* ── Theme thumbnails ──────────────────────────────────────── */
 .hpx-sp-theme-row {
   display: grid;

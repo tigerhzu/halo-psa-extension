@@ -37,6 +37,9 @@
     // 外觀主題（只套在 .hpx-* 元件，不影響 HaloPSA）：在 <html> 設定 data-hpx-theme
     NS.ui.theme.start();
 
+    // 極致模式：可逆地精簡 Halo 原生 UI；各區塊 selector 失敗時彼此隔離。
+    NS.features.ultimateMode.start();
+
     // 浮動設定面板（右下角 FAB → 右側滑入）
     NS.ui.settingsPanel.start();
 

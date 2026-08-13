@@ -74,6 +74,17 @@
     const cands = [];
     const haloRoot = document.getElementById('halo-tree');
     nodes.forEach(function (el) {
+      // Ticket/New Ticket 的 details sidebar 是白底主內容；在 Ultimate Mode
+      // 隱藏 Team tree 或窄視窗時會移到左側，不能只因幾何位置而套深色主題。
+      const mainDetails = el.closest && el.closest(
+        '.new-ticket-screen, .ticketDetailsScreen, .details-container'
+      );
+      const insideRealSidebar = !!(
+        (haloRoot && (haloRoot === el || haloRoot.contains(el))) ||
+        (el.closest && el.closest('#app-nav-menu'))
+      );
+      if (mainDetails && !insideRealSidebar) return;
+
       let r;
       try {
         r = el.getBoundingClientRect();

@@ -1,0 +1,120 @@
+/* ultimate.css — 唯一會隱藏 HaloPSA 原生 UI 的規則；JS 只加／移除此 class。 */
+.halo-ultimate-hidden {
+  display: none !important;
+}
+
+/*
+ * First-frame guards for Halo's verified 2025/2026 DOM.  The root attribute
+ * survives SPA transitions, so newly mounted native nodes are already hidden
+ * by CSS before MutationObserver/JS reconciliation runs.
+ */
+html[data-hpx-ultimate-mode="on"] #app-nav-menu .app-nav-menu-sidebar > .app-side-link:not(:has(.app-button[title="Timesheets"])) {
+  display: none !important;
+}
+
+html[data-hpx-ultimate-mode="on"] #halo-tree li:has(> .treeviewnode[data-level="1"]:not([title="Op Team A"]):not([title="Op Team B"]):not([title="Op Team C"])) {
+  display: none !important;
+}
+
+html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> .actionmenubtn) > .actionmenubtn:not([title="Re-Assign"]):not([title="First Contact"]):not([title="Pending"]):not([title="In Progress"]):not([title="On Hold"]):not([title="Postponed"]):not([title="Awaiting Customer"]):not([title="Awaiting Customer Reply"]):not([title="Vendor Processing"]):not([title="Email User"]):not([title="Activity Note"]) {
+  display: none !important;
+}
+
+html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> [role="listbox"] > .menu > .item[title="Email User"]) > .actionmenubtn[title="Email User"],
+html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> [role="listbox"] > .menu > .item[title="Activity Note"]) > .actionmenubtn[title="Activity Note"] {
+  display: none !important;
+}
+
+html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> .actionmenubtn) > [role="listbox"] > .menu > .item[role="option"]:not([title="Email User"]):not([title="Activity Note"]):not([title="Final Check with Customer/Sales"]) {
+  display: none !important;
+}
+
+html[data-hpx-ultimate-mode="on"] .details-group:has(> .details-group-header[id^="Ticket information"]) > .info.info-form > .col-md-12.inline.nopad:not([data-hpx-ultimate-keep="ticket-info"]),
+html[data-hpx-ultimate-mode="on"] .details-group:has(> .details-group-header[id^="End-User details"]) > .info.info-form > .col-md-12.inline.nopad:not([data-hpx-ultimate-keep="user-info"]) {
+  display: none !important;
+}
+
+/* Timesheets 頁：放在原生 Timesheets 圖示後方的 Team 返回入口。 */
+.hpx-ultimate-timesheets-branded .hpx-ultimate-timesheets-icon-host {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: none !important;
+  font-size: 0 !important;
+}
+
+.hpx-ultimate-timesheets-branded .hpx-ultimate-timesheets-icon-host::before,
+.hpx-ultimate-timesheets-branded .hpx-ultimate-timesheets-icon-host::after {
+  display: none !important;
+  content: none !important;
+}
+
+.hpx-ultimate-timesheets-logo {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  object-fit: cover;
+  filter: drop-shadow(0 2px 2px rgba(0, 25, 48, 0.28));
+}
+
+.hpx-ultimate-team-shortcuts {
+  display: flex;
+  width: 68px;
+  flex: 0 0 68px;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.hpx-ultimate-team-shortcut {
+  display: flex;
+  width: 68px;
+  height: 60px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  color: #fff !important;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.hpx-ultimate-team-shortcut:hover,
+.hpx-ultimate-team-shortcut:focus-visible {
+  border-color: rgba(255, 255, 255, 0.7);
+  background: #00a1df;
+  outline: none;
+}
+
+.hpx-ultimate-team-logo {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  object-fit: cover;
+  filter: drop-shadow(0 2px 2px rgba(0, 25, 48, 0.3));
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.hpx-ultimate-team-shortcut:hover .hpx-ultimate-team-logo,
+.hpx-ultimate-team-shortcut:focus-visible .hpx-ultimate-team-logo {
+  transform: translateY(-1px) scale(1.04);
+  filter: drop-shadow(0 3px 3px rgba(0, 25, 48, 0.38));
+}
+
+.hpx-ultimate-team-shortcut-label {
+  display: block;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

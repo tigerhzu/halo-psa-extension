@@ -4,6 +4,7 @@
  * 職責：讀 / 寫設定到 chrome.storage.local。包含：
  *  - Gemini API 設定（apiKey / model / useStub）與「測試連線」。
  *  - 聯絡人名單（contactGroups）：寄信 CC 快速加入用的群組與成員。
+ *  - 極致模式（ultimateMode）：開啟中的 HaloPSA 透過 storage change 即時套用。
  *
  * 設定的 key / 欄位須與其他模組一致：
  *  - service-worker.js：SETTINGS_KEY / DEFAULTS（apiKey / model / useStub）
@@ -27,6 +28,7 @@ const DEFAULTS = {
   theme: 'cute-ios',
   accent: '#3a82f7',
   opacity: 100,
+  ultimateMode: false,
 };
 
 // 名單種子（與 besties-config.js 的 defaultGroups 對齊；使用者尚未設定時顯示）
@@ -61,6 +63,8 @@ const els = {
   opacity: $('opacity'),
   opacityValue: $('opacityValue'),
   saveAppearance: $('saveAppearance'),
+  ultimateMode: $('ultimateMode'),
+  ultimateStatus: $('ultimateStatus'),
 };
 
 function setStatus(node, text, kind) {
@@ -193,6 +197,7 @@ function collectSettings() {
     theme: els.theme.value,
     accent: activeAccent(),
     opacity: currentOpacity(),
+    ultimateMode: els.ultimateMode.checked,
     // contactGroups 不在這裡：由 persistGroups() 獨立寫入。
     // 若放在這裡，theme/accent 自動儲存或「測試連線」在 load() 完成前觸發時，
     // 會以空 DOM（[]）覆蓋已存在的 contactGroups。
@@ -263,6 +268,7 @@ function load() {
       b.classList.toggle('active', b.getAttribute('data-accent') === accent);
     });
     els.opacity.value = typeof s.opacity === 'number' ? s.opacity : DEFAULTS.opacity;
+    els.ultimateMode.checked = typeof s.ultimateMode === 'boolean' ? s.ultimateMode : DEFAULTS.ultimateMode;
     applyAppearance();
 
     const groups = Array.isArray(s[GROUPS_FIELD]) && s[GROUPS_FIELD].length
@@ -332,6 +338,15 @@ els.opacity.addEventListener('change', function () {
 els.saveAppearance.addEventListener('click', function () {
   persist().then(function () {
     setStatus(els.themeStatus, '已儲存外觀設定 ✓ 開啟中的 HaloPSA 即時生效。', 'ok');
+  });
+});
+
+els.ultimateMode.addEventListener('change', function () {
+  persist().then(function () {
+    const message = els.ultimateMode.checked
+      ? '極致模式已開啟 ✓ 開啟中的 HaloPSA 會即時精簡。'
+      : '極致模式已關閉 ✓ 開啟中的 HaloPSA 已恢復原始介面。';
+    setStatus(els.ultimateStatus, message, 'ok');
   });
 });
 

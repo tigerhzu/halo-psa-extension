@@ -1,7 +1,7 @@
 /**
  * settings-panel.js
- * 浮動設定面板（寵物 + 右側滑入面板）：主題 / 顏色 / 快捷按鈕快速切換。
- * 點寵物 → 面板從右側滑出；拖曳可移動；選色立即預覽；Save Settings 才真正寫入 storage。
+ * 浮動設定面板（寵物 + 右側滑入面板）：極致模式 / 主題 / 顏色 / 快捷按鈕快速切換。
+ * 點寵物 → 面板從右側滑出；拖曳可移動；極致模式立即保存，其餘外觀由 Save Settings 保存。
  */
 (function () {
   'use strict';
@@ -17,6 +17,7 @@
     pet: 'claude-crab',
     petPosition: { right: 16, bottom: 16 },
     shortcutLinks: [],
+    ultimateMode: false,
   };
   const ACCENT_LIST = [
     { name: 'Orange', hex: '#ff7a1a' },
@@ -55,6 +56,7 @@
       if (settings.theme !== 'cute-ios' && settings.theme !== 'default') settings.theme = DEFAULTS.theme;
       settings.pet = petDefinition(settings.pet).id;
       settings[SHORTCUTS_FIELD] = normalizeShortcutLinks(settings[SHORTCUTS_FIELD]);
+      settings.ultimateMode = settings.ultimateMode === true;
       cb(settings);
     });
   }
@@ -483,6 +485,52 @@
     return section;
   }
 
+  function buildUltimateModeSection(draft) {
+    const section = el('div', 'hpx-sp-section hpx-sp-ultimate');
+    const header = el('div', 'hpx-sp-ultimate-header');
+    const copy = el('div', 'hpx-sp-ultimate-copy');
+    const label = el('div', 'hpx-sp-ultimate-title');
+    label.textContent = '極致模式';
+    const description = el('p', 'hpx-sp-ultimate-description');
+    description.textContent = '僅保留核心 Ticket、Team 與 Timesheet 功能，提供更專注的 HaloPSA 工作介面。';
+    const status = el('span', 'hpx-sp-ultimate-status');
+
+    const toggle = el('button', 'hpx-sp-toggle' + (draft.ultimateMode ? ' hpx-sp-on' : ''));
+    toggle.type = 'button';
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-label', '極致模式');
+    toggle.setAttribute('aria-checked', draft.ultimateMode ? 'true' : 'false');
+    const knob = el('span', 'hpx-sp-toggle-knob');
+    const state = el('span', 'hpx-sp-toggle-state');
+
+    function refresh() {
+      toggle.classList.toggle('hpx-sp-on', draft.ultimateMode);
+      toggle.setAttribute('aria-checked', draft.ultimateMode ? 'true' : 'false');
+      state.textContent = draft.ultimateMode ? 'ON' : 'OFF';
+    }
+
+    toggle.appendChild(knob);
+    toggle.appendChild(state);
+    toggle.addEventListener('click', function () {
+      draft.ultimateMode = !draft.ultimateMode;
+      refresh();
+      status.textContent = '套用中…';
+      if (NS.features.ultimateMode) NS.features.ultimateMode.setEnabled(draft.ultimateMode);
+      persistSettings({ ultimateMode: draft.ultimateMode }).then(function () {
+        status.textContent = draft.ultimateMode ? '已開啟' : '已關閉並恢復 Halo 介面';
+      });
+    });
+
+    copy.appendChild(label);
+    copy.appendChild(description);
+    copy.appendChild(status);
+    header.appendChild(copy);
+    header.appendChild(toggle);
+    section.appendChild(header);
+    refresh();
+    return section;
+  }
+
   function buildPanel(initialSettings) {
     const draft = Object.assign({}, initialSettings);
     draft.pet = petDefinition(draft.pet).id;
@@ -504,6 +552,7 @@
 
     // Body
     const body = el('div', 'hpx-sp-body');
+    body.appendChild(buildUltimateModeSection(draft));
     body.appendChild(buildThemeSection(draft));
     body.appendChild(buildColorSection(draft));
     body.appendChild(buildPetSection(draft));
