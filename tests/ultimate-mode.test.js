@@ -134,6 +134,8 @@ assert.ok(cfg.TEXT_CANDIDATE_SELECTORS.includes('div'), 'Halo 實際可見標籤
 assert.ok(cfg.TICKET_ACTIONS.KEEP_PRIMARY.includes('Activity Note') === false);
 assert.ok(cfg.TICKET_ACTIONS.KEEP_PRIMARY.includes('More options'));
 assert.ok(cfg.TICKET_ACTIONS.KEEP_PRIMARY.includes('Awaiting Customer Reply'));
+assert.ok(cfg.TICKET_ACTIONS.KEEP_PRIMARY.includes('Resolve Ticket'));
+assert.ok(cfg.TICKET_ACTIONS.KEEP_PRIMARY.includes('Resolved Ticket'));
 assert.deepEqual(
   Array.from(cfg.TICKET_ACTIONS.KEEP_MORE),
   ['Email User', 'Activity Note', 'Final Check with Customer/Sales']
@@ -185,6 +187,8 @@ assert.match(read('src/ultimate-mode/team-shortcuts.js'), /const branded = brand
 assert.match(read('src/ultimate-mode/team-shortcuts.js'), /if \(!isTimesheetsRoute\(\)\)\s*{\s*removeShortcuts\(\)/s, '離開 Timesheets 時只可移除 Team C shortcut');
 assert.doesNotMatch(read('src/ultimate-mode/team-shortcuts.js'), /https?:\/\/(?!www\.w3\.org\/2000\/svg)/, 'Logo 不可依賴外部圖片');
 assert.match(read('src/ultimate-mode/team-shortcuts.js'), /classList\.remove\('hpx-ultimate-timesheets-branded'\)/, 'OFF 必須恢復 Halo 原本 Timesheets logo');
+assert.match(read('src/ultimate-mode/ticket-actions.js'), /if \(control === haloMore\) return;/, 'More listbox 必須以已驗證結構保留');
+assert.match(read('src/ultimate-mode/ultimate.css'), /title="Resolve Ticket"/, 'Final Check 後的 Resolve Ticket 必須在第一幀保留');
 assert.ok(
   manifest.web_accessible_resources.some(function (entry) {
     return entry.resources && entry.resources.includes('assets/ultimate-mode/*');

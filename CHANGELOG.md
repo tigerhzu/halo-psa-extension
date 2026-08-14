@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.2 — 2026-08-14
+
+- 修正極致模式下的 More 選單：`Final Check with Customer/Sales` 可穩定保留並使用 HaloPSA 原生流程。
+- Final Check 後，保留重新渲染出的 `Resolve Ticket`／`Resolved Ticket` 動作。
+- README 補充 Future 模式（極致模式／Ultimate Mode）完整介紹、可保留的操作與還原方式。
+
 ## v0.9.1 — 2026-08-13
 
 - 新增 Ultimate Mode：可在設定頁與浮動設定面板即時開關，僅隱藏 HaloPSA 原生 UI，關閉時完整還原。

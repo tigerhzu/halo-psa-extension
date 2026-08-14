@@ -250,6 +250,8 @@
           'Awaiting Customer',
           'Awaiting Customer Reply',
           'Vendor Processing',
+          'Resolve Ticket',
+          'Resolved Ticket',
           'More',
           'More Actions',
           'More options',
@@ -268,6 +270,8 @@
           'Awaiting Customer',
           'Awaiting Customer Reply',
           'Vendor Processing',
+          'Resolve Ticket',
+          'Resolved Ticket',
         ],
         KEEP_MORE: [
           'Email User',

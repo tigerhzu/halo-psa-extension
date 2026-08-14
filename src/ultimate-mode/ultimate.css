@@ -16,7 +16,7 @@ html[data-hpx-ultimate-mode="on"] #halo-tree li:has(> .treeviewnode[data-level="
   display: none !important;
 }
 
-html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> .actionmenubtn) > .actionmenubtn:not([title="Re-Assign"]):not([title="First Contact"]):not([title="Pending"]):not([title="In Progress"]):not([title="On Hold"]):not([title="Postponed"]):not([title="Awaiting Customer"]):not([title="Awaiting Customer Reply"]):not([title="Vendor Processing"]):not([title="Email User"]):not([title="Activity Note"]) {
+html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> .actionmenubtn) > .actionmenubtn:not([title="Re-Assign"]):not([title="First Contact"]):not([title="Pending"]):not([title="In Progress"]):not([title="On Hold"]):not([title="Postponed"]):not([title="Awaiting Customer"]):not([title="Awaiting Customer Reply"]):not([title="Vendor Processing"]):not([title="Resolve Ticket"]):not([title="Resolved Ticket"]):not([title="Email User"]):not([title="Activity Note"]) {
   display: none !important;
 }
 

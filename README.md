@@ -12,6 +12,40 @@ Chrome Manifest V3 擴充功能，協助 HaloPSA 使用者撰寫 Activity Note�
 
 > 此擴充功能只會在 HaloPSA 網域載入。AI 服務提供者與自訂設定會保存在瀏覽器本機的 extension storage。
 
+## v0.9.2 重點功能
+
+- 極致模式的 More 選單會保留 `Final Check with Customer/Sales`。
+- 完成 Final Check 後，HaloPSA 原生的 `Resolve Ticket`／`Resolved Ticket` 按鈕仍可使用。
+- Team A、Team B、Team C 與 Timesheets Sidebar 使用新版星河圖示。
+
+## Future 模式介紹（極致模式／Ultimate Mode）
+
+> README 中的「Future 模式」指的就是設定頁顯示的「極致模式（Ultimate Mode）」；它是同一個專注工作介面功能，不需要另外安裝。
+
+極致模式會在不改寫 HaloPSA API、不刪除原始 DOM 的前提下，隱藏不常用的原生 UI。設定會保存在 `chrome.storage.local`，切換後立即套用；重新整理 HaloPSA 後也會保留使用者選擇。
+
+### 開啟與關閉
+
+1. 開啟 Extension 的設定頁，或點選 HaloPSA 右下角寵物開啟浮動設定面板。
+2. 將「極致模式」切換為 ON，即時套用專注介面。
+3. 切換為 OFF，所有由 Extension 隱藏的 HaloPSA 元件會完整恢復；不需要重新整理頁面。
+
+### 保留的日常功能
+
+- 左側保留 Timesheets、Op Team A、Op Team B、Op Team C；Team 底下的 Unassigned、工程師、Ticket 數量與展開／收合均使用 HaloPSA 原生功能。
+- Timesheets 頁提供 Team A／B／C 返回捷徑，點擊後沿用原生 Team 導覽。
+- Ticket 上方保留 Re-Assign、First Contact、Pending、In Progress、On Hold、Postponed、Awaiting Customer、Vendor Processing 與 More。
+- More 選單保留 Email User、Activity Note、Final Check with Customer/Sales。完成 Final Check 後，保留 Resolve Ticket／Resolved Ticket。
+- Ticket Information 僅顯示 Date Created、Created By、Ticket Type、Status、Team、Assigned Agent、Additional Agents、Time Recorded、Impact、Category。
+- End-User Details 僅顯示 User、Top Level、Client、Site、Email Address、Phone Number、Site Phone Number。
+
+### 安全性與相容性
+
+- 極致模式只會加入可逆的 CSS class，不會刪除 HaloPSA 節點，也不會自行呼叫 Ticket Status API。
+- HaloPSA 是 SPA；切換 Ticket、Team、Timesheets 或返回頁面後，模式會重新套用。
+- Activity Note 獨立視窗、Quick Link、Cute 主題、排版功能與寵物等既有 Extension 功能會維持可用。
+- 若某個 HaloPSA 元件因版本更新而找不到，該區塊會略過，不會中斷其他 Extension 功能；將極致模式關閉即可隨時回到原始介面。
+
 ## v0.9.0 重點功能
 
 - 客戶版 AI：固定為「您好〔姓名〕，／正文／謝謝。」格式；姓名只會在原文明確可辨識時帶入。

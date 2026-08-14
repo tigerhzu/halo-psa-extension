@@ -241,6 +241,11 @@
       const haloMenuItems = haloMenu ? shared.safeQueryAll(haloMenu, cfg.HALO_ACTION_MENU_ITEM_SELECTOR) : [];
       let hidden = 0;
       genericControls(root).forEach(function (control) {
+        // Halo's More control is a structural listbox whose accessible label can
+        // temporarily consist only of its menu items during SPA re-renders.
+        // Preserve the verified direct-child control independently of text so
+        // Final Check with Customer/Sales always remains reachable.
+        if (control === haloMore) return;
         if (!shared.labelVariants(control).length || shared.matchesLabel(control, cfg.KEEP_PRIMARY)) return;
         // Some closed-ticket layouts expose Email User / Activity Note only as
         // primary buttons and omit the action More menu. Preserve that sole native
