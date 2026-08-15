@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#1a8987;--hpx-opacity:1">
+<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#000000;--hpx-opacity:1">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -164,6 +164,20 @@
       background: linear-gradient(135deg, var(--hpx-accent, #3a82f7), var(--hpx-accent-2, #6a5cff));
       box-shadow: 0 6px 14px var(--hpx-accent-soft, rgba(58,130,247,.25));
     }
+    .backup-title { display: flex; align-items: baseline; gap: 8px; }
+    .backup-title small { color: var(--muted); font-size: 13px; font-weight: 500; }
+    .backup-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .backup-actions button { min-height: 48px; }
+    .backup-actions .primary { box-shadow: 0 6px 14px color-mix(in srgb, var(--brand) 24%, transparent); }
+    .backup-note { margin-top: 8px; }
+    @media (max-width: 620px) {
+      .backup-actions { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body class="hpx-options">
@@ -191,9 +205,9 @@
         <button class="swatch" data-accent="#64748b" style="--sw:#64748b" title="Slate" type="button"></button>
       </div>
       <div class="custom-color" id="customColorWrap">
-        <input id="accentCustom" type="color" value="#1a8987" aria-label="自訂 Accent 顏色" title="自訂顏色" />
+        <input id="accentCustom" type="color" value="#000000" aria-label="自訂 Accent 顏色" title="自訂顏色" />
         <span>自訂</span>
-        <code id="accentValue">#1A8987</code>
+        <code id="accentValue">#000000</code>
       </div>
 
       <label>即時預覽 Preview</label>
@@ -238,6 +252,20 @@
       <div class="actions">
         <button id="reopenOnboarding" class="primary" type="button">開啟首次登入提示</button>
         <span id="onboardingStatus" class="status"></span>
+      </div>
+    </div>
+
+    <div class="card" id="backupCard">
+      <h2 class="backup-title"><span>完整設定檔</span><small>Backup</small></h2>
+      <div class="backup-actions">
+        <button id="exportSettingsWithKeys" class="primary" type="button">匯出全部設定（含 API Key）</button>
+        <button id="exportSettingsWithoutKeys" type="button">匯出所有設定（不含 API Key）</button>
+        <button id="importSettings" type="button">匯入全部設定</button>
+        <input id="importSettingsFile" type="file" accept="application/json,.json" hidden />
+      </div>
+      <p class="hint backup-note">包含外觀、Team、聯絡名單、Quick Links 與 AI 設定；匯入會完整取代目前設定。含 API Key 的檔案請妥善保管。</p>
+      <div class="actions">
+        <span id="backupStatus" class="status"></span>
       </div>
     </div>
 

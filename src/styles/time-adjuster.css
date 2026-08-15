@@ -87,12 +87,12 @@
   transition: background .12s ease, color .12s ease;
 }
 .hpx-tta > .hpx-tta-btn:hover {
-  background: var(--hpx-accent, #1a8987);
-  border-color: var(--hpx-accent, #1a8987);
+  background: var(--hpx-accent, #000000);
+  border-color: var(--hpx-accent, #000000);
   color: #fff;
 }
 .hpx-tta > .hpx-tta-btn:focus-visible {
-  outline: 2px solid var(--hpx-accent, #1a8987);
+  outline: 2px solid var(--hpx-accent, #000000);
   outline-offset: 1px;
 }
 .hpx-tta > .hpx-tta-btn:active { transform: translateY(1px); }
@@ -109,8 +109,8 @@
   font-weight: 650;
 }
 .hpx-tta > .hpx-tta-btn--apply:hover {
-  background: var(--hpx-accent, #1a8987);
-  border-color: var(--hpx-accent, #1a8987);
+  background: var(--hpx-accent, #000000);
+  border-color: var(--hpx-accent, #000000);
   color: #fff;
 }
 
@@ -134,7 +134,7 @@
   box-sizing: border-box;
 }
 .hpx-tta > .hpx-tta-input:focus-visible {
-  outline: 2px solid var(--hpx-accent, #1a8987);
+  outline: 2px solid var(--hpx-accent, #000000);
   outline-offset: -1px;
 }
 .hpx-tta > .hpx-tta-input.is-invalid {

@@ -18,9 +18,9 @@ assert.ok(fs.existsSync(path.join(root, 'src/onboarding/page.js')), '獨立頁�
 
 const onboarding = read('src/onboarding/index.js');
 assert.match(read('src/ui/theme.js'), /const DEFAULT_THEME = 'cute-ios'/, '登入預設主題必須是 Cute');
-assert.match(read('src/ui/theme.js'), /const DEFAULT_ACCENT = '#1a8987'/, '登入預設 Accent 必須使用目前 Cute 色');
-assert.match(read('src/ui/settings-panel.js'), /accent: '#1a8987'/, '浮動面板預設 Accent 必須與登入預設一致');
-assert.match(read('src/options/options.js'), /accent: '#1a8987'/, '設定頁預設 Accent 必須與登入預設一致');
+assert.match(read('src/ui/theme.js'), /const DEFAULT_ACCENT = '#000000'/, '登入預設 Accent 必須使用純黑 Cute 色');
+assert.match(read('src/ui/settings-panel.js'), /accent: '#000000'/, '浮動面板預設 Accent 必須與登入預設一致');
+assert.match(read('src/options/options.js'), /accent: '#000000'/, '設定頁預設 Accent 必須與登入預設一致');
 assert.match(read('src/background/service-worker.js'), /ultimateMode: false/, '登入預設必須關閉簡單模式');
 assert.match(onboarding, /onboardingVersion/, '精靈必須有版本旗標，避免每次載入重複顯示');
 assert.match(onboarding, /Object\.assign\(\{\}, previous, patch\)/, '精靈寫入必須合併既有設定');
@@ -60,8 +60,12 @@ assert.match(settingsPanel, /label\.textContent = '簡單模式'/, '浮動面板
 assert.doesNotMatch(settingsPanel, /hpx-sp-ultimate-description/, '浮動面板不可顯示簡單模式說明內文');
 assert.match(settingsPanel, /hpx-sp-shortcut-edit/, 'Quick Link 必須有編輯筆按鈕');
 assert.match(settingsPanel, /shortcutWrap\.draggable = true/, 'Quick Link 卡片必須可以拖曳排序');
+assert.match(settingsPanel, /shortcutWrap\.addEventListener\('click'/, 'Quick Link 卡片外框必須可以點擊');
+assert.match(settingsPanel, /if \(normalizeShortcutUrl\(link\.url\)\) openShortcut\(link\.url\)/, 'Quick Link 卡片外框點擊必須開啟連結');
 assert.match(settingsPanel, /links\.splice\(sourceIndex, 1\)/, 'Quick Link 拖曳後必須更新清單順序');
 assert.doesNotMatch(settingsPanel, /hpx-sp-shortcut-icon/, 'Quick Link 卡片不可保留前方箭頭圖示');
+assert.doesNotMatch(settingsPanel, /hpx-sp-shortcut-url/, 'Quick Link 卡片下方不可顯示 URL 文字');
+assert.match(read('src/styles/settings-panel.css'), /\.hpx-sp-shortcut-icon \{ display: none !important; \}/, 'Quick Link 舊版箭頭節點必須被隱藏');
 assert.doesNotMatch(settingsPanel, /管理常用頁面；點選卡片即可開啟。/, 'Quick Link 不可顯示多餘介紹文字');
 assert.doesNotMatch(settingsPanel, /可使用 \/tickets 等站內路徑/, 'Quick Link 不可顯示多餘使用說明');
 assert.match(settingsPanel, /row\.hidden = !editing/, '完成的 Quick Link 編輯列必須可隱藏');
@@ -80,6 +84,12 @@ assert.match(read('src/styles/settings-panel.css'), /max-height: min\(70vh, calc
 assert.match(settingsPanel, /keepPanelInsideViewport/, 'Quick Links 面板必須依實際視窗邊界重新夾住');
 assert.match(settingsPanel, /keepShortcutEditorVisible/, 'Quick Links 編輯欄位取得焦點時必須自動捲入可視範圍');
 assert.match(settingsPanel, /visualViewport\.addEventListener\('resize'/, '視窗可視區變更時必須重新定位 Quick Links');
+assert.match(optionsHtml, /id="exportSettingsWithKeys"/, '設定頁必須提供含 API Key 的完整匯出');
+assert.match(optionsHtml, /id="exportSettingsWithoutKeys"/, '設定頁必須提供不含 API Key 的匯出');
+assert.match(optionsHtml, /id="importSettingsFile"/, '設定頁必須提供完整設定匯入檔案選擇器');
+assert.match(optionsJs, /SETTINGS_EXPORT_FORMAT/, '完整設定匯出必須使用可辨識的檔案格式');
+assert.match(optionsJs, /delete exported\[field\]/, '不含 API Key 的匯出必須移除 API Key');
+assert.match(optionsJs, /replaceStoredSettings\(imported\.settings\)/, '完整設定匯入必須寫回設定儲存區');
 assert.match(settingsPanel, /NS\.features\.ultimateMode\.setEnabled\(draft\.ultimateMode\)/, '簡單模式切換必須即時呼叫可逆恢復流程');
 assert.doesNotMatch(settingsPanel, /status\.textContent/, '簡單模式無說明文字時不可殘留未定義 status 參照');
 assert.match(settingsPanel, /document\.addEventListener\('pointerdown', outsideClickHandler, true\)/, '點擊面板外必須可關閉');

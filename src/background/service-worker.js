@@ -37,7 +37,7 @@ let onboardingSourceTabId = null;
 let onboardingSourceOrigin = '';
 const DEFAULT_APPEARANCE = {
   theme: 'cute-ios',
-  accent: '#1a8987',
+  accent: '#000000',
   ultimateMode: false,
 };
 const DEFAULTS = {

@@ -17,7 +17,7 @@
  * --hpx-opacity（0~1）控制主題覆蓋層的不透明度。
  */
 html {
-  --hpx-accent: #1a8987;
+  --hpx-accent: #000000;
   --hpx-accent-2: color-mix(in srgb, var(--hpx-accent), #000 14%);
   --hpx-accent-soft: color-mix(in srgb, var(--hpx-accent) 18%, transparent);
   --hpx-glass-opacity: 0.85;

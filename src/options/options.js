@@ -21,6 +21,9 @@ const TEAM_CATALOG_VERSION_FIELD = 'ultimateTeamsCatalogVersion';
 const TEAM_CATALOG_VERSION = 2;
 const DEFAULT_CC_FIELD = 'defaultCcRecipients';
 const ONBOARDING_FIELD = 'onboardingVersion';
+const SETTINGS_EXPORT_FORMAT = 'halo-psa-extension-settings';
+const SETTINGS_EXPORT_VERSION = 1;
+const API_KEY_FIELDS = ['azureApiKey', 'apiKey'];
 const DEFAULT_TEAMS = [
   'Op Team A', 'Op Team B', 'Op Team C', 'Other Support',
   'Project Manager', 'SecOp Team A', 'Technical Solutions Division',
@@ -37,7 +40,7 @@ const DEFAULTS = {
   model: 'gemini-2.5-flash',
   useStub: false,
   theme: 'cute-ios',
-  accent: '#1a8987',
+  accent: '#000000',
   opacity: 100,
   ultimateMode: false,
 };
@@ -90,6 +93,11 @@ const els = {
   defaultCcRecipients: $('defaultCcRecipients'),
   addDefaultCc: $('addDefaultCc'),
   defaultCcStatus: $('defaultCcStatus'),
+  exportSettingsWithKeys: $('exportSettingsWithKeys'),
+  exportSettingsWithoutKeys: $('exportSettingsWithoutKeys'),
+  importSettings: $('importSettings'),
+  importSettingsFile: $('importSettingsFile'),
+  backupStatus: $('backupStatus'),
 };
 
 let opacitySetting = DEFAULTS.opacity;
@@ -115,6 +123,149 @@ function mergeFields(patch) {
       });
     });
   });
+}
+
+function readStoredSettings() {
+  return new Promise(function (resolve) {
+    chrome.storage.local.get(SETTINGS_KEY, function (data) {
+      resolve((data && data[SETTINGS_KEY]) || {});
+    });
+  });
+}
+
+function replaceStoredSettings(settings) {
+  return enqueueStorageWrite(function () {
+    return new Promise(function (resolve, reject) {
+      chrome.storage.local.set({ [SETTINGS_KEY]: settings }, function () {
+        const error = chrome.runtime.lastError;
+        if (error) {
+          reject(new Error(error.message || '無法保存設定'));
+          return;
+        }
+        resolve(settings);
+      });
+    });
+  });
+}
+
+function downloadSettingsJson(payload, includeApiKeys) {
+  const stamp = new Date().toISOString().replace(/[.:]/g, '-');
+  const suffix = includeApiKeys ? 'complete' : 'without-api-keys';
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'halo-psa-settings-' + suffix + '-' + stamp + '.json';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+function liveSettingsSnapshot() {
+  return readStoredSettings().then(function (stored) {
+    const live = collectSettings();
+    live[TEAMS_FIELD] = readTeamsFromDom();
+    live[GROUPS_FIELD] = readGroupsFromDom();
+    live[DEFAULT_CC_FIELD] = readDefaultCcFromDom();
+    return Object.assign({}, stored, live);
+  });
+}
+
+function exportSettings(includeApiKeys) {
+  liveSettingsSnapshot().then(function (settings) {
+    const exported = Object.assign({}, settings);
+    if (!includeApiKeys) {
+      API_KEY_FIELDS.forEach(function (field) { delete exported[field]; });
+    }
+    downloadSettingsJson({
+      format: SETTINGS_EXPORT_FORMAT,
+      version: SETTINGS_EXPORT_VERSION,
+      exportedAt: new Date().toISOString(),
+      includeApiKeys: includeApiKeys,
+      settings: exported,
+    }, includeApiKeys);
+    setStatus(els.backupStatus, includeApiKeys
+      ? '已匯出完整設定（含 API Key）✓'
+      : '已匯出設定（不含 API Key）✓', 'ok');
+  }).catch(function (error) {
+    setStatus(els.backupStatus, '匯出失敗：' + (error.message || '無法讀取設定'), 'err');
+  });
+}
+
+function normalizeImportedSettings(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('設定檔格式不正確。');
+  }
+  const hasSettingsEnvelope = Object.prototype.hasOwnProperty.call(payload, 'settings');
+  if (hasSettingsEnvelope && (!payload.settings || typeof payload.settings !== 'object' || Array.isArray(payload.settings))) {
+    throw new Error('設定檔內容不正確。');
+  }
+  if (payload.format && payload.format !== SETTINGS_EXPORT_FORMAT) {
+    throw new Error('這不是 HaloPSA Writing Helper 的設定檔。');
+  }
+  const isEnvelope = hasSettingsEnvelope;
+  const source = isEnvelope ? payload.settings : payload;
+  const settings = {};
+  Object.keys(source).forEach(function (key) {
+    if (key !== '__proto__' && key !== 'constructor' && key !== 'prototype') settings[key] = source[key];
+  });
+
+  settings.provider = settings.provider === 'gemini' || settings.provider === 'azure-deepseek'
+    ? settings.provider
+    : DEFAULTS.provider;
+  settings.azureEndpoint = String(settings.azureEndpoint || '').trim().replace(/\/+$/, '');
+  settings.azureDeployment = String(settings.azureDeployment || '').trim();
+  settings.azureApiKey = String(settings.azureApiKey || '').trim();
+  settings.apiKey = String(settings.apiKey || '').trim();
+  settings.model = String(settings.model || DEFAULTS.model).trim();
+  settings.useStub = settings.useStub === true;
+  settings.theme = settings.theme === 'default' || settings.theme === 'cute-ios' ? settings.theme : DEFAULTS.theme;
+  settings.accent = normalizeAccent(settings.accent);
+  const opacity = Number(settings.opacity);
+  settings.opacity = Number.isFinite(opacity) ? Math.max(40, Math.min(100, Math.round(opacity))) : DEFAULTS.opacity;
+  settings.ultimateMode = settings.ultimateMode === true;
+  if (Object.prototype.hasOwnProperty.call(settings, TEAMS_FIELD)) settings[TEAMS_FIELD] = normalizeTeamList(settings[TEAMS_FIELD]);
+
+  return {
+    settings: settings,
+    includeApiKeys: !isEnvelope || payload.includeApiKeys !== false,
+  };
+}
+
+function importSettingsFromFile(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    setStatus(els.backupStatus, '匯入失敗：設定檔不可超過 5 MB。', 'err');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function () {
+    try {
+      const parsed = JSON.parse(String(reader.result || ''));
+      const imported = normalizeImportedSettings(parsed);
+      readStoredSettings().then(function (current) {
+        // 安全匯出檔沒有 API Key；匯入時保留本機原有金鑰，避免誤清除。
+        if (!imported.includeApiKeys) {
+          API_KEY_FIELDS.forEach(function (field) {
+            if (!Object.prototype.hasOwnProperty.call(imported.settings, field)) {
+              imported.settings[field] = current[field] || '';
+            }
+          });
+        }
+        return replaceStoredSettings(imported.settings);
+      }).then(function () {
+        setStatus(els.backupStatus, '匯入成功，正在重新載入設定頁…', 'ok');
+        setTimeout(function () { window.location.reload(); }, 350);
+      }).catch(function (error) {
+        setStatus(els.backupStatus, '匯入失敗：' + (error.message || '無法保存設定'), 'err');
+      });
+    } catch (error) {
+      setStatus(els.backupStatus, '匯入失敗：設定檔不是有效的 JSON。', 'err');
+    }
+  };
+  reader.onerror = function () { setStatus(els.backupStatus, '匯入失敗：無法讀取檔案。', 'err'); };
+  reader.readAsText(file);
 }
 
 function normalizeTeamList(teams) {
@@ -693,6 +844,26 @@ els.addDefaultCc.addEventListener('click', function () {
   if (empty) empty.remove();
   els.defaultCcRecipients.appendChild(makeDefaultCcRow({}));
   scheduleDefaultCcPersist();
+});
+
+els.exportSettingsWithKeys.addEventListener('click', function () {
+  exportSettings(true);
+});
+
+els.exportSettingsWithoutKeys.addEventListener('click', function () {
+  exportSettings(false);
+});
+
+els.importSettings.addEventListener('click', function () {
+  if (!window.confirm('匯入會取代目前的完整設定；含 API Key 的檔案請確認來源可信。要繼續嗎？')) return;
+  els.importSettingsFile.value = '';
+  els.importSettingsFile.click();
+});
+
+els.importSettingsFile.addEventListener('change', function () {
+  const file = els.importSettingsFile.files && els.importSettingsFile.files[0];
+  importSettingsFromFile(file);
+  els.importSettingsFile.value = '';
 });
 
 els.test.addEventListener('click', function () {

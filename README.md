@@ -12,7 +12,7 @@ Chrome Manifest V3 擴充功能，協助 HaloPSA 使用者撰寫 Activity Note�
 
 > 此擴充功能只會在 HaloPSA 網域載入。AI 服務提供者與自訂設定會保存在瀏覽器本機的 extension storage。
 
-首次登入預設外觀為 Cute，使用目前 Cute 青綠 Accent（`#1A8987`），簡單模式預設關閉；之後使用者在設定面板選擇的主題、顏色與模式會保存在 `chrome.storage.local`，不會被重新登入覆蓋。
+首次登入預設外觀為 Cute，使用純黑 Accent（`#000000`），簡單模式預設關閉；之後使用者在設定面板選擇的主題、顏色與模式會保存在 `chrome.storage.local`，不會被重新登入覆蓋。
 
 ## 首次登入提示
 
@@ -34,6 +34,7 @@ Chrome Manifest V3 擴充功能，協助 HaloPSA 使用者撰寫 Activity Note�
 - 主題選單顯示「果凍」與「預設」；主題、Accent 顏色、寵物與簡單模式均可即時套用並保存。
 - 簡單模式保留使用者選定的 Team，切換到 Tickets、Timesheets 或其他 Team 後仍維持同一份選擇。
 - 完全移除「整理格式」功能，避免在工具列、編輯器與預覽介面留下已停用的按鈕。
+- 完整設定頁提供一鍵匯出／匯入，可選擇是否包含 API Key；不含 API Key 的設定檔適合安全分享或備份。
 - 首次登入提示、Team 白名單、自訂 Accent、永遠 CC 與既有 AI／Timesheet 功能持續保留。
 
 - 簡單模式的 More 選單會保留 `Final Check with Customer/Sales`。

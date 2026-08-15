@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- 新增完整設定檔備份：可一鍵匯出含 API Key、匯出不含 API Key，或匯入完整設定；不含 API Key 的設定檔匯入時會保留本機金鑰。
+- Cute／果凍模式首次使用的預設 Accent 改為純黑 `#000000`。
+- Quick Links 卡片移除前置箭頭圖示，並保留乾淨的拖曳排序介面。
+
 ## v0.9.3 — 2026-08-15
 
 - 修正設定頁 Team 清單未同步到 Timesheets 前台快捷列的問題；快捷列現在會即時跟隨保留 Team 的新增、刪除與排序，非 A/B/C Team 使用文字徽章顯示。
@@ -18,7 +24,7 @@
 - 浮動面板的完整設定入口改名為「設定」，點擊面板外側會自動關閉面板。
 - 修正簡單模式切換為 OFF 時因殘留狀態文字參照造成恢復流程未執行的問題。
 - New Ticket 頁面不再掛載摯友名單工具列，也不會套用寄信視窗的預設 CC。
-- 首次登入預設外觀固定為 Cute＋`#1A8987` Accent，簡單模式預設關閉；修正 Cute 下左上角 Search Tickets placeholder 對比不足。
+- 首次登入預設外觀固定為 Cute＋`#000000` Accent，簡單模式預設關閉；修正 Cute 下左上角 Search Tickets placeholder 對比不足。
 - 補齊簡單模式的 Team catalog：Other Support、SecOp Team A、Technical Solutions Division；舊版已保存的 Team 清單會一次遷移補齊，之後仍可自行移除。
 - 新增左下角固定控制列，集中提供 mode、color、pet 與 settings 操作。
 - Quick Links 改為可新增、編輯、刪除與上下拖曳排序的卡片介面，移除前方箭頭與多餘說明文字，並在編輯時自動保持於視窗內。

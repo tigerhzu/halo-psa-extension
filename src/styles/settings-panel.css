@@ -198,7 +198,7 @@ button.hpx-sp-pet:active {
   min-height: 9px;
   border: 1px solid rgba(255, 255, 255, .72);
   border-radius: 50%;
-  background: var(--hpx-sidebar-color, #1a8987);
+  background: var(--hpx-sidebar-color, #000000);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, .08);
   font-size: 0;
 }
@@ -611,6 +611,8 @@ button.hpx-sp-pet:active {
 .hpx-sp-shortcut-launcher-item {
   min-width: 0;
 }
+/* 舊版面板可能殘留箭頭節點；新版卡片不顯示任何前置圖示。 */
+.hpx-sp-shortcut-icon { display: none !important; }
 .hpx-sp-shortcut-card {
   padding: 9px;
   border: 1px solid #e2e8f0;
@@ -659,15 +661,6 @@ button.hpx-sp-pet:active {
   min-width: 0;
   flex: 1;
   gap: 3px;
-}
-.hpx-sp-shortcut-url {
-  display: block;
-  overflow: hidden;
-  color: #94a3b8;
-  font-size: 9px;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .hpx-sp-shortcut-button,
 .hpx-sp-shortcut-add,

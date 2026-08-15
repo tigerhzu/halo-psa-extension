@@ -19,7 +19,7 @@
 
   const STORAGE_KEY = 'hpx_settings';
   const DEFAULT_THEME = 'cute-ios';
-  const DEFAULT_ACCENT = '#1a8987'; // 目前 Cute 色；與首次登入預設一致
+  const DEFAULT_ACCENT = '#000000'; // 首次使用 Cute／果凍模式的預設 Accent
   const DEFAULT_OPACITY = 100; // 百分比 40~100
   const VALID = ['default', 'cute-ios'];
 

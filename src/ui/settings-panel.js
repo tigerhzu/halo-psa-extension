@@ -13,7 +13,7 @@
 
   const DEFAULTS = {
     theme: 'cute-ios',
-    accent: '#1a8987',
+    accent: '#000000',
     opacity: 100,
     pet: 'claude-crab',
     petPosition: { right: 16, bottom: 16 },
@@ -503,6 +503,7 @@
     const launcher = el('div', 'hpx-sp-shortcut-launcher');
     const editor = el('div', 'hpx-sp-shortcut-editor');
     let draggingIndex = -1;
+    let suppressCardOpen = false;
 
     draft[SHORTCUTS_FIELD] = Array.isArray(draft[SHORTCUTS_FIELD])
       ? draft[SHORTCUTS_FIELD].map(function (item) {
@@ -527,7 +528,14 @@
         shortcutWrap.draggable = true;
         shortcutWrap.setAttribute('data-shortcut-index', String(index));
         shortcutWrap.setAttribute('aria-label', '拖曳以重新排序 ' + (link.name.trim() || '未命名'));
+        shortcutWrap.addEventListener('click', function (event) {
+          if (suppressCardOpen || event.defaultPrevented) return;
+          const target = event.target;
+          if (target && target.closest && target.closest('button, input, select, textarea')) return;
+          if (normalizeShortcutUrl(link.url)) openShortcut(link.url);
+        });
         shortcutWrap.addEventListener('dragstart', function (event) {
+          suppressCardOpen = true;
           draggingIndex = index;
           shortcutWrap.classList.add('hpx-sp-shortcut-dragging');
           if (event.dataTransfer) {
@@ -567,20 +575,17 @@
         shortcutWrap.addEventListener('dragend', function () {
           draggingIndex = -1;
           shortcutWrap.classList.remove('hpx-sp-shortcut-dragging', 'hpx-sp-shortcut-drag-over', 'hpx-sp-shortcut-drag-after');
+          setTimeout(function () { suppressCardOpen = false; }, 0);
         });
         const cardMain = el('div', 'hpx-sp-shortcut-card-main');
         const info = el('div', 'hpx-sp-shortcut-info');
         const quickButton = el('button', 'hpx-sp-shortcut-button');
         quickButton.type = 'button';
         quickButton.textContent = link.name.trim() || '未命名';
-        quickButton.title = link.url || '請設定 URL';
+        quickButton.title = link.url ? '開啟 ' + (link.name.trim() || '快速連結') : '請設定 URL';
         quickButton.disabled = !normalizeShortcutUrl(link.url);
         quickButton.addEventListener('click', function () { openShortcut(link.url); });
-        const urlLabel = el('span', 'hpx-sp-shortcut-url');
-        urlLabel.textContent = link.url.trim() || '尚未設定網址';
-        urlLabel.title = link.url.trim() || '尚未設定網址';
         info.appendChild(quickButton);
-        info.appendChild(urlLabel);
 
         const actions = el('div', 'hpx-sp-shortcut-actions');
         const edit = el('button', 'hpx-sp-shortcut-edit');
@@ -621,10 +626,8 @@
         urlInput.setAttribute('aria-label', '快捷按鈕 URL');
         urlInput.addEventListener('input', function () {
           link.url = urlInput.value;
-          quickButton.title = link.url || '請設定 URL';
+          quickButton.title = link.url ? '開啟 ' + (link.name.trim() || '快速連結') : '請設定 URL';
           quickButton.disabled = !normalizeShortcutUrl(link.url);
-          urlLabel.textContent = link.url.trim() || '尚未設定網址';
-          urlLabel.title = link.url.trim() || '尚未設定網址';
           syncEditorState();
           persistShortcutLinks();
         });
