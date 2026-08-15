@@ -8,13 +8,11 @@
  * survives SPA transitions, so newly mounted native nodes are already hidden
  * by CSS before MutationObserver/JS reconciliation runs.
  */
-html[data-hpx-ultimate-mode="on"] #app-nav-menu .app-nav-menu-sidebar > .app-side-link:not(:has(.app-button[title="Timesheets"])) {
-  display: none !important;
-}
-
-html[data-hpx-ultimate-mode="on"] #halo-tree li:has(> .treeviewnode[data-level="1"]:not([title="Op Team A"]):not([title="Op Team B"]):not([title="Op Team C"])) {
-  display: none !important;
-}
+/*
+ * The icon rail is reconciled by sidebar.js.  Its Team allow-list comes from
+ * chrome.storage, so a static first-frame selector cannot safely distinguish
+ * configured Team links from the native links that should be hidden.
+ */
 
 html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> .actionmenubtn) > .actionmenubtn:not([title="Re-Assign"]):not([title="First Contact"]):not([title="Pending"]):not([title="In Progress"]):not([title="On Hold"]):not([title="Postponed"]):not([title="Awaiting Customer"]):not([title="Awaiting Customer Reply"]):not([title="Vendor Processing"]):not([title="Resolve Ticket"]):not([title="Resolved Ticket"]):not([title="Email User"]):not([title="Activity Note"]) {
   display: none !important;
@@ -34,7 +32,7 @@ html[data-hpx-ultimate-mode="on"] .details-group:has(> .details-group-header[id^
   display: none !important;
 }
 
-/* Timesheets 頁：放在原生 Timesheets 圖示後方的 Team 返回入口。 */
+/* Team 導覽頁：放在原生 Timesheets 圖示後方的保留 Team 快捷入口。 */
 .hpx-ultimate-timesheets-branded .hpx-ultimate-timesheets-icon-host {
   display: flex !important;
   align-items: center;
@@ -103,6 +101,19 @@ html[data-hpx-ultimate-mode="on"] .details-group:has(> .details-group-header[id^
   object-fit: cover;
   filter: drop-shadow(0 2px 2px rgba(0, 25, 48, 0.3));
   transition: transform 120ms ease, filter 120ms ease;
+}
+
+.hpx-ultimate-team-logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: linear-gradient(145deg, #063f78, #7358d8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .hpx-ultimate-team-shortcut:hover .hpx-ultimate-team-logo,

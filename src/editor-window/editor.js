@@ -4,11 +4,11 @@
  *
  * 這個頁面對 HaloPSA 一無所知 —— 它只做三件事：
  *   1. 跟背景服務要一段 HTML，放進大型 contenteditable。
- *   2. 讓使用者編輯，並提供 AI / 整理格式 / 快速範本。
+ *   2. 讓使用者編輯，並提供 AI / 快速範本。
  *   3. 按「套用」時把 HTML 交回去，由 content script 寫回 HaloPSA。
  *
  * ── 富文字保護（V1 規則）──
- * AI 與整理格式本質上是 plain-text in / plain-text out，直接套用在整篇富文字上
+ * AI 動作本質上是 plain-text in / plain-text out，直接套用在整篇富文字上
  * 一定會把表格、圖片、連結打回純文字。所以預設行為是**只處理選取範圍**：
  * 取代選取的文字節點，選取範圍以外的 HTML 一個位元都不動。
  * 沒有選取且內容含格式時，會擋下來要求使用者明確確認（destructive fallback）。
@@ -312,7 +312,7 @@
     return frag;
   }
 
-  // ── 文字類動作（AI / 整理格式）共用流程 ─────────────────────────────────
+  // ── 文字類動作（AI）共用流程 ─────────────────────────────────────────────
 
   /**
    * 決定這次要處理的範圍。
@@ -416,7 +416,6 @@
       original: scope.text,
       result: result.text,
       note: (result.note ? result.note + ' ' : '') + scopeNote,
-      showDiff: !!opts.showDiff,
     });
 
     if (finalText == null) return;
@@ -457,21 +456,6 @@
             }
             return { text: res.text, note: note };
           });
-      },
-    });
-  }
-
-  function runFormatCleanup() {
-    return runTextAction({
-      label: '整理格式',
-      title: '整理格式',
-      loading: '正在整理格式…',
-      showDiff: true,
-      process: function (text) {
-        return Promise.resolve({
-          text: NS.features.formatCleanup.clean(text),
-          note: '本地規則整理，完全在本機執行、不呼叫 AI。',
-        });
       },
     });
   }
@@ -1025,12 +1009,6 @@
     });
     toolbarEl.appendChild(aiGroup);
 
-    const fmtGroup = makeGroup('');
-    fmtGroup.appendChild(
-      makeButton('整理格式', '修正錯字、統一標點、條列化', runFormatCleanup, 'hpx-tb-btn--format')
-    );
-    toolbarEl.appendChild(fmtGroup);
-
     const tplGroup = makeGroup('');
     const wrap = document.createElement('div');
     wrap.className = 'hpx-tb-dropdown';
@@ -1156,6 +1134,9 @@
   // ── 啟動 ────────────────────────────────────────────────────────────────
 
   async function boot() {
+    // 獨立視窗不會經過 HaloPSA content script，需自行同步目前主題與 Accent。
+    if (NS.ui.theme && typeof NS.ui.theme.start === 'function') NS.ui.theme.start();
+
     if (!sessionId) {
       showNotice('缺少編輯工作階段參數，這個視窗無法使用。請關閉後從 HaloPSA 重新開啟。', 'error');
       applyBtn.disabled = true;

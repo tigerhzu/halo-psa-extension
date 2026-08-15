@@ -150,7 +150,10 @@
       }
       const anchor = row && row.parentElement ? row : cc;
       if (anchor.parentElement) {
-        anchor.parentElement.insertBefore(bar, anchor);
+        const host = anchor.parentElement;
+        host.classList.add('hpx-besties-layer-host');
+        bar.__hpxLayerHost = host;
+        host.insertBefore(bar, anchor);
         return;
       }
     }
@@ -189,7 +192,9 @@
 
     unmount: function (windowEl) {
       const bar = toolbars.get(windowEl);
+      const host = bar && bar.__hpxLayerHost;
       if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+      if (host && !host.querySelector('.hpx-besties-toolbar')) host.classList.remove('hpx-besties-layer-host');
       toolbars.delete(windowEl);
     },
   };

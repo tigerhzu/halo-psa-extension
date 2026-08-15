@@ -27,6 +27,19 @@ const buildPrompt = self.HPX_PROMPTS.buildPrompt;
 
 // ── 設定儲存 key（與 options.js 須一致）──
 const SETTINGS_KEY = 'hpx_settings';
+const ONBOARDING_PAGE = 'src/onboarding/onboarding.html';
+const DEFAULT_HALO_HOME = 'https://freedom.halopsa.com/';
+const LAST_HALO_ORIGIN_KEY = 'hpx_last_halo_origin';
+const LAST_HALO_TAB_KEY = 'hpx_last_halo_tab_id';
+let onboardingTabId = null;
+let onboardingOpening = false;
+let onboardingSourceTabId = null;
+let onboardingSourceOrigin = '';
+const DEFAULT_APPEARANCE = {
+  theme: 'cute-ios',
+  accent: '#1a8987',
+  ultimateMode: false,
+};
 const DEFAULTS = {
   provider: 'azure-deepseek',
   azureEndpoint: '',
@@ -40,13 +53,139 @@ const DEFAULTS = {
 // 清理已下線功能的舊設定，並把已不存在的主題選項遷移到 Cute。
 const REMOVED_SETTINGS = ['casteSystem', 'timesheetReport', 'haloApiBaseUrl', 'haloApiKey', 'haloTicketUrlTemplate', 'customSkin'];
 
+function haloOriginFromUrl(value) {
+  try {
+    const parsed = new URL(String(value || ''));
+    if (parsed.protocol !== 'https:') return '';
+    if (!/(?:^|\.)halo(?:psa|itsm|crm|servicedesk)\.com$/i.test(parsed.hostname)) return '';
+    return parsed.origin;
+  } catch (error) {
+    return '';
+  }
+}
+
+function rememberHaloSource(sender, sourceUrl) {
+  const tab = sender && sender.tab;
+  const origin = haloOriginFromUrl(sourceUrl || (tab && tab.url));
+  if (!origin) {
+    onboardingSourceTabId = null;
+    chrome.storage.local.remove(LAST_HALO_TAB_KEY, function () { void chrome.runtime.lastError; });
+    return;
+  }
+  onboardingSourceOrigin = origin;
+  onboardingSourceTabId = tab && typeof tab.id === 'number' ? tab.id : null;
+  const patch = { [LAST_HALO_ORIGIN_KEY]: origin };
+  if (onboardingSourceTabId === null) chrome.storage.local.remove(LAST_HALO_TAB_KEY, function () { void chrome.runtime.lastError; });
+  else patch[LAST_HALO_TAB_KEY] = onboardingSourceTabId;
+  chrome.storage.local.set(patch, function () { void chrome.runtime.lastError; });
+}
+
+function openOnboardingPage(done, sender, sourceUrl) {
+  rememberHaloSource(sender, sourceUrl);
+  const url = chrome.runtime.getURL(ONBOARDING_PAGE);
+  const complete = typeof done === 'function' ? done : function () {};
+  if (onboardingOpening) {
+    complete({ ok: true, pending: true });
+    return;
+  }
+  if (onboardingTabId !== null) {
+    chrome.tabs.update(onboardingTabId, { active: true }, function () {
+      if (chrome.runtime.lastError) {
+        onboardingTabId = null;
+        openOnboardingPage(complete, sender, sourceUrl);
+        return;
+      }
+      complete({ ok: true, reused: true });
+    });
+    return;
+  }
+  onboardingOpening = true;
+  const createOptions = { url: url, active: true };
+  if (typeof onboardingSourceTabId === 'number') createOptions.openerTabId = onboardingSourceTabId;
+  chrome.tabs.create(createOptions, function (tab) {
+    const lastError = chrome.runtime.lastError;
+    onboardingOpening = false;
+    if (lastError || !tab || typeof tab.id !== 'number') {
+      onboardingTabId = null;
+      complete({ ok: false, error: lastError ? lastError.message : '無法開啟首次登入提示' });
+      return;
+    }
+    onboardingTabId = tab && typeof tab.id === 'number' ? tab.id : null;
+    complete({ ok: true, created: true });
+  });
+}
+
+chrome.tabs.onRemoved.addListener(function (tabId) {
+  if (tabId === onboardingTabId) onboardingTabId = null;
+  if (tabId === onboardingSourceTabId) onboardingSourceTabId = null;
+});
+
+function openHaloHomePage(done, sender) {
+  const complete = typeof done === 'function' ? done : function () {};
+  const currentTab = sender && sender.tab;
+  const currentTabId = currentTab && typeof currentTab.id === 'number' ? currentTab.id : null;
+  const openerTabId = currentTab && typeof currentTab.openerTabId === 'number' ? currentTab.openerTabId : null;
+
+  function closeOnboarding(response) {
+    complete(response);
+    if (currentTabId === null) {
+      return;
+    }
+    chrome.tabs.remove(currentTabId, function () {
+      void chrome.runtime.lastError;
+    });
+  }
+
+  function createHome(origin) {
+    const url = String(origin || DEFAULT_HALO_HOME).replace(/\/+$/, '') + '/';
+    chrome.tabs.create({ url: url, active: true }, function (tab) {
+      const lastError = chrome.runtime.lastError;
+      if (lastError || !tab || typeof tab.id !== 'number') {
+        complete({ ok: false, error: lastError ? lastError.message : '無法開啟 HaloPSA 主頁' });
+        return;
+      }
+      closeOnboarding({ ok: true, created: true });
+    });
+  }
+
+  function navigate(origin, storedTabId) {
+    if (!origin) {
+      createHome(DEFAULT_HALO_HOME);
+      return;
+    }
+    const targetTabId = typeof onboardingSourceTabId === 'number'
+      ? onboardingSourceTabId
+      : (typeof storedTabId === 'number' ? storedTabId : openerTabId);
+    if (typeof targetTabId !== 'number' || targetTabId === currentTabId) {
+      createHome(origin);
+      return;
+    }
+    chrome.tabs.update(targetTabId, { url: origin + '/', active: true }, function () {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) {
+        onboardingSourceTabId = null;
+        createHome(origin);
+        return;
+      }
+      onboardingSourceTabId = targetTabId;
+      closeOnboarding({ ok: true, reused: true });
+    });
+  }
+
+  chrome.storage.local.get([LAST_HALO_ORIGIN_KEY, LAST_HALO_TAB_KEY], function (data) {
+    const storedOrigin = haloOriginFromUrl(data && data[LAST_HALO_ORIGIN_KEY]);
+    if (!onboardingSourceOrigin && storedOrigin) onboardingSourceOrigin = storedOrigin;
+    const storedTabId = data && typeof data[LAST_HALO_TAB_KEY] === 'number' ? data[LAST_HALO_TAB_KEY] : null;
+    const knownOrigin = onboardingSourceOrigin || storedOrigin;
+    navigate(knownOrigin, knownOrigin ? storedTabId : null);
+  });
+}
+
 function purgeRemovedSettings() {
   chrome.storage.local.get(SETTINGS_KEY, function (data) {
     const current = data && data[SETTINGS_KEY];
-    if (!current || typeof current !== 'object') return;
-
-    const next = Object.assign({}, current);
-    let changed = false;
+    const next = Object.assign({}, current && typeof current === 'object' ? current : {});
+    let changed = !current || typeof current !== 'object';
     REMOVED_SETTINGS.forEach(function (key) {
       if (Object.prototype.hasOwnProperty.call(next, key)) {
         delete next[key];
@@ -54,7 +193,17 @@ function purgeRemovedSettings() {
       }
     });
     if (next.theme !== 'default' && next.theme !== 'cute-ios') {
-      next.theme = 'cute-ios';
+      next.theme = DEFAULT_APPEARANCE.theme;
+      changed = true;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(next, 'accent') || !/^#[0-9a-f]{6}$/i.test(String(next.accent || ''))) {
+      next.accent = DEFAULT_APPEARANCE.accent;
+      changed = true;
+    }
+
+    if (typeof next.ultimateMode !== 'boolean') {
+      next.ultimateMode = DEFAULT_APPEARANCE.ultimateMode;
       changed = true;
     }
 
@@ -455,6 +604,24 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     chrome.runtime.openOptionsPage();
     sendResponse({ ok: true });
     return false;
+  }
+
+  if (message.type === 'HPX_OPEN_ONBOARDING') {
+    try {
+      openOnboardingPage(sendResponse, sender, message.sourceUrl);
+    } catch (error) {
+      sendResponse({ ok: false, error: error.message || '無法開啟首次登入提示' });
+    }
+    return true;
+  }
+
+  if (message.type === 'HPX_OPEN_HALOPSA_HOME') {
+    try {
+      openHaloHomePage(sendResponse, sender);
+    } catch (error) {
+      sendResponse({ ok: false, error: error.message || '無法返回 HaloPSA 主頁' });
+    }
+    return true;
   }
 
   let work = null;

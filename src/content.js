@@ -27,6 +27,9 @@
   // ── 功能：聯絡人名單 / CC 快速加入（獨立於編輯器工具列）──
   function onEmailWindowFound(windowEl) {
     NS.ui.bestiesToolbar.mount(windowEl);
+    NS.features.besties.applyDefaultCc(windowEl).catch(function (error) {
+      NS.warn('Unable to apply default CC recipients', error);
+    });
   }
 
   function onEmailWindowRemoved(windowEl) {
@@ -43,10 +46,13 @@
     // 浮動設定面板（右下角 FAB → 右側滑入）
     NS.ui.settingsPanel.start();
 
+    // Optional three-step first-login hint. It opens an independent extension page when possible.
+    NS.ui.onboarding.start();
+
     // 獨立 Note 編輯視窗：接收背景轉送的套用請求（唯一會寫回 Halo 編輯器的入口）
     NS.features.noteWindow.start();
 
-    // 啟動編輯器偵測器（AI 潤稿 / 整理格式 / 範本工具列）
+    // 啟動編輯器偵測器（AI 潤稿 / 範本工具列）
     NS.core.detector.start({
       onEditorFound: onEditorFound,
       onEditorRemoved: onEditorRemoved,

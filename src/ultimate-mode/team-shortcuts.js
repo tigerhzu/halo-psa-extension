@@ -1,4 +1,4 @@
-/** ultimate-mode/team-shortcuts.js — Timesheets 左側的 Op Team A/B/C 返回入口。 */
+/** ultimate-mode/team-shortcuts.js — Timesheets／Tickets 左側與設定清單同步的 Team 快捷列。 */
 (function () {
   'use strict';
   const NS = window.__HPX;
@@ -28,9 +28,17 @@
     return createLogoImage('hpx-ultimate-timesheets-logo', LOGO_ASSETS.TIMESHEETS);
   }
 
-  /** Team A/B/C 使用各自的圖片識別。 */
+  /** Op Team A/B/C 使用各自的圖片；其他設定 Team 使用安全的文字徽章。 */
   function createTeamLogo(label) {
-    const letter = label.slice(-1).toUpperCase();
+    const match = /^Op\s+Team\s+([ABC])$/i.exec(String(label || '').trim());
+    const letter = match ? match[1].toUpperCase() : '';
+    if (!LOGO_ASSETS[letter]) {
+      const badge = document.createElement('span');
+      badge.className = 'hpx-ultimate-team-logo hpx-ultimate-team-logo-fallback';
+      badge.textContent = label.split(/\s+/).map(function (part) { return part.charAt(0); }).join('').slice(0, 2).toUpperCase();
+      badge.setAttribute('aria-hidden', 'true');
+      return badge;
+    }
     return createLogoImage(
       'hpx-ultimate-team-logo hpx-ultimate-team-logo-' + letter.toLowerCase(),
       LOGO_ASSETS[letter]
@@ -55,6 +63,20 @@
     return /^\/tickets(?:\/|$)/i.test(window.location.pathname);
   }
 
+  function isTeamNavigationRoute() {
+    return isTimesheetsRoute() || isTicketsRoute();
+  }
+
+  function shortcutItems() {
+    const seen = new Set();
+    return cfg.TEAM_ITEMS.filter(function (label) {
+      const key = shared.normalizeText(label);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function findTeamRow(label) {
     const tree = document.querySelector(cfg.HALO_TREE_ROOT);
     if (!tree) return null;
@@ -67,7 +89,7 @@
 
   function discoverTeamIds() {
     let found = 0;
-    cfg.TEAM_ITEMS.forEach(function (label) {
+    shortcutItems().forEach(function (label) {
       const row = findTeamRow(label);
       const id = row && row.getAttribute('data-id');
       if (!id) return;
@@ -88,7 +110,7 @@
   function resumePendingTeam() {
     if (!isTicketsRoute()) return false;
     const label = pendingTeam();
-    if (!label || !cfg.TEAM_ITEMS.some(function (item) {
+    if (!label || !shortcutItems().some(function (item) {
       return shared.normalizeText(item) === shared.normalizeText(label);
     })) return false;
 
@@ -170,16 +192,23 @@
     if (!timesheets) return null;
     brandTimesheets(timesheets);
 
+    const items = shortcutItems();
     let root = nav.querySelector('.' + cfg.SHORTCUTS_ROOT_CLASS);
+    const signature = items.map(shared.normalizeText).join('|');
+    if (root && root.getAttribute('data-team-signature') !== signature) {
+      root.parentNode.removeChild(root);
+      root = null;
+    }
     if (!root) {
       root = document.createElement('div');
       root.className = cfg.SHORTCUTS_ROOT_CLASS;
       root.setAttribute('aria-label', 'Ultimate Mode teams');
-      cfg.TEAM_ITEMS.forEach(function (label) { root.appendChild(createShortcut(label)); });
+      root.setAttribute('data-team-signature', signature);
+      items.forEach(function (label) { root.appendChild(createShortcut(label)); });
       nav.insertBefore(root, timesheets.nextSibling);
     } else {
       shared.safeQueryAll(root, '.' + cfg.SHORTCUT_CLASS).forEach(function (link, index) {
-        if (cfg.TEAM_ITEMS[index]) link.href = shortcutHref(cfg.TEAM_ITEMS[index]);
+        if (items[index]) link.href = shortcutHref(items[index]);
       });
     }
     return root;
@@ -198,14 +227,14 @@
     const discovered = discoverTeamIds();
     const resumed = resumePendingTeam();
     const branded = brandCurrentTimesheets();
-    if (!isTimesheetsRoute()) {
+    if (!isTeamNavigationRoute()) {
       removeShortcuts();
       return { found: discovered > 0 || branded, mounted: false, resumed: resumed, teams: discovered, branded: branded };
     }
 
     const root = mount();
     if (!root) {
-      shared.warnOnce('missing:team-shortcuts', '找不到 Timesheets 左側導覽容器，本輪不加入 Team 快捷按鈕。');
+      shared.warnOnce('missing:team-shortcuts', '找不到 Team 快捷列的左側導覽容器，本輪不加入 Team 快捷按鈕。');
       return { found: false, mounted: false, resumed: false, teams: knownTeamIds.size };
     }
     shared.clearWarning('missing:team-shortcuts');

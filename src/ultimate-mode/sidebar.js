@@ -1,4 +1,4 @@
-/** ultimate-mode/sidebar.js — 保留 Op Team A/B/C（各自含工程師子列）與 Timesheets。 */
+/** ultimate-mode/sidebar.js — 保留設定清單中的 Team（各自含工程師子列）與 Timesheets。 */
 (function () {
   'use strict';
   const NS = window.__HPX;
@@ -9,6 +9,32 @@
   function isOnLeft(node, maxRight) {
     const rect = shared.elementRect(node);
     return !!(rect && rect.left >= -4 && rect.left < 360 && rect.right <= (maxRight || 620));
+  }
+
+  function activeTeamItems(root) {
+    const configured = cfg.TEAM_ITEMS.slice();
+    if (!configured.length) return configured;
+    let params;
+    try { params = new URL(window.location.href).searchParams; } catch (error) { return configured; }
+
+    const parentLabel = params.get('selparentid') || '';
+    const parentMatch = configured.find(function (label) {
+      return shared.normalizeText(label) === shared.normalizeText(parentLabel);
+    });
+    if (parentMatch) return [parentMatch];
+
+    const selectedId = params.get('selid') || '';
+    if (selectedId && root) {
+      const selectedRow = shared.safeQueryAll(root, cfg.HALO_TEAM_ROW_SELECTOR).find(function (row) {
+        return String(row.getAttribute('data-level') || '1') === '1' && row.getAttribute('data-id') === selectedId;
+      });
+      const title = selectedRow && selectedRow.querySelector(cfg.HALO_TEAM_TITLE_SELECTOR);
+      const selectedLabel = title && configured.find(function (label) {
+        return shared.matchesLabel(title, [label], { allowTrailingCounter: true });
+      });
+      if (selectedLabel) return [selectedLabel];
+    }
+    return configured;
   }
 
   function teamLabels(root) {
@@ -42,6 +68,66 @@
     });
   }
 
+  function readExpandedState(node) {
+    if (!node || !node.getAttribute) return null;
+    const aria = node.getAttribute('aria-expanded');
+    if (aria === 'true') return true;
+    if (aria === 'false') return false;
+    const expanded = node.getAttribute('data-expanded');
+    if (expanded === 'true' || expanded === '1') return true;
+    if (expanded === 'false' || expanded === '0') return false;
+    const collapsed = node.getAttribute('data-collapsed');
+    if (collapsed === 'true' || collapsed === '1') return false;
+    if (collapsed === 'false' || collapsed === '0') return true;
+    const className = String(node.className || '').toLowerCase();
+    if (/(chevron|caret|arrow)[-_ ]?(right|closed)|\bcollapsed\b|\bclosed\b/.test(className)) return false;
+    if (/(chevron|caret|arrow)[-_ ]?(down|open)|\bexpanded\b|\bopen\b/.test(className)) return true;
+    return null;
+  }
+
+  function teamExpandedState(row, item) {
+    const stateNodes = [row, item].concat(shared.safeQueryAll(row, cfg.HALO_TEAM_EXPAND_STATE_SELECTORS));
+    for (let index = 0; index < stateNodes.length; index += 1) {
+      const state = readExpandedState(stateNodes[index]);
+      if (state !== null) return state;
+    }
+    if (item && shared.safeQueryAll(item, cfg.HALO_TEAM_ROW_SELECTOR).some(function (child) {
+      return child !== row && String(child.getAttribute('data-level') || '') !== '1';
+    })) return true;
+    return null;
+  }
+
+  function expandActiveTeam(root, visibleTeams) {
+    if (!visibleTeams.length) return false;
+    const target = shared.safeQueryAll(root, cfg.HALO_TEAM_ROW_SELECTOR).find(function (row) {
+      if (String(row.getAttribute('data-level') || '1') !== '1') return false;
+      const title = row.querySelector(cfg.HALO_TEAM_TITLE_SELECTOR);
+      return !!title && shared.matchesLabel(title, visibleTeams, { allowTrailingCounter: true });
+    });
+    if (!target) return false;
+    const item = target.closest('li');
+    const state = teamExpandedState(target, item);
+    if (state !== false || target.getAttribute('data-hpx-expand-requested') === '1') return state === true;
+
+    target.setAttribute('data-hpx-expand-requested', '1');
+    const controls = shared.safeQueryAll(target, cfg.HALO_TEAM_EXPAND_CONTROL_SELECTORS);
+    const control = controls.find(function (node) { return readExpandedState(node) === false; }) || controls[0];
+    try {
+      if (control && typeof control.click === 'function') {
+        control.click();
+        return true;
+      }
+      if (readExpandedState(target) === false && typeof target.click === 'function') {
+        target.click();
+        return true;
+      }
+    } catch (error) {
+      shared.warnOnce('expand:sidebar', 'Unable to expand the active HaloPSA Team row safely.', error);
+    }
+    shared.warnOnce('expand:sidebar-selector', 'Active Team is collapsed, but HaloPSA exposed no reliable expand control.');
+    return false;
+  }
+
   /**
    * HaloPSA 2025/2026 tree structure verified against the live tenant:
    * #halo-tree > ... > ul > li > .treeviewnode (.nodetitle), with an expanded
@@ -51,24 +137,31 @@
   function applyHaloTree() {
     const root = document.querySelector(cfg.HALO_TREE_ROOT);
     if (!root || !isOnLeft(root)) return null;
+    const visibleTeams = activeTeamItems(root);
 
     const teams = new Map();
+    const topLevelItems = [];
     shared.safeQueryAll(root, cfg.HALO_TEAM_ROW_SELECTOR).forEach(function (row) {
-      const title = row.querySelector(cfg.HALO_TEAM_TITLE_SELECTOR);
-      const label = title && shared.matchedLabel(title, cfg.TEAM_ITEMS, { allowTrailingCounter: true });
-      if (!label || teams.has(label)) return;
+      if (String(row.getAttribute('data-level') || '1') !== '1') return;
       const item = row.closest('li');
+      if (item && root.contains(item) && !topLevelItems.includes(item)) topLevelItems.push(item);
+      const title = row.querySelector(cfg.HALO_TEAM_TITLE_SELECTOR);
+      const label = title && shared.matchedLabel(title, visibleTeams, { allowTrailingCounter: true });
+      if (!label || teams.has(label)) return;
       if (item && root.contains(item)) teams.set(label, item);
     });
-    if (teams.size < cfg.TEAM_ITEMS.length) return null;
+    if (visibleTeams.length && teams.size === 0) return null;
 
     // matchedLabel returns normalized labels; normalize the configured lookup too.
-    const keptItems = cfg.TEAM_ITEMS.map(function (label) { return teams.get(shared.normalizeText(label)); }).filter(Boolean);
-    if (keptItems.length !== cfg.TEAM_ITEMS.length) return null;
-    const parent = keptItems[0].parentElement;
+    const keptItems = visibleTeams.map(function (label) { return teams.get(shared.normalizeText(label)); }).filter(Boolean);
+    const parent = (keptItems[0] || topLevelItems[0]) && (keptItems[0] || topLevelItems[0]).parentElement;
     if (!parent || !keptItems.every(function (item) { return item.parentElement === parent; })) return null;
 
-    const keptTeamNames = new Set(cfg.TEAM_ITEMS.map(shared.normalizeText));
+    const keptTeamNames = new Set(visibleTeams.map(shared.normalizeText));
+    if (window.__HPXUltimateBootstrap && window.__HPXUltimateBootstrap.updateTeams) {
+      window.__HPXUltimateBootstrap.updateTeams(visibleTeams);
+    }
+    expandActiveTeam(root, visibleTeams);
     let hidden = 0;
     let protectedCount = 0;
     Array.prototype.forEach.call(parent.children, function (item) {
@@ -82,7 +175,15 @@
       }
       if (shared.hide(item, section)) hidden += 1;
     });
-    return { found: true, hidden: hidden, rows: parent.children.length, protected: protectedCount };
+    return {
+      found: true,
+      hidden: hidden,
+      rows: parent.children.length,
+      protected: protectedCount,
+      configuredTeams: cfg.TEAM_ITEMS.length,
+      visibleTeams: visibleTeams.length,
+      matchedTeams: teams.size,
+    };
   }
 
   function collectRows(root) {
@@ -141,6 +242,9 @@
     const haloLinks = shared.safeQueryAll(document, cfg.HALO_ICON_LINK_SELECTOR).filter(function (link) {
       return isOnLeft(link, 180) && !shared.isOwnUi(link);
     });
+    const isConfiguredTeamLink = function (link) {
+      return shared.matchesLabel(link, cfg.TEAM_ITEMS, { allowTrailingCounter: true });
+    };
     const hasTimesheets = haloLinks.some(function (link) { return shared.matchesLabel(link, ['Timesheets']); });
     const signatureCount = haloLinks.filter(function (link) {
       return shared.matchesLabel(link, cfg.ICON_ITEMS_TO_HIDE);
@@ -148,7 +252,11 @@
     if (hasTimesheets && signatureCount >= 3) {
       let haloHidden = 0;
       haloLinks.forEach(function (link) {
-        if (shared.matchesLabel(link, ['Timesheets'])) return;
+        // 簡單模式只精簡未選取的原生入口；使用者設定保留的 Team 必須繼續存在。
+        if (shared.matchesLabel(link, ['Timesheets']) || isConfiguredTeamLink(link)) return;
+        // 只隱藏已驗證的原生入口。未知／自訂入口先保留，避免把使用者自己的 Team
+        // 當成一般側欄項目誤藏起來。
+        if (!shared.matchesLabel(link, cfg.ICON_ITEMS_TO_HIDE, { allowTrailingCounter: true })) return;
         if (shared.hide(link, section)) haloHidden += 1;
       });
       return haloHidden;
@@ -186,7 +294,7 @@
 
       const root = findTeamRoot();
       if (!root) {
-      shared.warnOnce('missing:sidebar', '找不到包含 Op Team A/B/C 的左側 Team tree，本輪只處理 icon rail。');
+      shared.warnOnce('missing:sidebar', '找不到包含設定 Team 的左側 Team tree，本輪只處理 icon rail。');
         return { found: false, hidden: hideIconRailItems() };
       }
       shared.clearWarning('missing:sidebar');
@@ -205,5 +313,5 @@
     });
   }
 
-  NS.ultimate.sidebar = { apply: apply, findRoot: findTeamRoot };
+  NS.ultimate.sidebar = { apply: apply, findRoot: findTeamRoot, _activeTeamItems: activeTeamItems };
 })();

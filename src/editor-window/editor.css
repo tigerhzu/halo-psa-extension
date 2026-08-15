@@ -139,7 +139,7 @@ body {
 .hpx-ew-format-btn:focus-visible,
 .hpx-ew-format-toggle:focus-visible,
 .hpx-ew-format-menu button:focus-visible {
-  outline: 2px solid #3a82f7;
+  outline: 2px solid #1a8987;
   outline-offset: 1px;
 }
 
@@ -276,7 +276,7 @@ body {
 }
 
 .hpx-ew__editor:focus {
-  border-color: var(--hpx-accent, #3a82f7);
+  border-color: var(--hpx-accent, #1a8987);
   box-shadow: 0 0 0 3px rgba(58, 130, 247, 0.12);
 }
 
@@ -287,7 +287,7 @@ body {
 }
 
 .hpx-ew__editor .hpx-ew__image-selected {
-  outline: 2px solid var(--hpx-accent, #3a82f7);
+  outline: 2px solid var(--hpx-accent, #1a8987);
   outline-offset: 3px;
 }
 
@@ -300,7 +300,7 @@ body {
   padding: 0;
   border: 2px solid #fff;
   border-radius: 3px;
-  background: var(--hpx-accent, #3a82f7);
+  background: var(--hpx-accent, #1a8987);
   box-shadow: 0 1px 4px rgba(20, 35, 55, 0.35);
   cursor: nwse-resize;
   touch-action: none;

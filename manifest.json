@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Tiger 的第三隻手",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "minimum_chrome_version": "122",
-  "description": "強化 HaloPSA 工單撰寫、Timesheet 與外觀。",
+  "description": "強化 HaloPSA 工單撰寫、Timesheet、簡單模式與自訂介面。",
   "icons": {
     "16": "assets/icons/halo-logo16.png",
     "48": "assets/icons/halo-logo48.png",
@@ -69,7 +69,6 @@
         "src/config/ai-actions.js",
         "src/core/pet-registry.js",
         "src/config/template-data.js",
-        "src/config/format-rules.js",
         "src/config/besties-config.js",
         "src/config/time-adjuster-config.js",
         "src/core/editor-adapter.js",
@@ -82,7 +81,6 @@
         "src/ui/loader.js",
         "src/ui/theme.js",
         "src/ui/preview-modal.js",
-        "src/features/format-cleanup.js",
         "src/features/ticket-rich-format.js",
         "src/features/ai-rewrite.js",
         "src/features/note-window.js",
@@ -95,19 +93,22 @@
         "src/ui/besties-toolbar.js",
         "src/ui/pet-animator.js",
         "src/ultimate-mode/shared.js",
+        "src/ultimate-mode/header.js",
         "src/ultimate-mode/sidebar.js",
         "src/ultimate-mode/team-shortcuts.js",
         "src/ultimate-mode/ticket-actions.js",
+        "src/ultimate-mode/ticket-utilities.js",
         "src/ultimate-mode/ticket-info.js",
         "src/ultimate-mode/user-info.js",
         "src/ultimate-mode/observer.js",
         "src/ultimate-mode/index.js",
         "src/ui/settings-panel.js",
+        "src/onboarding/index.js",
         "src/core/editor-detector.js",
         "src/core/email-window-detector.js",
         "src/content.js"
       ],
-      "css": ["src/styles/toolbar.css", "src/styles/modal.css", "src/styles/theme-cute-ios.css", "src/styles/settings-panel.css", "src/styles/timesheet-align.css", "src/styles/time-adjuster.css"]
+      "css": ["src/styles/toolbar.css", "src/styles/modal.css", "src/styles/theme-cute-ios.css", "src/styles/settings-panel.css", "src/styles/onboarding.css", "src/styles/timesheet-align.css", "src/styles/time-adjuster.css"]
     }
   ],
   "web_accessible_resources": [

@@ -18,6 +18,7 @@
     // ── 名單儲存位置（與 options.js 必須一致）──
     STORAGE_KEY: 'hpx_settings',
     GROUPS_FIELD: 'contactGroups',
+    DEFAULT_CC_FIELD: 'defaultCcRecipients',
 
     /**
      * 預設群組（種子）。設定頁尚未存任何名單時使用。
@@ -47,6 +48,15 @@
       '.hpx-ts-preview-backdrop',
       '.hpx-ts-preview',
       '.hpx-ts-editor',
+    ],
+
+    /** New Ticket 也可能使用 emailcc 欄位名稱，但不是寄信視窗。 */
+    NEW_TICKET_ROOT_SELECTORS: [
+      '.new-ticket-screen',
+      '[data-testid*="new-ticket" i]',
+      '[data-test*="new-ticket" i]',
+      '[class*="new-ticket" i]',
+      '[class*="newticket" i]',
     ],
 
     /**

@@ -13,6 +13,7 @@
     所以所有邏輯都在 editor.js，這裡只有結構。
   -->
   <link rel="stylesheet" href="../styles/toolbar.css" />
+  <link rel="stylesheet" href="../styles/theme-cute-ios.css" />
   <link rel="stylesheet" href="../styles/modal.css" />
   <link rel="stylesheet" href="editor.css" />
 </head>
@@ -37,7 +38,7 @@
     <div class="hpx-toolbar hpx-ew__toolbar" id="hpx-ew-toolbar"></div>
 
     <div class="hpx-ew__hint" id="hpx-ew-selhint">
-      上方工具列可直接編輯文字格式；AI 與整理格式預設<strong>只處理選取的文字</strong>，未選取的部分連同表格、圖片、連結原樣保留。
+      上方工具列可直接編輯文字格式；AI 預設<strong>只處理選取的文字</strong>，未選取的部分連同表格、圖片、連結原樣保留。
     </div>
 
     <div
@@ -60,14 +61,13 @@
 
   <!-- 載入順序即相依關係，與 manifest 的 content_scripts 同理 -->
   <script src="../core/namespace.js"></script>
-  <script src="../config/format-rules.js"></script>
+  <script src="../ui/theme.js"></script>
   <script src="../config/template-data.js"></script>
   <script src="../config/ai-actions.js"></script>
   <script src="../core/html-sanitizer.js"></script>
   <script src="../core/html-fidelity.js"></script>
   <script src="../core/image-placeholder.js"></script>
   <script src="../ai/ai-adapter.js"></script>
-  <script src="../features/format-cleanup.js"></script>
   <script src="../features/ticket-rich-format.js"></script>
   <script src="../ui/toast.js"></script>
   <script src="../ui/preview-modal.js"></script>

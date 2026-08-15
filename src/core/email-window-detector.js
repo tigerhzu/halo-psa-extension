@@ -42,6 +42,31 @@
     });
   }
 
+  function isNewTicketPage() {
+    const path = String(window.location.pathname || '');
+    if (/\/newticket(?:\/|$)/i.test(path)) return true;
+    const selectors = NS.config.besties.NEW_TICKET_ROOT_SELECTORS || [];
+    return selectors.some(function (selector) {
+      try {
+        const root = document.querySelector(selector);
+        if (!root) return false;
+        const style = window.getComputedStyle ? window.getComputedStyle(root) : null;
+        return !style || (style.display !== 'none' && style.visibility !== 'hidden');
+      } catch (e) {
+        return false;
+      }
+    });
+  }
+
+  /** 首次登入提示若因背景頁無法開啟而回退成內嵌精靈，先卸載摯友工具列。 */
+  function isOnboardingOpen() {
+    return !!(
+      document.documentElement &&
+      document.documentElement.classList &&
+      document.documentElement.classList.contains('hpx-onboarding-open')
+    );
+  }
+
   /** 容器鄰近文字是否「像寄信視窗」（避免誤掛）。同時看可見文字與欄位的 placeholder/aria-label。 */
   function looksLikeEmailWindow(container) {
     const kws = NS.config.besties.EMAIL_WINDOW_KEYWORDS.map(function (k) {
@@ -124,6 +149,8 @@
    * 而是看：像寄信視窗（含 主旨/副本/送出/回覆… 關鍵字）+ 內含可編輯欄位。
    */
   function findEmailWindows() {
+    if (isNewTicketPage()) return [];
+    if (isOnboardingOpen()) return [];
     const candidates = collectCandidates();
 
     let windows = candidates.filter(function (el) {
@@ -143,10 +170,23 @@
     return windows;
   }
 
+  function clearTracked() {
+    tracked.forEach(function (el) {
+      tracked.delete(el);
+      try {
+        callbacks.onRemoved && callbacks.onRemoved(el);
+      } catch (e) {
+        NS.warn('onRemoved（寄信視窗）發生錯誤', e);
+      }
+      el.removeAttribute(ENHANCED_ATTR);
+    });
+  }
+
   function scan() {
     scanScheduled = false;
-    if (!isHaloPage()) {
-      NS.log('寄信視窗掃描：非 Halo 頁面，略過');
+    if (!isHaloPage() || isNewTicketPage() || isOnboardingOpen()) {
+      clearTracked();
+      NS.log('寄信視窗掃描：非寄信頁面（含 New Ticket／首次登入提示），略過');
       return;
     }
 

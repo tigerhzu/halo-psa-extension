@@ -20,6 +20,12 @@
   color: #2a2f36;
 }
 
+/* New Ticket 使用 Halo 原生編輯工具；Extension 工具列只在此頁隱藏，
+   一般 Ticket / Activity Note 的工具列不受影響。 */
+.hpx-toolbar.hpx-new-ticket-hidden {
+  display: none !important;
+}
+
 .hpx-toolbar * {
   box-sizing: border-box;
 }
@@ -87,14 +93,6 @@
 }
 .hpx-tb-btn--ai:hover {
   background: #e2ecff;
-}
-
-.hpx-tb-btn--format {
-  border-color: #b9e3c6;
-  background: #effaf2;
-}
-.hpx-tb-btn--format:hover {
-  background: #ddf3e3;
 }
 
 .hpx-tb-btn--template {
@@ -217,7 +215,7 @@
   color: #6b7480;
 }
 
-/* 🐯 Loading 指示器（AI / 整理格式 執行中） */
+/* 🐯 Loading 指示器（AI 執行中） */
 .hpx-loader {
   position: fixed;
   right: 16px;

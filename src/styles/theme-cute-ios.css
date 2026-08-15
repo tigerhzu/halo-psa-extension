@@ -17,7 +17,7 @@
  * --hpx-opacity（0~1）控制主題覆蓋層的不透明度。
  */
 html {
-  --hpx-accent: #3a82f7;
+  --hpx-accent: #1a8987;
   --hpx-accent-2: color-mix(in srgb, var(--hpx-accent), #000 14%);
   --hpx-accent-soft: color-mix(in srgb, var(--hpx-accent) 18%, transparent);
   --hpx-glass-opacity: 0.85;
@@ -60,17 +60,22 @@ html[data-hpx-theme="cute-ios"] .hpx-toolbar {
  */
 html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar {
   position: relative !important;
-  z-index: 2147483645 !important;
+  z-index: 2147483647 !important;
   overflow: visible !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   padding: 6px 8px;
   gap: 6px;
 }
+html[data-hpx-theme="cute-ios"] .hpx-besties-layer-host {
+  position: relative !important;
+  z-index: 2147483646 !important;
+  overflow: visible !important;
+}
 html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown,
 html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown-menu {
   position: relative;
-  z-index: 2147483646 !important;
+  z-index: 2147483647 !important;
 }
 html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown-menu {
   position: absolute;
@@ -113,8 +118,7 @@ html[data-hpx-theme="cute-ios"] .hpx-tb-btn:active {
 html[data-hpx-theme="cute-ios"] .hpx-tb-btn--ai,
 html[data-hpx-theme="cute-ios"] .hpx-tb-btn--font,
 html[data-hpx-theme="cute-ios"] .hpx-tb-btn--besties,
-html[data-hpx-theme="cute-ios"] .hpx-tb-btn--template,
-html[data-hpx-theme="cute-ios"] .hpx-tb-btn--format {
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--template {
   background: var(--hpx-accent-soft);
   border-color: transparent;
   color: var(--hpx-ink);
@@ -315,6 +319,22 @@ html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar input {
   background: rgba(255, 255, 255, 0.92) !important;
   border-radius: 10px !important;
   color: #2c3242 !important;
+}
+/* Halo 左上方 Search Tickets 欄位的 placeholder 不能沿用原生淡色，
+ * 否則在 Cute 的淺色輸入框上幾乎看不見。marker 與語意 placeholder
+ * 兩組條件都保留，兼容不同版本的 sidebar 結構。 */
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar input::placeholder,
+html[data-hpx-theme="cute-ios"] .hpx-theme-main input::placeholder,
+html[data-hpx-theme="cute-ios"] .hpx-theme-wrap input::placeholder,
+html[data-hpx-theme="cute-ios"] input[placeholder*="search ticket" i]::placeholder,
+html[data-hpx-theme="cute-ios"] input[aria-label*="search ticket" i]::placeholder {
+  color: #667085 !important;
+  opacity: 1 !important;
+}
+html[data-hpx-theme="cute-ios"] input[placeholder*="search ticket" i],
+html[data-hpx-theme="cute-ios"] input[aria-label*="search ticket" i] {
+  color: #2c3242 !important;
+  caret-color: #2c3242 !important;
 }
 
 /*

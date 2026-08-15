@@ -19,9 +19,14 @@
 
   const STORAGE_KEY = 'hpx_settings';
   const DEFAULT_THEME = 'cute-ios';
-  const DEFAULT_ACCENT = '#3a82f7'; // hex（與設定頁一致）
+  const DEFAULT_ACCENT = '#1a8987'; // 目前 Cute 色；與首次登入預設一致
   const DEFAULT_OPACITY = 100; // 百分比 40~100
   const VALID = ['default', 'cute-ios'];
+
+  function normalizeAccent(value) {
+    const hex = String(value || '').trim();
+    return /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : DEFAULT_ACCENT;
+  }
 
   const SIDEBAR_MARKER = 'hpx-theme-sidebar'; // 逐欄（fallback）樣式用
   const ICONBAR_MARK = 'hpx-theme-iconbar';
@@ -383,7 +388,7 @@
     const root = document.documentElement;
     root.setAttribute('data-hpx-theme', theme);
     // accent 直接以 hex 設成 CSS 變數（不經對照表）；所有自訂 UI 都吃 var(--hpx-accent)
-    const accent = s.accent || DEFAULT_ACCENT;
+    const accent = normalizeAccent(s.accent);
     root.style.setProperty('--hpx-accent', accent);
 
     let op = typeof s.opacity === 'number' ? s.opacity : DEFAULT_OPACITY;
@@ -403,7 +408,28 @@
       return;
     }
     chrome.storage.local.get(STORAGE_KEY, function (data) {
-      cb && cb((data && data[STORAGE_KEY]) || {});
+      const current = (data && data[STORAGE_KEY]) || {};
+      const next = Object.assign({}, current);
+      let changed = false;
+      if (next.theme !== 'default' && next.theme !== 'cute-ios') {
+        next.theme = DEFAULT_THEME;
+        changed = true;
+      }
+      if (!Object.prototype.hasOwnProperty.call(next, 'accent') || !/^#[0-9a-f]{6}$/i.test(String(next.accent || ''))) {
+        next.accent = DEFAULT_ACCENT;
+        changed = true;
+      }
+      if (typeof next.opacity !== 'number') {
+        next.opacity = DEFAULT_OPACITY;
+        changed = true;
+      }
+      // 新使用者預設不開啟簡單模式；已有明確選擇時保留原值。
+      if (typeof next.ultimateMode !== 'boolean') {
+        next.ultimateMode = false;
+        changed = true;
+      }
+      if (changed) chrome.storage.local.set({ [STORAGE_KEY]: next });
+      cb && cb(next);
     });
   }
 

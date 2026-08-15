@@ -133,6 +133,26 @@
     ULTIMATE_MODE: {
       STORAGE_KEY: 'hpx_settings',
       SETTING_FIELD: 'ultimateMode',
+      TEAMS_FIELD: 'ultimateTeams',
+      TEAM_CATALOG_VERSION_FIELD: 'ultimateTeamsCatalogVersion',
+      TEAM_CATALOG_VERSION: 2,
+      DEFAULT_TEAM_ITEMS: [
+        'Op Team A', 'Op Team B', 'Op Team C', 'Other Support',
+        'Project Manager', 'SecOp Team A', 'Technical Solutions Division',
+        'RD', 'Thailand Team', 'Sales&Admin',
+      ],
+      TEAM_PRESETS: [
+        { id: 'op-team-a', label: 'Op Team A', teams: ['Op Team A'] },
+        { id: 'op-team-b', label: 'Op Team B', teams: ['Op Team B'] },
+        { id: 'op-team-c', label: 'Op Team C', teams: ['Op Team C'] },
+        { id: 'other-support', label: 'Other Support', teams: ['Other Support'] },
+        { id: 'project-manager', label: 'Project Manager', teams: ['Project Manager'] },
+        { id: 'secop-team-a', label: 'SecOp Team A', teams: ['SecOp Team A'] },
+        { id: 'technical-solutions-division', label: 'Technical Solutions Division', teams: ['Technical Solutions Division'] },
+        { id: 'rd', label: 'RD', teams: ['RD'] },
+        { id: 'thailand-team', label: 'Thailand Team', teams: ['Thailand Team'] },
+        { id: 'sales-admin', label: 'Sales&Admin', teams: ['Sales&Admin'] },
+      ],
       HIDDEN_CLASS: 'halo-ultimate-hidden',
       OWNED_ATTR: 'data-hpx-ultimate-hidden',
       SECTION_ATTR: 'data-hpx-ultimate-section',
@@ -140,12 +160,27 @@
       SCAN_DEBOUNCE_MS: 32,
       MAX_MUTATION_WAIT_MS: 240,
       ROUTE_POLL_MS: 800,
+      NEW_TICKET_ROOT_SELECTORS: [
+        '.new-ticket-screen',
+        '[data-testid*="new-ticket" i]',
+        '[data-test*="new-ticket" i]',
+        '[class*="new-ticket" i]',
+        '[class*="newticket" i]',
+      ],
       OBSERVER_URGENT_SELECTORS: [
         '#halo-tree',
         '#app-nav-menu .app-nav-menu-sidebar',
         '.details_page_title',
         '.details-group-header',
         '.timesheet-screen',
+        '.new-ticket-screen',
+        '[data-testid*="new-ticket" i]',
+        'header',
+        '[role="banner"]',
+        '[data-testid*="header" i]',
+        '[data-testid*="top-bar" i]',
+        '[class*="app-header" i]',
+        '[class*="topbar" i]',
       ],
       TEXT_SUBTREE_SKIP_SELECTOR: 'ul, ol, [role="group"], [role="tree"], [role="menu"]',
       TEXT_CANDIDATE_SELECTORS: [
@@ -158,6 +193,8 @@
         '.hpx-toolbar',
         '.hpx-sp',
         '.hpx-sp-pet',
+        '.hpx-sidebar-controls',
+        '.hpx-sidebar-popover',
         '.hpx-modal-overlay',
         '.hpx-loader',
         '.hpx-toast-container',
@@ -165,12 +202,30 @@
         '.hpx-tta',
         '.hpx-ultimate-team-shortcuts',
         '.hpx-ultimate-timesheets-logo',
+        '.hpx-onboarding-overlay',
       ],
 
       SIDEBAR: {
         HALO_TREE_ROOT: '#halo-tree',
         HALO_TEAM_ROW_SELECTOR: '.treeviewnode',
         HALO_TEAM_TITLE_SELECTOR: '.nodetitle',
+        HALO_TEAM_EXPAND_STATE_SELECTORS: [
+          '[aria-expanded]',
+          '[data-expanded]',
+          '[data-collapsed]',
+        ],
+        HALO_TEAM_EXPAND_CONTROL_SELECTORS: [
+          '[aria-label*="expand" i]',
+          '[title*="expand" i]',
+          '[aria-label*="collapse" i]',
+          '[title*="collapse" i]',
+          '[role="button"][aria-expanded]',
+          'button[aria-expanded]',
+          '[class*="chevron" i]',
+          '[class*="caret" i]',
+          '[class*="tree-toggle" i]',
+          '[class*="expand" i]',
+        ],
         HALO_ICON_LINK_SELECTOR: '.app-side-link',
         HALO_NAV_MENU_SELECTOR: '#app-nav-menu .app-nav-menu-sidebar',
         SHORTCUTS_ROOT_CLASS: 'hpx-ultimate-team-shortcuts',
@@ -202,8 +257,17 @@
           '[aria-label]',
           '[title]',
         ],
-        KEEP_ITEMS: ['Op Team A', 'Op Team B', 'Op Team C', 'Timesheets'],
-        TEAM_ITEMS: ['Op Team A', 'Op Team B', 'Op Team C'],
+        KEEP_ITEMS: [
+          'Op Team A', 'Op Team B', 'Op Team C', 'Other Support',
+          'Project Manager', 'SecOp Team A', 'Technical Solutions Division',
+          'RD', 'Thailand Team', 'Sales&Admin', 'Timesheets',
+        ],
+        TEAM_ITEMS: [
+          'Op Team A', 'Op Team B', 'Op Team C', 'Other Support',
+          'Project Manager', 'SecOp Team A', 'Technical Solutions Division',
+          'RD', 'Thailand Team', 'Sales&Admin',
+        ],
+        // Timesheets 快捷入口會與目前設定的 Team 清單同步，順序也沿用清單順序。
         ICON_ITEMS_TO_HIDE: [
           'Service Desk', 'Projects', 'Calendar', 'Customers', 'Assets',
           'My Approvals', 'Knowledge Base', 'Suppliers', 'Search', 'Reporting',
@@ -298,6 +362,35 @@
         MAX_CONTROL_LOOKUP_DEPTH: 5,
       },
 
+      /** Ticket 詳情頁右上角的上一筆／開新視窗／分享／列印等工具列。 */
+      TICKET_UTILITIES: {
+        SECTION: 'ticket-utilities',
+        ROOT_SELECTORS: [
+          '.details_page_title',
+          '.ticketDetailsScreen',
+          '.details-container',
+          '.ticket-details',
+          '[data-testid*="ticket-detail" i]',
+          '[data-testid*="details-page" i]',
+          '[class*="ticket-detail" i]',
+          '[class*="details-page" i]',
+        ],
+        CONTROL_SELECTORS: [
+          'button',
+          'a',
+          '[role="button"]',
+          '[aria-label]',
+          '[title]',
+        ],
+        KEEP_LABELS: ['New Ticket'],
+        MAX_TOP_PX: 140,
+        RIGHT_START_RATIO: 0.78,
+        MAX_CONTROL_WIDTH: 110,
+        MAX_CONTROL_HEIGHT: 72,
+        MIN_SIGNATURE_MATCHES: 3,
+        MAX_OWNER_DEPTH: 4,
+      },
+
       TICKET_INFO: {
         SECTION: 'ticket-info',
         HEADINGS: ['Ticket Information'],
@@ -342,6 +435,43 @@
           'Phone Number',
           'Site Phone Number',
         ],
+      },
+
+      /**
+       * 簡單模式頁首右上角的 Halo 原生工具按鈕。
+       * 先用 header / banner 語意縮小候選，再由 header.js 以位置與
+       * 「New Ticket + 多個控制項」簽章驗證；找不到簽章時整區跳過。
+       */
+      HEADER: {
+        ROOT_SELECTORS: [
+          'header',
+          '[role="banner"]',
+          '[data-testid*="header" i]',
+          '[data-testid*="top-bar" i]',
+          '[data-test*="header" i]',
+          '[class*="app-header" i]',
+          '[class*="topbar" i]',
+          '[class*="top-bar" i]',
+        ],
+        CONTROL_SELECTORS: [
+          'button',
+          'a',
+          '[role="button"]',
+          '[aria-label]',
+          '[title]',
+        ],
+        KEEP_LABELS: [
+          'New Ticket',
+          'New ticket',
+        ],
+        MAX_ROOT_TOP_PX: 140,
+        MIN_ROOT_WIDTH_PX: 280,
+        RIGHT_START_RATIO: 0.62,
+        CONTROL_MAX_WIDTH_PX: 180,
+        CONTROL_MAX_HEIGHT_PX: 80,
+        MIN_CONTROL_SIGNATURE: 4,
+        MIN_ICON_SIGNATURE: 3,
+        FALLBACK_MAX_ANCESTOR_DEPTH: 5,
       },
 
       DETAILS: {

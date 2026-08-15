@@ -1,7 +1,7 @@
 /**
  * editor-adapter.js
  * 編輯器讀寫抽象層。把「不同型態的編輯器」統一成一致的 get/set/insert 介面，
- * 讓上層功能（AI 潤稿、整理格式、範本）不需要在意底層是 contenteditable、
+ * 讓上層功能（AI 潤稿、範本）不需要在意底層是 contenteditable、
  * iframe 還是 textarea。
  *
  * ── 覆蓋能否生效的關鍵 ──
