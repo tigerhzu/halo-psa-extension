@@ -1,5 +1,9 @@
 # HaloPSA Writing Helper
 
+<p align="center">
+  <img src="assets/branding/halopsa-logo.png" alt="HaloPSA Writing Helper logo" width="180" />
+</p>
+
 Chrome Manifest V3 擴充功能，協助 HaloPSA 使用者撰寫 Activity Note、整理工單、調整 Timesheet 與自訂工作介面。
 
 ## 安裝
