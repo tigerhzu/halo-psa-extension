@@ -601,8 +601,18 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   if (!message) return false;
 
   if (message.type === 'HPX_OPEN_OPTIONS') {
-    chrome.runtime.openOptionsPage();
-    sendResponse({ ok: true });
+    try {
+      const opening = chrome.runtime.openOptionsPage();
+      if (opening && typeof opening.then === 'function') {
+        opening.then(function () { sendResponse({ ok: true }); }).catch(function (error) {
+          sendResponse({ ok: false, error: error && error.message ? error.message : '無法開啟設定頁' });
+        });
+        return true;
+      }
+      sendResponse({ ok: true });
+    } catch (error) {
+      sendResponse({ ok: false, error: error && error.message ? error.message : '無法開啟設定頁' });
+    }
     return false;
   }
 

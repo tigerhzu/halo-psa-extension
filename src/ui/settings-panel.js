@@ -65,6 +65,21 @@
     try { return chrome.runtime.getURL(path); } catch (e) { return ''; }
   }
 
+  function openOptionsPage() {
+    try {
+      chrome.runtime.sendMessage({ type: 'HPX_OPEN_OPTIONS' }, function (response) {
+        const lastError = chrome.runtime.lastError;
+        if (lastError || !response || response.ok === false) {
+          const url = getExtUrl('src/options/options.html');
+          if (url) window.open(url, '_blank');
+        }
+      });
+    } catch (error) {
+      const url = getExtUrl('src/options/options.html');
+      if (url) window.open(url, '_blank');
+    }
+  }
+
   function loadSettings(cb) {
     chrome.storage.local.get(STORAGE_KEY, function (data) {
       const settings = Object.assign({}, DEFAULTS, (data && data[STORAGE_KEY]) || {});
@@ -894,7 +909,7 @@
     sidebarControlsEl.appendChild(makeSidebarControl('settings', 'settings', function () {
       closeSidebarPopover();
       if (panelEl) SettingsPanel.close();
-      chrome.runtime.sendMessage({ type: 'HPX_OPEN_OPTIONS' });
+      openOptionsPage();
     }));
     document.body.appendChild(sidebarControlsEl);
     refreshSidebarControls();

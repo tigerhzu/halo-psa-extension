@@ -204,6 +204,14 @@ assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode
 assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-b\.webp/);
 assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-c\.webp/);
 assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/timesheets\.webp/);
+assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-project-manager\.png/);
+assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-rd\.png/);
+assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-sec-a\.png/);
+assert.match(read('src/ultimate-mode/team-shortcuts.js'), /'sec op team a':/);
+assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-other-support\.png/);
+assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-technical-solutions\.png/);
+assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-sales-admin\.png/);
+assert.match(read('src/ultimate-mode/team-shortcuts.js'), /assets\/ultimate-mode\/team-thailand\.png/);
 assert.match(read('src/ultimate-mode/team-shortcuts.js'), /const branded = brandCurrentTimesheets\(\)/, 'Timesheets logo 必須跨頁維持');
 assert.match(read('src/ultimate-mode/team-shortcuts.js'), /function isTeamNavigationRoute\(\)/, 'Team 快捷列必須集中判斷可保留的頁面路由');
 assert.match(read('src/ultimate-mode/team-shortcuts.js'), /return isTimesheetsRoute\(\) \|\| isTicketsRoute\(\)/, 'Team 快捷列必須在 Timesheets 與 Tickets 路由保留');

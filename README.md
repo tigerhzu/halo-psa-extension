@@ -16,13 +16,15 @@ Chrome Manifest V3 擴充功能，協助 HaloPSA 使用者撰寫 Activity Note�
 
 ## 首次登入提示
 
-首次在 HaloPSA 載入 Extension 時，會在獨立的 Extension 分頁開啟「首次登入提示」，不會把精靈疊在 HaloPSA 頁面上。內容包含三個步驟：
+首次在 HaloPSA 載入 Extension 時，會在獨立的 Extension 分頁開啟「首次登入提示」，不會把精靈疊在 HaloPSA 頁面上。內容包含五個步驟：
 
 1. 選擇簡單模式要保留的 Team；Op Team A、B、C、Other Support、Project Manager、SecOp Team A、Technical Solutions Division、RD、Thailand Team 與 Sales&Admin 都可以個別選擇，只會顯示勾選的 Team。
 2. 選擇 Azure OpenAI 或 Google Gemini，並視需要填入 API 資訊。
 3. 設定「永遠 CC 收件人」，所有文件自動 cc。
+4. 認識 HaloPSA 主頁左下角的 `mode`、`color`、`pet` 與 `settings` 四個獨立設定列功能。
+5. 以 HaloPSA「編輯頁」示意操作，包含 Activity Note、Time Taken、時間調整、AI 按鈕與 Job Code；點擊「編輯」可開啟互動示範。
 
-三個步驟都可略過。完成或關閉後，可由 HaloPSA 浮動設定面板的 `設定` 進入完整設定頁，再開啟「首次登入提示」；設定只保存在 `chrome.storage.local`。若瀏覽器暫時無法開啟獨立分頁，Extension 會回退成內嵌精靈，並先隱藏摯友工具列避免遮擋。
+五個步驟都可略過。完成或關閉後，可由 HaloPSA 浮動設定面板的 `設定` 進入完整設定頁，再開啟「首次登入提示」；設定只保存在 `chrome.storage.local`。若瀏覽器暫時無法開啟獨立分頁，Extension 會回退成內嵌精靈，並先隱藏摯友工具列避免遮擋。
 
 ## v0.9.3 重點功能
 
@@ -36,10 +38,12 @@ Chrome Manifest V3 擴充功能，協助 HaloPSA 使用者撰寫 Activity Note�
 - 完全移除「整理格式」功能，避免在工具列、編輯器與預覽介面留下已停用的按鈕。
 - 完整設定頁提供一鍵匯出／匯入，可選擇是否包含 API Key；不含 API Key 的設定檔適合安全分享或備份。
 - 首次登入提示、Team 白名單、自訂 Accent、永遠 CC 與既有 AI／Timesheet 功能持續保留。
+- 首次登入提示將左下四個設定列功能與 HaloPSA 編輯頁分成第 4、5 頁；編輯頁示意包含時間調整、AI 工具、快速範本與 Job Code。
 
 - 簡單模式的 More 選單會保留 `Final Check with Customer/Sales`。
 - 完成 Final Check 後，HaloPSA 原生的 `Resolve Ticket`／`Resolved Ticket` 按鈕仍可使用。
-- Team A、Team B、Team C 與 Timesheets Sidebar 使用新版星河圖示。
+- Op Team A、Team B、Team C 與 Timesheets Sidebar 使用各自 Team logo；Op Team A 維持原本的 `team-a.webp`。
+- Project Manager、RD、SecOp Team A、Other Support、Technical Solutions Division、Sales&Admin 與 Thailand Team 快捷入口使用各自 Team logo；尚未提供素材的 Team 會顯示文字徽章。
 - New Ticket 使用 Halo 原生編輯工具列；Extension 自己的 AI／範本工具列只在 New Ticket 隱藏，一般 Ticket 與 Activity Note 不受影響。
 - Ticket 詳情頁右上角的上一筆、開新視窗、分享、列印與其他 utility actions 會在簡單模式隱藏；主要 Ticket status actions 仍保留。
 - Color 區提供原生調色盤；可選任意自訂 Accent 顏色，設定會保存並即時套用到 Extension UI。

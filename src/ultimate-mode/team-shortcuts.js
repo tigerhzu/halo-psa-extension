@@ -11,6 +11,16 @@
     C: 'assets/ultimate-mode/team-c.webp',
     TIMESHEETS: 'assets/ultimate-mode/timesheets.webp',
   });
+  const TEAM_LOGO_ASSETS = Object.freeze({
+    'other support': 'assets/ultimate-mode/team-other-support.png',
+    'project manager': 'assets/ultimate-mode/team-project-manager.png',
+    // normalizeText 會將 Halo 的「SecOp」拆成「Sec Op」。
+    'sec op team a': 'assets/ultimate-mode/team-sec-a.png',
+    'technical solutions division': 'assets/ultimate-mode/team-technical-solutions.png',
+    'rd': 'assets/ultimate-mode/team-rd.png',
+    'thailand team': 'assets/ultimate-mode/team-thailand.png',
+    'sales&admin': 'assets/ultimate-mode/team-sales-admin.png',
+  });
 
   function createLogoImage(className, assetPath) {
     const image = document.createElement('img');
@@ -28,20 +38,25 @@
     return createLogoImage('hpx-ultimate-timesheets-logo', LOGO_ASSETS.TIMESHEETS);
   }
 
-  /** Op Team A/B/C 使用各自的圖片；其他設定 Team 使用安全的文字徽章。 */
+  /** 使用已配置的 Team logo；沒有素材的 Team 保留安全的文字徽章。 */
   function createTeamLogo(label) {
     const match = /^Op\s+Team\s+([ABC])$/i.exec(String(label || '').trim());
     const letter = match ? match[1].toUpperCase() : '';
-    if (!LOGO_ASSETS[letter]) {
+    const normalizedLabel = shared.normalizeText(label);
+    const assetPath = TEAM_LOGO_ASSETS[normalizedLabel] || LOGO_ASSETS[letter];
+    if (!assetPath) {
       const badge = document.createElement('span');
       badge.className = 'hpx-ultimate-team-logo hpx-ultimate-team-logo-fallback';
-      badge.textContent = label.split(/\s+/).map(function (part) { return part.charAt(0); }).join('').slice(0, 2).toUpperCase();
+      badge.textContent = String(label || '').split(/\s+/).map(function (part) {
+        return part.charAt(0);
+      }).join('').slice(0, 3).toUpperCase();
       badge.setAttribute('aria-hidden', 'true');
       return badge;
     }
+    const classSuffix = normalizedLabel.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || letter.toLowerCase();
     return createLogoImage(
-      'hpx-ultimate-team-logo hpx-ultimate-team-logo-' + letter.toLowerCase(),
-      LOGO_ASSETS[letter]
+      'hpx-ultimate-team-logo hpx-ultimate-team-logo-' + classSuffix,
+      assetPath
     );
   }
 
