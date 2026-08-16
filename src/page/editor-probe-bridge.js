@@ -18,6 +18,9 @@
   const REQUEST_EVENT = 'hpx:editor:probe';
   const RESULT_EVENT = 'hpx:editor:probe-result';
   const TARGET_ATTR = 'data-hpx-probe';
+  const WRITE_REQUEST_EVENT = 'hpx:editor:write';
+  const WRITE_RESULT_EVENT = 'hpx:editor:write-result';
+  const WRITE_TARGET_ATTR = 'data-hpx-framework-write';
 
   function respond(requestId, payload) {
     document.dispatchEvent(
@@ -188,6 +191,48 @@
     return { ok: false, via: '', reason: '找不到可用的編輯器寫入 API（需改用 isolated world 的 innerHTML 路徑）' };
   }
 
+  function frameworkInsert(el, html) {
+    const fr = froalaInstance(el);
+    if (fr.instance && fr.instance.html && typeof fr.instance.html.insert === 'function') {
+      fr.instance.html.insert(html, true);
+      if (fr.instance.undo && typeof fr.instance.undo.saveStep === 'function') {
+        fr.instance.undo.saveStep();
+      }
+      if (fr.instance.events && typeof fr.instance.events.trigger === 'function') {
+        fr.instance.events.trigger('contentChanged');
+      }
+      return { ok: true, via: 'froala.html.insert' };
+    }
+
+    const tiny = tinymceInstance(el);
+    if (tiny && typeof tiny.insertContent === 'function') {
+      tiny.insertContent(html);
+      if (typeof tiny.fire === 'function') tiny.fire('change');
+      return { ok: true, via: 'tinymce.insertContent' };
+    }
+
+    // Froala can be mounted without exposing its instance globally.  In that
+    // case a native editor command still runs inside the page world, where
+    // Halo's own input listeners can update the backing model.
+    const doc = el.ownerDocument || document;
+    try {
+      el.focus();
+      if (doc.execCommand && doc.execCommand('insertHTML', false, html)) {
+        try {
+          el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+        } catch (error) {
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return { ok: true, via: 'native.insertHTML' };
+      }
+    } catch (error) {
+      // The caller will try the full editor write API, then its DOM fallback.
+    }
+
+    return { ok: false, via: '', reason: 'No framework insertion API is available.' };
+  }
+
   document.addEventListener(REQUEST_EVENT, function (request) {
     const detail = request.detail || {};
     const requestId = String(detail.requestId || '');
@@ -220,6 +265,38 @@
       respond(requestId, {
         ok: false,
         error: error && error.message ? error.message : 'MAIN world 偵測失敗。',
+      });
+    }
+  });
+
+  document.addEventListener(WRITE_REQUEST_EVENT, function (request) {
+    const detail = request.detail || {};
+    const requestId = String(detail.requestId || '');
+    if (!requestId) return;
+
+    function respondWrite(payload) {
+      document.dispatchEvent(
+        new CustomEvent(WRITE_RESULT_EVENT, {
+          detail: Object.assign({ requestId: requestId }, payload),
+        })
+      );
+    }
+
+    try {
+      const el = document.querySelector('[' + WRITE_TARGET_ATTR + '="1"]');
+      if (!el) {
+        respondWrite({ ok: false, error: 'Target editor was not found.' });
+        return;
+      }
+      const result =
+        detail.op === 'insert'
+          ? frameworkInsert(el, String(detail.html == null ? '' : detail.html))
+          : frameworkWrite(el, String(detail.html == null ? '' : detail.html));
+      respondWrite({ ok: result.ok, via: result.via, error: result.ok ? '' : result.reason });
+    } catch (error) {
+      respondWrite({
+        ok: false,
+        error: error && error.message ? error.message : 'Editor write failed.',
       });
     }
   });

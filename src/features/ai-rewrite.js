@@ -67,6 +67,13 @@
         })
         .then(function (finalText) {
           if (finalText == null) return; // 取消
+          if (actionKey === 'professional' && NS.features.ticketRichFormat) {
+            const html = NS.features.ticketRichFormat.toHtml(finalText);
+            const clean = NS.core.htmlSanitizer.sanitize(html);
+            return adapter.setHtmlReliable(editorEl, clean).then(function () {
+              NS.ui.toast.show('已套用工單條列與語意顏色', { type: 'success' });
+            });
+          }
           adapter.setText(editorEl, finalText);
           NS.ui.toast.show('已套用', { type: 'success' });
         })

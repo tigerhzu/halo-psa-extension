@@ -42,6 +42,23 @@
     });
   }
 
+  function getDefaultCcRecipients() {
+    return new Promise(function (resolve) {
+      const c = cfg();
+      chrome.storage.local.get(c.STORAGE_KEY, function (data) {
+        const settings = (data && data[c.STORAGE_KEY]) || {};
+        const members = Array.isArray(settings[c.DEFAULT_CC_FIELD])
+          ? settings[c.DEFAULT_CC_FIELD]
+          : [];
+        resolve(members.filter(function (member) {
+          return member && typeof member.email === 'string' && member.email.indexOf('@') > 0;
+        }).map(function (member) {
+          return { name: String(member.name || '').trim(), email: member.email.trim() };
+        }));
+      });
+    });
+  }
+
   /** 過濾出結構正確、且至少有一位有效 email 的群組。 */
   function normalizeGroups(groups) {
     return groups
@@ -317,12 +334,13 @@
    * @param {Array}   members   [{name,email}]
    * @param {string}  [label]   來源群組名稱（用於提示文字）
    */
-  function addMembersToCC(windowEl, members, label) {
+  function addMembersToCC(windowEl, members, label, options) {
+    const silent = options && options.silent === true;
     const root = findWindowContainer(windowEl);
     const ccField = findCcField(root) || findCcField(document);
     if (!ccField) {
-      NS.ui.toast.show('找不到 CC 欄位，請協助確認 HaloPSA Email 視窗結構', { type: 'error' });
-      return;
+      if (!silent) NS.ui.toast.show('找不到 CC 欄位，請協助確認 HaloPSA Email 視窗結構', { type: 'error' });
+      return false;
     }
 
     const existing = collectExisting(ccField);
@@ -332,26 +350,37 @@
 
     if (toAdd.length === 0) {
       const who = label ? '「' + label + '」' : '名單';
-      NS.ui.toast.show(who + '已在 CC 中，未重複新增', { type: 'info' });
-      return;
+      if (!silent) NS.ui.toast.show(who + '已在 CC 中，未重複新增', { type: 'info' });
+      return true;
     }
 
     const ok = writeEmails(ccField, toAdd.map(function (m) {
       return m.email;
     }));
     if (!ok) {
-      NS.ui.toast.show('找不到可輸入的 CC 欄位，請協助確認 HaloPSA Email 視窗結構', { type: 'error' });
-      return;
+      if (!silent) NS.ui.toast.show('找不到可輸入的 CC 欄位，請協助確認 HaloPSA Email 視窗結構', { type: 'error' });
+      return false;
     }
 
     const msg = label
       ? '已加入「' + label + '」（' + toAdd.length + ' 位）到 CC'
       : '已加入 ' + toAdd.length + ' 位到 CC';
-    NS.ui.toast.show(msg, { type: 'success' });
+    if (!silent) NS.ui.toast.show(msg, { type: 'success' });
+    return true;
   }
 
   const Besties = {
     getGroups: getGroups,
+    getDefaultCcRecipients: getDefaultCcRecipients,
+
+    applyDefaultCc: function (windowEl) {
+      if (!windowEl || windowEl.getAttribute('data-hpx-default-cc') === '1') return Promise.resolve(false);
+      windowEl.setAttribute('data-hpx-default-cc', '1');
+      return getDefaultCcRecipients().then(function (members) {
+        if (!members.length) return false;
+        return addMembersToCC(windowEl, members, 'Default CC', { silent: true });
+      });
+    },
 
     /** 加入整個群組 */
     addGroupToCC: function (windowEl, group) {

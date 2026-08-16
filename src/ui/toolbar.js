@@ -1,7 +1,7 @@
 /**
  * toolbar.js
  * 浮動工具列：為每個編輯器插入一條工具列，貼著編輯器（置於其上方同層）。
- * 分三組：AI 潤稿 / 整理格式 / 快速範本（下拉）。
+ * 分兩組：AI 潤稿 / 快速範本（下拉）。
  *
  * 工具列與其對應編輯器以 Map 追蹤，編輯器被移除時一併清除（見 content.js）。
  */
@@ -19,6 +19,9 @@
     btn.className = 'hpx-tb-btn' + (extraClass ? ' ' + extraClass : '');
     btn.textContent = label;
     if (title) btn.title = title;
+    btn.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+    });
     btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -73,10 +76,32 @@
     return wrap;
   }
 
+  function isNewTicketEditor(editorEl) {
+    // Route 判斷是最穩定的訊號；closest selector 讓同一個 SPA route
+    // 在 Halo 改成 modal / nested screen 時仍能辨識。找不到 selector
+    // 時保持顯示，避免把 Activity Note 或其他既有編輯器誤隱藏。
+    try {
+      if (/\/newticket(?:\/|$)/i.test(window.location.pathname || '')) return true;
+    } catch (error) {
+      // Keep the structural check below as a fail-safe fallback.
+    }
+    const selectors = NS.config && NS.config.selectors && NS.config.selectors.ULTIMATE_MODE
+      ? NS.config.selectors.ULTIMATE_MODE.NEW_TICKET_ROOT_SELECTORS
+      : [];
+    return (Array.isArray(selectors) ? selectors : [selectors]).some(function (selector) {
+      if (!selector || !editorEl || !editorEl.closest) return false;
+      try { return !!editorEl.closest(selector); } catch (error) { return false; }
+    });
+  }
+
   function buildToolbar(editorEl) {
     const bar = document.createElement('div');
     bar.className = 'hpx-toolbar';
     bar.setAttribute('data-' + PREFIX + '-toolbar', '1');
+    if (isNewTicketEditor(editorEl)) {
+      bar.classList.add('hpx-new-ticket-hidden');
+      bar.setAttribute('data-hpx-new-ticket-toolbar', 'hidden');
+    }
 
     // ── 組0：獨立編輯視窗 ──
     // 放在最前面：長內容編輯是進入點，其餘動作在獨立視窗裡也都有。
@@ -100,16 +125,7 @@
     });
     bar.appendChild(aiGroup);
 
-    // ── 組2：整理格式 ──
-    const fmtGroup = makeGroup('');
-    fmtGroup.appendChild(
-      makeButton('整理格式', '修正錯字、統一標點、自動換行、條列化', function () {
-        runFormatCleanup(editorEl);
-      }, 'hpx-tb-btn--format')
-    );
-    bar.appendChild(fmtGroup);
-
-    // ── 組3：快速範本 ──
+    // ── 組2：快速範本 ──
     const tplGroup = makeGroup('');
     tplGroup.appendChild(makeTemplateDropdown(editorEl));
     bar.appendChild(tplGroup);
@@ -117,32 +133,12 @@
     return bar;
   }
 
-  /** 功能3 入口：整理格式 → 預覽 → 覆蓋 */
-  function runFormatCleanup(editorEl) {
-    const text = NS.core.adapter.getText(editorEl);
-    if (!text.trim()) {
-      NS.ui.toast.show('編輯器內沒有文字可以整理', { type: 'error' });
-      return;
-    }
-    // 視覺回饋：小老虎 loading（整理是本機運算、很快，稍微延後讓動畫看得到）
-    NS.ui.loader.show('正在整理格式…');
-    setTimeout(function () {
-      const result = NS.features.formatCleanup.clean(text);
-      NS.ui.loader.done();
-      NS.ui.previewModal
-        .open({
-          title: '整理格式',
-          original: text,
-          result: result,
-          note: '本地規則整理（中英補空格、IT 名詞標準化、修正錯字、統一標點、條列化），完全在本機執行、不呼叫 AI。可在右側微調後再套用。',
-          showDiff: true,
-        })
-        .then(function (finalText) {
-          if (finalText == null) return;
-          NS.core.adapter.setText(editorEl, finalText);
-          NS.ui.toast.show('已套用整理結果', { type: 'success' });
-        });
-    }, 350);
+  function syncNewTicketVisibility(editorEl, bar) {
+    if (!bar || !bar.classList) return;
+    const hidden = isNewTicketEditor(editorEl);
+    bar.classList.toggle('hpx-new-ticket-hidden', hidden);
+    if (hidden) bar.setAttribute('data-hpx-new-ticket-toolbar', 'hidden');
+    else bar.removeAttribute('data-hpx-new-ticket-toolbar');
   }
 
   /** 找到適合放工具列的容器，並把工具列插在編輯器前面 */
@@ -170,6 +166,13 @@
       NS.log('工具列已掛上', editorEl);
     },
 
+    /** SPA 導覽後同一個 editor 被重用時，同步 New Ticket 可見性。 */
+    refresh: function () {
+      toolbars.forEach(function (bar, editorEl) {
+        syncNewTicketVisibility(editorEl, bar);
+      });
+    },
+
     /** 移除編輯器的工具列 */
     unmount: function (editorEl) {
       const bar = toolbars.get(editorEl);
@@ -177,6 +180,15 @@
       toolbars.delete(editorEl);
     },
   };
+
+  // Halo 以 history / Navigation API 切換頁面時，editor 不一定會重建。
+  // 只在導覽事件同步既有工具列，不建立額外高頻 DOM observer。
+  ['popstate', 'hashchange'].forEach(function (eventName) {
+    window.addEventListener(eventName, Toolbar.refresh);
+  });
+  if (window.navigation && window.navigation.addEventListener) {
+    window.navigation.addEventListener('navigate', Toolbar.refresh);
+  }
 
   NS.ui.toolbar = Toolbar;
 })();

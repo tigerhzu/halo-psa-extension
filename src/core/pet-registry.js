@@ -3,7 +3,8 @@
  *
  * 寵物來源：
  *  1. 內建的三隻舊版 8×9 Codex atlas；
- *  2. assets/codex-pets/<pet-id>/pet.json + spritesheet.webp 的 Codex Pets v2 package。
+ *  2. pet/<pet-id>/pet.json + spritesheet.webp 的 Codex Pets package（v1 / v2）；
+ *  3. 舊有 assets/codex-pets/<pet-id>/ package（持續相容）。
  *
  * Chrome 122+ 的 foreground runtime API 可以列出 unpacked extension package；
  * content script 透過 src/pets/catalog.html 間接呼叫它，因此不需要手動維護清單。
@@ -13,6 +14,7 @@
 
   const NS = window.__HPX || null;
   const PET_ROOT = 'assets/codex-pets';
+  const CUSTOM_PET_ROOT = 'pet';
   const STANDARD_ANIMATIONS = ['waving', 'waiting', 'review', 'jumping', 'failed', 'running'];
   const DEFAULT_IDLE_ACTIONS = ['waving', 'waiting', 'review'];
 
@@ -20,6 +22,7 @@
     { id: 'soyo', name: 'Soyo', atlas: PET_ROOT + '/soyo.webp', atlasRows: 9, actions: ['waving', 'waiting'] },
     { id: 'sakiko', name: 'Sakiko', atlas: PET_ROOT + '/sakiko.webp', atlasRows: 9, actions: ['review', 'jumping'] },
     { id: 'rufus', name: 'Rufus', atlas: PET_ROOT + '/rufus.webp', atlasRows: 9, actions: ['running', 'failed'] },
+    { id: 'claude-crab', name: 'Claude Crab', atlas: CUSTOM_PET_ROOT + '/claude-crab/spritesheet.webp', atlasRows: 9, actions: ['waving', 'waiting', 'review'] },
   ];
 
   function cloneDefinition(definition) {
@@ -58,10 +61,13 @@
     return actions.length ? actions : DEFAULT_IDLE_ACTIONS.slice();
   }
 
-  /** 將 Codex Pets v2 的 pet.json 轉成 extension 內部格式。 */
-  function normalizeManifest(manifest, folderName) {
+  /** 將 Codex Pets v1 / v2 的 pet.json 轉成 extension 內部格式。 */
+  function normalizeManifest(manifest, folderName, assetRoot) {
     if (!manifest || typeof manifest !== 'object') return null;
-    if (Number(manifest.spriteVersionNumber) !== 2) return null;
+    const spriteVersionNumber = manifest.spriteVersionNumber == null
+      ? 1
+      : Number(manifest.spriteVersionNumber);
+    if (spriteVersionNumber !== 1 && spriteVersionNumber !== 2) return null;
 
     const folder = safeSegment(folderName);
     const id = normalizeId(manifest.id, folder);
@@ -72,9 +78,9 @@
     return {
       id: id,
       name: name,
-      atlas: PET_ROOT + '/' + folder + '/' + spritesheetPath,
-      atlasRows: 11,
-      spriteVersionNumber: 2,
+      atlas: (assetRoot || PET_ROOT) + '/' + folder + '/' + spritesheetPath,
+      atlasRows: spriteVersionNumber === 2 ? 11 : 9,
+      spriteVersionNumber: spriteVersionNumber,
       actions: normalizeActions(manifest.idleAnimations),
       imported: true,
     };
@@ -124,6 +130,14 @@
     });
   }
 
+  async function getDirectoryPath(root, segments) {
+    let directory = root;
+    for (const segment of segments) {
+      directory = await getDirectory(directory, segment);
+    }
+    return directory;
+  }
+
   function readText(fileEntry) {
     return new Promise(function (resolve, reject) {
       fileEntry.file(function (file) {
@@ -159,21 +173,29 @@
 
   async function scanPackagePets() {
     const root = await packageDirectory();
-    const petsDirectory = await getDirectory(root, 'assets').then(function (assets) {
-      return getDirectory(assets, 'codex-pets');
-    });
-    const entries = await readEntries(petsDirectory);
-    const folders = entries.filter(function (entry) { return entry && entry.isDirectory; });
     const imported = [];
 
-    for (const folder of folders) {
+    const packageRoots = [
+      { segments: [CUSTOM_PET_ROOT], assetRoot: CUSTOM_PET_ROOT },
+      { segments: ['assets', 'codex-pets'], assetRoot: PET_ROOT },
+    ];
+    for (const packageRoot of packageRoots) {
       try {
-        const manifestFile = await getFile(folder, 'pet.json');
-        const manifest = JSON.parse(await readText(manifestFile));
-        const definition = normalizeManifest(manifest, folder.name);
-        if (definition) imported.push(definition);
+        const petsDirectory = await getDirectoryPath(root, packageRoot.segments);
+        const entries = await readEntries(petsDirectory);
+        const folders = entries.filter(function (entry) { return entry && entry.isDirectory; });
+        for (const folder of folders) {
+          try {
+            const manifestFile = await getFile(folder, 'pet.json');
+            const manifest = JSON.parse(await readText(manifestFile));
+            const definition = normalizeManifest(manifest, folder.name, packageRoot.assetRoot);
+            if (definition) imported.push(definition);
+          } catch (e) {
+            // Ignore incomplete pet folders and continue discovering the rest.
+          }
+        }
       } catch (e) {
-        // Ignore non-package folders and incomplete downloads; built-ins remain available.
+        // A missing optional pet folder must not prevent built-in pets loading.
       }
     }
 

@@ -17,7 +17,7 @@
  * --hpx-opacity（0~1）控制主題覆蓋層的不透明度。
  */
 html {
-  --hpx-accent: #3a82f7;
+  --hpx-accent: #000000;
   --hpx-accent-2: color-mix(in srgb, var(--hpx-accent), #000 14%);
   --hpx-accent-soft: color-mix(in srgb, var(--hpx-accent) 18%, transparent);
   --hpx-glass-opacity: 0.85;
@@ -38,6 +38,9 @@ html[data-hpx-theme="cute-ios"] {
 
 /* ════════ 1. AI 工具列 ════════ */
 html[data-hpx-theme="cute-ios"] .hpx-toolbar {
+  position: relative;
+  z-index: 2147483645;
+  overflow: visible;
   background: var(--hpx-glass);
   -webkit-backdrop-filter: blur(14px) saturate(1.5);
   backdrop-filter: blur(14px) saturate(1.5);
@@ -57,17 +60,22 @@ html[data-hpx-theme="cute-ios"] .hpx-toolbar {
  */
 html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar {
   position: relative !important;
-  z-index: 2147483645 !important;
+  z-index: 2147483647 !important;
   overflow: visible !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   padding: 6px 8px;
   gap: 6px;
 }
+html[data-hpx-theme="cute-ios"] .hpx-besties-layer-host {
+  position: relative !important;
+  z-index: 2147483646 !important;
+  overflow: visible !important;
+}
 html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown,
 html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown-menu {
   position: relative;
-  z-index: 2147483646 !important;
+  z-index: 2147483647 !important;
 }
 html[data-hpx-theme="cute-ios"] .hpx-besties-toolbar .hpx-tb-dropdown-menu {
   position: absolute;
@@ -110,8 +118,7 @@ html[data-hpx-theme="cute-ios"] .hpx-tb-btn:active {
 html[data-hpx-theme="cute-ios"] .hpx-tb-btn--ai,
 html[data-hpx-theme="cute-ios"] .hpx-tb-btn--font,
 html[data-hpx-theme="cute-ios"] .hpx-tb-btn--besties,
-html[data-hpx-theme="cute-ios"] .hpx-tb-btn--template,
-html[data-hpx-theme="cute-ios"] .hpx-tb-btn--format {
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--template {
   background: var(--hpx-accent-soft);
   border-color: transparent;
   color: var(--hpx-ink);
@@ -312,6 +319,74 @@ html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar input {
   background: rgba(255, 255, 255, 0.92) !important;
   border-radius: 10px !important;
   color: #2c3242 !important;
+}
+/* Halo 左上方 Search Tickets 欄位的 placeholder 不能沿用原生淡色，
+ * 否則在 Cute 的淺色輸入框上幾乎看不見。marker 與語意 placeholder
+ * 兩組條件都保留，兼容不同版本的 sidebar 結構。 */
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar input::placeholder,
+html[data-hpx-theme="cute-ios"] .hpx-theme-main input::placeholder,
+html[data-hpx-theme="cute-ios"] .hpx-theme-wrap input::placeholder,
+html[data-hpx-theme="cute-ios"] input[placeholder*="search ticket" i]::placeholder,
+html[data-hpx-theme="cute-ios"] input[aria-label*="search ticket" i]::placeholder {
+  color: #667085 !important;
+  opacity: 1 !important;
+}
+html[data-hpx-theme="cute-ios"] input[placeholder*="search ticket" i],
+html[data-hpx-theme="cute-ios"] input[aria-label*="search ticket" i] {
+  color: #2c3242 !important;
+  caret-color: #2c3242 !important;
+}
+
+/*
+ * Halo 的 Team picker / React Select 都是白底浮層，但可能位於深色 Sidebar
+ * DOM 內。它們不能繼承 Sidebar 的淡色文字，否則白底上幾乎看不見。
+ */
+html[data-hpx-theme="cute-ios"] #team-dropdown > .text,
+html[data-hpx-theme="cute-ios"] #team-dropdown > .dropdown.icon,
+html[data-hpx-theme="cute-ios"] #team-dropdown > .menu,
+html[data-hpx-theme="cute-ios"] #team-dropdown > .menu > .item,
+html[data-hpx-theme="cute-ios"] #team-dropdown > .menu > .item > .text,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar .Select__menu,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar .Select__menu-list,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar .Select__option,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar .Select__single-value,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar [role="listbox"] [role="option"] {
+  color: #273247 !important;
+}
+
+html[data-hpx-theme="cute-ios"] #team-dropdown > .menu,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar .Select__menu,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar [role="listbox"] {
+  background-color: #ffffff !important;
+}
+
+html[data-hpx-theme="cute-ios"] #team-dropdown > .menu > .item:hover,
+html[data-hpx-theme="cute-ios"] #team-dropdown > .menu > .item.active,
+html[data-hpx-theme="cute-ios"] #team-dropdown > .menu > .item.selected,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar .Select__option--is-focused,
+html[data-hpx-theme="cute-ios"] .hpx-theme-sidebar .Select__option--is-selected {
+  color: #172033 !important;
+  background-color: color-mix(in srgb, var(--hpx-accent) 14%, #fff) !important;
+}
+
+/* New Ticket 白色 details sidebar：即使 Halo 改變位置也維持深色可讀文字。 */
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar h1,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar h2,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar h3,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar label,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar p,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar span,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar .profile-full-name,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar .Select__option,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar .Select__single-value,
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar input {
+  color: #273247 !important;
+}
+
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar input::placeholder {
+  color: #70798d !important;
+  opacity: 1;
 }
 
 /* ════════ 6. 設定頁（只在 .hpx-options 內）════════ */

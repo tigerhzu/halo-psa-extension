@@ -19,9 +19,14 @@
 
   const STORAGE_KEY = 'hpx_settings';
   const DEFAULT_THEME = 'cute-ios';
-  const DEFAULT_ACCENT = '#3a82f7'; // hex（與設定頁一致）
+  const DEFAULT_ACCENT = '#000000'; // 首次使用 Cute／果凍模式的預設 Accent
   const DEFAULT_OPACITY = 100; // 百分比 40~100
   const VALID = ['default', 'cute-ios'];
+
+  function normalizeAccent(value) {
+    const hex = String(value || '').trim();
+    return /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : DEFAULT_ACCENT;
+  }
 
   const SIDEBAR_MARKER = 'hpx-theme-sidebar'; // 逐欄（fallback）樣式用
   const ICONBAR_MARK = 'hpx-theme-iconbar';
@@ -74,6 +79,17 @@
     const cands = [];
     const haloRoot = document.getElementById('halo-tree');
     nodes.forEach(function (el) {
+      // Ticket/New Ticket 的 details sidebar 是白底主內容；在 Ultimate Mode
+      // 隱藏 Team tree 或窄視窗時會移到左側，不能只因幾何位置而套深色主題。
+      const mainDetails = el.closest && el.closest(
+        '.new-ticket-screen, .ticketDetailsScreen, .details-container'
+      );
+      const insideRealSidebar = !!(
+        (haloRoot && (haloRoot === el || haloRoot.contains(el))) ||
+        (el.closest && el.closest('#app-nav-menu'))
+      );
+      if (mainDetails && !insideRealSidebar) return;
+
       let r;
       try {
         r = el.getBoundingClientRect();
@@ -372,7 +388,7 @@
     const root = document.documentElement;
     root.setAttribute('data-hpx-theme', theme);
     // accent 直接以 hex 設成 CSS 變數（不經對照表）；所有自訂 UI 都吃 var(--hpx-accent)
-    const accent = s.accent || DEFAULT_ACCENT;
+    const accent = normalizeAccent(s.accent);
     root.style.setProperty('--hpx-accent', accent);
 
     let op = typeof s.opacity === 'number' ? s.opacity : DEFAULT_OPACITY;
@@ -392,7 +408,28 @@
       return;
     }
     chrome.storage.local.get(STORAGE_KEY, function (data) {
-      cb && cb((data && data[STORAGE_KEY]) || {});
+      const current = (data && data[STORAGE_KEY]) || {};
+      const next = Object.assign({}, current);
+      let changed = false;
+      if (next.theme !== 'default' && next.theme !== 'cute-ios') {
+        next.theme = DEFAULT_THEME;
+        changed = true;
+      }
+      if (!Object.prototype.hasOwnProperty.call(next, 'accent') || !/^#[0-9a-f]{6}$/i.test(String(next.accent || ''))) {
+        next.accent = DEFAULT_ACCENT;
+        changed = true;
+      }
+      if (typeof next.opacity !== 'number') {
+        next.opacity = DEFAULT_OPACITY;
+        changed = true;
+      }
+      // 新使用者預設不開啟簡單模式；已有明確選擇時保留原值。
+      if (typeof next.ultimateMode !== 'boolean') {
+        next.ultimateMode = false;
+        changed = true;
+      }
+      if (changed) chrome.storage.local.set({ [STORAGE_KEY]: next });
+      cb && cb(next);
     });
   }
 
