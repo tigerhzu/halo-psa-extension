@@ -30,6 +30,10 @@ Chrome Manifest V3 擴充功能，協助 HaloPSA 使用者撰寫 Activity Note�
 
 五個步驟都可略過。完成或關閉後，可由 HaloPSA 浮動設定面板的 `設定` 進入完整設定頁，再開啟「首次登入提示」；設定只保存在 `chrome.storage.local`。若瀏覽器暫時無法開啟獨立分頁，Extension 會回退成內嵌精靈，並先隱藏摯友工具列避免遮擋。
 
+## v0.9.4 重點功能
+
+- 修正獨立 Note 編輯器貼上 ChatGPT 圖片後顯示破圖的問題；現在會優先使用剪貼簿中的實際圖片資料，讓圖片可正常檢視。
+
 ## v0.9.3 重點功能
 
 - 新增左下角固定控制列：`mode`、`color`、`pet` 與 `settings` 可在任何 HaloPSA 頁面快速操作。

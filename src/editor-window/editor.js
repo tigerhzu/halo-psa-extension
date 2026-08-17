@@ -190,10 +190,10 @@
   }
 
   /** 讓自訂 DOM 插入也進入 contenteditable 的輸入流程。 */
-  function dispatchEditorInput() {
+  function dispatchEditorInput(inputType) {
     let event;
     try {
-      event = new InputEvent('input', { bubbles: true, inputType: 'insertText' });
+      event = new InputEvent('input', { bubbles: true, inputType: inputType || 'insertText' });
     } catch (error) {
       event = new Event('input', { bubbles: true });
     }
@@ -243,6 +243,162 @@
     }
     dispatchEditorInput();
     return true;
+  }
+
+  // Chrome 在「從網頁複製圖片」時，剪貼簿可能同時放入兩種資料：
+  //   1. text/html：<img src="blob:..." 或需要來源網站登入的 URL>
+  //   2. image/png / image/jpeg：真正的圖片位元資料
+  // 原生 contenteditable 會優先採用第 1 種，切換到 chrome-extension:// 編輯視窗後
+  // 來源 URL 就失效，因而出現破圖。貼上時必須優先使用第 2 種資料，轉成 data URL。
+  const PASTABLE_IMAGE_TYPE = /^image\/(?:png|gif|jpe?g|webp|bmp)$/i;
+
+  function isPastableImageType(type) {
+    return PASTABLE_IMAGE_TYPE.test(String(type || '').trim());
+  }
+
+  function readClipboardImage(file) {
+    return new Promise(function (resolve) {
+      if (!file || !isPastableImageType(file.type)) {
+        resolve(null);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        const dataUrl = String(reader.result || '');
+        resolve(/^data:image\/(?:png|gif|jpe?g|webp|bmp);/i.test(dataUrl) ? dataUrl : null);
+      };
+      reader.onerror = function () {
+        resolve(null);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /** 取得剪貼簿內的實際圖片檔；某些 Chrome 版本只會填 files、不會填 items。 */
+  function clipboardImageFiles(clipboard) {
+    const files = [];
+    const items = clipboard && clipboard.items ? Array.prototype.slice.call(clipboard.items) : [];
+
+    items.forEach(function (item) {
+      if (item.kind !== 'file' || !isPastableImageType(item.type)) return;
+      let file = null;
+      try {
+        file = item.getAsFile();
+      } catch (error) {
+        file = null;
+      }
+      if (file) files.push(file);
+    });
+
+    if (files.length) return files;
+
+    const fallback = clipboard && clipboard.files ? Array.prototype.slice.call(clipboard.files) : [];
+    return fallback.filter(function (file) {
+      return isPastableImageType(file && file.type);
+    });
+  }
+
+  function parseClipboardHtml(html) {
+    if (!html) return null;
+    try {
+      const doc = new DOMParser().parseFromString('<body>' + String(html) + '</body>', 'text/html');
+      return doc && doc.body ? doc : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function appendClipboardImage(doc, dataUrl) {
+    const image = doc.createElement('img');
+    image.setAttribute('src', dataUrl);
+    image.setAttribute('alt', '貼上的圖片');
+    image.setAttribute('style', 'max-width: 100%; height: auto;');
+    doc.body.appendChild(image);
+  }
+
+  /**
+   * 將剪貼簿的 HTML 與實際圖片資料合併。
+   * ChatGPT 的 HTML 常是 blob / 需要登入的 URL；只要剪貼簿有 image/*，
+   * 就以實際檔案依序取代 HTML 裡的 <img>，避免把失效 URL 留進編輯器。
+   */
+  function buildClipboardImageHtml(rawHtml, plainText, imageDataUrls) {
+    const urls = Array.isArray(imageDataUrls) ? imageDataUrls.filter(Boolean) : [];
+    const doc = parseClipboardHtml(rawHtml) || document.implementation.createHTMLDocument('clipboard');
+    const images = Array.prototype.slice.call(doc.body.querySelectorAll('img'));
+    let used = 0;
+
+    images.forEach(function (image) {
+      if (used >= urls.length) return;
+      image.setAttribute('src', urls[used]);
+      image.removeAttribute('srcset');
+      if (!image.getAttribute('alt')) image.setAttribute('alt', '貼上的圖片');
+      used += 1;
+    });
+
+    // 有些來源只提供 image/*，沒有提供可用的 text/html <img>，直接補到尾端。
+    while (used < urls.length) {
+      appendClipboardImage(doc, urls[used]);
+      used += 1;
+    }
+
+    if (!rawHtml && plainText) {
+      const text = String(plainText).trim();
+      if (text) {
+        const paragraph = doc.createElement('p');
+        paragraph.textContent = text;
+        doc.body.insertBefore(paragraph, doc.body.firstChild);
+      }
+    }
+
+    return NS.core.htmlSanitizer.sanitize(doc.body.innerHTML);
+  }
+
+  function editorSelectionRange() {
+    const selection = document.getSelection();
+    if (selection && selection.rangeCount) {
+      const range = selection.getRangeAt(0);
+      if (editorEl.contains(range.commonAncestorContainer)) return range.cloneRange();
+    }
+    if (savedRange && editorEl.contains(savedRange.commonAncestorContainer)) {
+      return savedRange.cloneRange();
+    }
+    return null;
+  }
+
+  /**
+   * 貼上圖片時攔截原生 HTML 優先順序，改用剪貼簿的 image/* 實際資料。
+   * 沒有圖片檔時不攔截，保留瀏覽器原本的純文字 / 富文字貼上行為。
+   */
+  async function handleImagePaste(event) {
+    if (busy || sourceMode || !event.clipboardData) return;
+
+    const files = clipboardImageFiles(event.clipboardData);
+    if (!files.length) return;
+
+    const rawHtml = event.clipboardData.getData('text/html') || '';
+    const plainText = event.clipboardData.getData('text/plain') || '';
+    const range = editorSelectionRange();
+    event.preventDefault();
+
+    const dataUrls = (await Promise.all(files.map(readClipboardImage))).filter(Boolean);
+    if (!dataUrls.length) {
+      showNotice('無法讀取剪貼簿中的圖片，請重新複製圖片後再貼上。', 'error');
+      return;
+    }
+
+    const html = buildClipboardImageHtml(rawHtml, plainText, dataUrls);
+    if (!html) {
+      showNotice('剪貼簿中的圖片格式無法在編輯器中使用。', 'error');
+      return;
+    }
+
+    if (range) savedRange = range;
+    if (!insertHtmlAtSelection(html)) {
+      showNotice('找不到圖片要貼上的位置，請先點一下編輯區再重試。', 'error');
+      return;
+    }
+    setStatus('圖片已從剪貼簿貼上。');
   }
 
   function insertTextAtSelection(text) {
@@ -1036,6 +1192,12 @@
     tplGroup.appendChild(wrap);
     toolbarEl.appendChild(tplGroup);
   }
+
+  editorEl.addEventListener('paste', function (event) {
+    handleImagePaste(event).catch(function (error) {
+      showNotice('貼上圖片失敗：' + (error && error.message ? error.message : '剪貼簿資料無法讀取。'), 'error');
+    });
+  });
 
   editorEl.addEventListener('click', function (event) {
     const target = event.target;

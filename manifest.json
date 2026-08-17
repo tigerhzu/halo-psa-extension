@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tiger 的第三隻手",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "minimum_chrome_version": "122",
   "description": "強化 HaloPSA 工單撰寫、Timesheet、簡單模式與自訂介面。",
   "icons": {
