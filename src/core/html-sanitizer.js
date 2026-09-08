@@ -4,7 +4,7 @@
  *
  * ── 為什麼一定要有這層 ──
  * 獨立編輯視窗是 chrome-extension:// 的**特權頁面**，那裡拿得到 chrome.storage
- *（裡面有 Azure / Gemini / HaloPSA 的 API Key）。把 HaloPSA 頁面來的 HTML 直接灌進去，
+ *（裡面有 Azure / Ornith / HaloPSA 的 API Key）。把 HaloPSA 頁面來的 HTML 直接灌進去，
  * 等於讓工單內容有機會在特權 context 執行。MV3 的預設 CSP 會擋掉 inline script，
  * 但那是最後一道防線，不是唯一一道 —— 這裡用白名單把不該進來的東西擋在門外。
  *

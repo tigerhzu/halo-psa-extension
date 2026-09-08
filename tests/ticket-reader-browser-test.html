@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>Ticket reader browser regression</title>
+</head>
+<body>
+  <div class="details-form-holder ticketdetails">
+    <div class="tabControls">
+      <div class="history-options buttons-container"></div>
+    </div>
+    <h1 class="profile-full-name oneline">[ID:0646478]</h1>
+    <div class="summary-header"><div class="noedit-value">NAS 搬遷後網路異常</div></div>
+    <div class="react-tabs__tab-panel react-tabs__tab-panel--selected" role="tabpanel">
+      <div id="tickethistoryscroll">
+        <div class="infinite-scroll-component">
+          <article class="action-history-item" data-id="mail-1">
+            <div class="history-header">
+              <span class="who">Ling Huang</span>
+              <span class="outcome">Email Update</span>
+              <span class="when">2026/9/4 16:37</span>
+              <span class="time">00:05</span>
+              <div class="emailheader">To: Support Ticket &lt;support@freedom.net.tw&gt;</div>
+            </div>
+            <div class="actioncontent">
+              <iframe id="mail-frame" title="Email body"></iframe>
+            </div>
+          </article>
+          <article class="action-history-item" data-id="status-1">
+            <div class="history-header">
+              <span class="who">Tiger Tiger</span>
+              <span class="outcome">In Progress</span>
+              <span class="when">2026/9/4 16:30</span>
+              <span class="status-avatar">Updated</span>
+            </div>
+            <div class="actioncontent"></div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </div>
+  <pre id="result">pending</pre>
+  <script src="../src/core/namespace.js"></script>
+  <script src="../src/core/html-sanitizer.js"></script>
+  <script>
+    window.__HPX.ui.toast = { show: function () {} };
+    window.__readerStyleResolutionCount = 0;
+    if (!window.chrome) window.chrome = {};
+    Object.defineProperty(window.chrome, 'runtime', {
+      configurable: true,
+      value: {
+        getURL: function (assetPath) {
+          window.__readerStyleResolutionCount += 1;
+          return new URL('../' + assetPath, window.location.href).href;
+        },
+      },
+    });
+    const frameDoc = document.getElementById('mail-frame').contentDocument;
+    frameDoc.open();
+    frameDoc.write(
+      '<!doctype html><html><head><base href="https://example.halopsa.com/"></head><body>' +
+      '<p>您好，這是一封測試郵件。</p>' +
+      '<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="簽名圖片" onerror="alert(1)">' +
+      '<a href="javascript:alert(1)">危險連結</a>' +
+      '<a href="/ticket?id=12">正常連結</a>' +
+      '<script>window.evil = true;<\/script>' +
+      '<table><tr><td>保留表格</td></tr></table>' +
+      '</body></html>'
+    );
+    frameDoc.close();
+  </script>
+  <script src="../src/features/ticket-reader.js"></script>
+  <script>
+    (function () {
+      const reader = window.__HPX.features.ticketReader;
+      reader.start();
+      reader.reconcile();
+      reader.reconcile();
+
+      const snapshot = reader.debug.collectSnapshot();
+      const body = snapshot.activities[0] && snapshot.activities[0].html;
+      window.chrome.runtime.getURL = function () {
+        throw new Error('Extension context invalidated');
+      };
+      const readerFrame = document.createElement('iframe');
+      document.body.appendChild(readerFrame);
+      reader.debug.makeReaderShell(readerFrame.contentWindow);
+      const readerDoc = readerFrame.contentDocument;
+      const checks = [
+        document.querySelectorAll('[data-hpx-ticket-reader]').length === 1,
+        snapshot.ticket.id === '646478',
+        snapshot.ticket.summary === 'NAS 搬遷後網路異常',
+        snapshot.activities.length === 2,
+        snapshot.activities[0].kind === 'email',
+        snapshot.activities[1].kind === 'status',
+        body.indexOf('這是一封測試郵件') !== -1,
+        body.indexOf('<table>') !== -1,
+        body.indexOf('data:image/gif;base64,') !== -1,
+        body.indexOf('https://example.halopsa.com/ticket?id=12') !== -1,
+        body.indexOf('onerror') === -1,
+        body.indexOf('javascript:') === -1,
+        body.indexOf('<script') === -1,
+        typeof window.evil === 'undefined',
+        window.__readerStyleResolutionCount === 1,
+        !!readerDoc.querySelector('.hpx-tr-app'),
+        !!readerDoc.querySelector('link[href*="ticket-reader-window.css"]'),
+      ];
+
+      const result = {
+        ok: checks.every(Boolean),
+        passed: checks.filter(Boolean).length,
+        total: checks.length,
+        activityKinds: snapshot.activities.map(function (item) { return item.kind; }),
+      };
+      document.body.setAttribute('data-ok', String(result.ok));
+      document.getElementById('result').textContent = JSON.stringify(result);
+    })();
+  </script>
+</body>
+</html>

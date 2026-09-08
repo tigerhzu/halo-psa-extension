@@ -1,20 +1,5 @@
-# 目前工作目錄的檔案全部是 LF；固定下來，避免 Windows 的 core.autocrlf
-# 在下一次 checkout 把整棵樹翻成 CRLF，製造無意義的全檔差異。
 * text=auto eol=lf
-
-# 二進位資產不做任何行尾轉換
 *.png binary
 *.webp binary
-
-# Release 邊界：git archive 產出的封存只保留 runtime（manifest.json / src / assets）。
-# tools/package.ps1 以 git archive 為來源，因此這份清單就是實際的出貨白名單依據。
-/tools              export-ignore
-/tests              export-ignore
-/docs               export-ignore
-/.claude            export-ignore
-/AGENTS.md          export-ignore
-/PROJECT_STATUS.md  export-ignore
-/.gitignore         export-ignore
-/.gitattributes     export-ignore
-/README.md          export-ignore
-/CHANGELOG.md       export-ignore
+*.gif binary
+*.ico binary

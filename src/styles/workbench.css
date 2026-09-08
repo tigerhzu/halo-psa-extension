@@ -1,0 +1,251 @@
+/* Halo Companion — shared visual language. Native Halo selectors stay sidebar-scoped. */
+:root {
+  --hpx-accent: #0c2d55;
+  --hpx-accent-ink: #fff;
+  --hpx-accent-soft: color-mix(in srgb, var(--hpx-accent) 14%, #fff);
+  --hpx-accent-2: var(--hpx-accent);
+  --hpx-accent-text: color-mix(in srgb, var(--hpx-accent) 45%, #000);
+  --hpx-accent-border: color-mix(in srgb, var(--hpx-accent) 22%, #fff);
+  --hpx-sidebar-bg: #f1f3f8;
+  --hpx-sidebar-hover: #e4e9f2;
+  --hpx-sidebar-ink: #31394b;
+  --hpx-accent-icon-filter: none;
+  --hpx-ink: #1d2433;
+  --hpx-muted: #52617a;
+  --hpx-line: #e4e8f0;
+  --hpx-canvas: #f4f6fb;
+  --hpx-radius-sm: 12px;
+  --hpx-radius-md: 18px;
+  --hpx-radius-lg: 24px;
+  --hpx-shadow: 0 16px 48px #29385612, 0 2px 8px #29385608;
+  --hpx-glass: #fff;
+  --hpx-control-bg: #e8edf5;
+  --hpx-control-hover: #d8e2f0;
+  --hpx-control-border: #8493a8;
+  --hpx-control-ink: #24344b;
+  --hpx-control-shadow: 0 1px 2px #2639571f;
+  --hpx-font: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+}
+
+/* The narrow navigation rail follows the chosen accent; the wider tree stays light. */
+html[data-hpx-theme="cute-ios"] :is(#app-nav-menu, .hpx-theme-iconbar) {
+  --hpx-sidebar-bg: var(--hpx-accent);
+  --hpx-sidebar-hover: color-mix(in srgb, var(--hpx-accent) 88%, var(--hpx-accent-ink));
+  --hpx-sidebar-ink: var(--hpx-accent-ink);
+}
+html[data-hpx-theme="cute-ios"] #halo-tree {
+  --hpx-sidebar-bg: #f1f3f8;
+  --hpx-sidebar-hover: #e4e9f2;
+  --hpx-sidebar-ink: #31394b;
+}
+
+/* The theme id is retained so saved installations continue to work. */
+html[data-hpx-theme="cute-ios"] :is(.hpx-theme-wrap, .hpx-theme-sidebar, #halo-tree, #app-nav-menu),
+html[data-hpx-theme="cute-ios"] #halo-tree .treeview-view-options {
+  background-color: var(--hpx-sidebar-bg) !important;
+  background-image: none !important;
+  color: var(--hpx-sidebar-ink) !important;
+}
+/* Native View and Filter menus are opaque layers above the tree. Never reset
+   all descendant div/section backgrounds: that reveals the list behind them. */
+html[data-hpx-theme="cute-ios"] #app-nav-menu .app-nav-menu-sidebar {
+  background-color: var(--hpx-sidebar-bg) !important;
+}
+html[data-hpx-theme="cute-ios"] #app-nav-menu .app-side-link {
+  background-color: transparent !important;
+}
+html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.app-side-link, .app-button-text, .app-nav-menu-title, .hpx-ultimate-team-shortcut, .hpx-ultimate-team-shortcut-label),
+html[data-hpx-theme="cute-ios"] #app-nav-menu .app-side-link :is(span, svg, i) {
+  color: var(--hpx-sidebar-ink) !important;
+}
+/* These monochrome assets are white. Switch their ink only on light accents. */
+html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-logo, img.hpx-ultimate-team-logo, .app-side-link .app-button-img:empty, #app-icon img) {
+  filter: var(--hpx-accent-icon-filter) !important;
+}
+html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.app-side-link.active, .hpx-ultimate-team-shortcut[aria-current="page"]) {
+  box-shadow: inset 3px 0 0 var(--hpx-accent-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-theme-sidebar, #halo-tree) :is(a, label),
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.selected-view, .selected-view span, .selected-filter, .options-title, .nodetitle, .treeviewcount) {
+  color: var(--hpx-sidebar-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree .treeviewcount {
+  background-color: var(--hpx-sidebar-hover) !important;
+}
+/* Search sections retain light native heading ink unless explicitly themed. */
+html[data-hpx-theme="cute-ios"] #halo-tree .title {
+  color: var(--hpx-sidebar-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :where(.treeviewnode:hover, .viewselect-table tr:hover, .filterselect-table tr:not(.nohover):hover) {
+  background-color: var(--hpx-sidebar-hover) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.viewselect-table, .filterselect-table) :is(tr, td) {
+  color: inherit !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.viewselect-table, .filterselect-table) {
+  color: var(--hpx-sidebar-ink) !important;
+  border-collapse: separate !important;
+  border-spacing: 0 4px !important;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.viewselect-table, .filterselect-table) tr {
+  clip-path: inset(0 round 14px);
+  background-color: var(--hpx-sidebar-bg) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.viewselect-table, .filterselect-table) tr:not(.nohover):is(:hover, :focus-within) {
+  background-color: var(--hpx-sidebar-hover) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.viewselect-table, .filterselect-table) tr[data-hpx-theme-selected="true"] {
+  background-color: var(--hpx-accent) !important;
+  color: var(--hpx-accent-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.viewselect-table, .filterselect-table) .tabletext :is(span, a, label) {
+  color: inherit !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree .treeviewnode { border-radius: 12px; }
+html[data-hpx-theme="cute-ios"] :is(.hpx-theme-sidebar, #halo-tree) :is(a.active, li.active, .router-link-active, [aria-selected="true"], [aria-current]:not([aria-current="false"]), .treeviewnode.selected, .treeviewnode.active, [data-hpx-theme-selected="true"]),
+html[data-hpx-theme="cute-ios"] #app-nav-menu .app-side-link.active,
+html[data-hpx-theme="cute-ios"] #halo-tree .treeview-view-options .nhd-button {
+  background-color: var(--hpx-accent) !important;
+  border-radius: 12px !important;
+  color: var(--hpx-accent-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.treeviewnode.active, .treeviewnode.selected) :is(.nodetitle, .treeviewcount),
+html[data-hpx-theme="cute-ios"] #app-nav-menu .app-side-link.active :is(span, a),
+html[data-hpx-theme="cute-ios"] #halo-tree .treeview-view-options .nhd-button svg {
+  color: var(--hpx-accent-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.treeviewnode.active, .treeviewnode.selected) .treeviewcount {
+  background-color: transparent !important;
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-theme-sidebar, #halo-tree) input {
+  background: #fff !important;
+  border: 1px solid #dce2ed !important;
+  border-radius: 12px !important;
+  color: var(--hpx-ink) !important;
+  caret-color: var(--hpx-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-theme-sidebar, #halo-tree) input::placeholder,
+html[data-hpx-theme="cute-ios"] input[placeholder*="search ticket" i]::placeholder {
+  color: var(--hpx-muted) !important;
+  opacity: 1 !important;
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-theme-sidebar, #halo-tree) :is(.Select__menu, .Select__menu-list, .Select__control, [role="listbox"]),
+html[data-hpx-theme="cute-ios"] #team-dropdown > .menu {
+  background-color: #fff !important;
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-theme-sidebar, #halo-tree) :is(.Select__menu *, [role="listbox"] *, .Select__single-value),
+html[data-hpx-theme="cute-ios"] #team-dropdown > :is(.text, .dropdown.icon, .menu, .menu *) {
+  color: var(--hpx-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(img, picture, svg image, [class*="avatar" i], [class*="photo" i], [class*="profile" i]) {
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
+/* Native dark-mode option backgrounds must change together with the ink. */
+html[data-hpx-theme="cute-ios"] #halo-tree .Select__option {
+  background-color: #fff !important;
+  color: var(--hpx-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.Select__option--is-focused, .Select__option--is-selected, .Select__option:hover) {
+  background-color: var(--hpx-accent-soft) !important;
+  color: var(--hpx-accent-text) !important;
+}
+/* Semantic UI date/value menus also keep native dark menu and item styles. */
+html[data-hpx-theme="cute-ios"] #halo-tree .ui.dropdown .menu,
+html[data-hpx-theme="cute-ios"] #halo-tree .ui.dropdown .menu > .item {
+  background-color: #fff !important;
+  color: var(--hpx-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree .ui.dropdown .menu > .item:is(:hover, :focus, .active, .selected) {
+  background-color: var(--hpx-accent-soft) !important;
+  color: var(--hpx-accent-text) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.Select__option, .ui.dropdown .menu > .item) :is(div, span, a, label) {
+  color: inherit !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.Select__placeholder, .Select__indicator, .Select__menu-notice) {
+  color: var(--hpx-muted) !important;
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.option-img, .treeview-view-options > .closebtn.dark) {
+  filter: invert(1) opacity(.72);
+}
+html[data-hpx-theme="cute-ios"] #halo-tree [data-hpx-theme-selected="true"] .option-img {
+  filter: var(--hpx-accent-icon-filter);
+}
+html[data-hpx-theme="cute-ios"] #halo-tree :is(.tv-hide-button, .selected-filter-img) svg {
+  color: var(--hpx-sidebar-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] .new-ticket-screen .details-sidebar {
+  color: var(--hpx-ink) !important;
+}
+
+/* Timesheet's mini calendar sits in a separate tree-holder, outside #halo-tree. */
+html[data-hpx-theme="cute-ios"] .tree-holder .react-calendar.nhd-calendar {
+  background: #fff !important;
+  color: var(--hpx-ink) !important;
+  border: 1px solid var(--hpx-line) !important;
+  border-radius: var(--hpx-radius-sm);
+  overflow: hidden;
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar :is(.react-calendar__navigation, .react-calendar__month-view__weekdays) {
+  background: var(--hpx-sidebar-bg) !important;
+  color: var(--hpx-muted) !important;
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar button {
+  background: transparent !important;
+  color: var(--hpx-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar button :is(time, abbr, span) {
+  color: inherit !important;
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar .react-calendar__month-view__days__day--neighboringMonth {
+  color: var(--hpx-muted) !important;
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar button:enabled:is(:hover, :focus-visible) {
+  background: var(--hpx-sidebar-hover) !important;
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar .react-calendar__tile--now {
+  box-shadow: inset 0 0 0 1px var(--hpx-accent-text);
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar :is(.react-calendar__tile--active, .react-calendar__tile--hasActive) {
+  background: var(--hpx-accent) !important;
+  color: var(--hpx-accent-ink) !important;
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar :is(.react-calendar__tile--active, .react-calendar__tile--hasActive):enabled:is(:hover, :focus-visible) {
+  background: var(--hpx-accent) !important;
+  box-shadow: inset 0 0 0 2px var(--hpx-accent-ink);
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar button:focus-visible {
+  outline: 2px solid var(--hpx-accent-text);
+  outline-offset: -2px;
+}
+html[data-hpx-theme="cute-ios"] .tree-holder .nhd-calendar button:disabled {
+  background: var(--hpx-sidebar-bg) !important;
+  color: var(--hpx-muted) !important;
+  opacity: .6;
+}
+
+/* Shared controls: always clear regardless of the native Halo palette. */
+:is(.hpx-toolbar, .hpx-sp, .hpx-sidebar-popover, .hpx-modal, .hpx-ts-preview, .hpx-category-modal-layer) {
+  font-family: var(--hpx-font);
+  color: var(--hpx-ink);
+}
+:is(.hpx-toolbar, .hpx-sp, .hpx-sidebar-popover, .hpx-modal, .hpx-ts-preview, .hpx-category-modal-layer, .hpx-sidebar-controls) :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--hpx-accent-text);
+  outline-offset: 3px;
+}
+:is(.hpx-toolbar, .hpx-sp, .hpx-sidebar-popover, .hpx-modal) button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  [class^="hpx-"]:not(.hpx-sp-pet-atlas), [class*=" hpx-"]:not(.hpx-sp-pet-atlas) {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

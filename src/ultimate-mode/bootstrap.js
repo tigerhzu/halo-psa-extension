@@ -11,6 +11,7 @@
   ];
   const STYLE_ID = 'hpx-ultimate-team-guard';
   const PENDING_TEAM_KEY = 'hpx_ultimate_pending_team';
+  const TEAM_IDS_KEY = 'hpx_ultimate_team_ids';
 
   function normalizedTeams(value) {
     const source = Array.isArray(value) ? value : DEFAULT_TEAMS;
@@ -56,6 +57,20 @@
     return matched;
   }
 
+  /**
+   * team-shortcuts.js 每輪掃描都會把「已驗證的 Team label → Halo data-id」
+   * 寫入 sessionStorage。data-id 是 row 本身的屬性，讓第一幀 guard 在
+   * live Halo（名稱藏在子層 .nodetitle、row 沒有 title）也能用 CSS 隱藏。
+   */
+  function persistedTeamIds() {
+    try {
+      const parsed = JSON.parse(window.sessionStorage.getItem(TEAM_IDS_KEY) || '{}');
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
   function updateTeamGuard(value) {
     let teams = normalizedTeams(value);
     try {
@@ -73,15 +88,28 @@
       style.id = STYLE_ID;
       (document.head || document.documentElement).appendChild(style);
     }
-    if (!canGuardRows(teams)) {
-      // Fail open：沒有可驗證的 row title 時，避免 selector 將整棵 Team tree 藏起來。
-      style.textContent = '';
-      return;
+    const rules = [];
+    if (canGuardRows(teams)) {
+      const keep = teams.map(function (team) {
+        return ':not([title="' + attributeValue(team) + '"])';
+      }).join('');
+      rules.push('html[data-hpx-ultimate-mode="on"] #halo-tree li:has(> .treeviewnode[data-level="1"]' + keep + '){display:none!important;}');
     }
-    const keep = teams.map(function (team) {
-      return ':not([title="' + attributeValue(team) + '"])';
-    }).join('');
-    style.textContent = 'html[data-hpx-ultimate-mode="on"] #halo-tree li:has(> .treeviewnode[data-level="1"]' + keep + '){display:none!important;}';
+    const ids = persistedTeamIds();
+    const keptIds = teams.map(function (team) {
+      const id = ids[team.replace(/\s+/g, ' ').trim().toLocaleLowerCase()];
+      return /^[\w-]+$/.test(String(id == null ? '' : id)) ? String(id) : '';
+    });
+    if (teams.length && keptIds.every(Boolean)) {
+      // Fail open：只有「每個」保留 Team 都有已驗證 id 時才啟用 id guard，
+      // 否則缺 id 的 Team 會被自己的 guard 藏起來。
+      const keepIds = keptIds.map(function (id) {
+        return ':not([data-id="' + attributeValue(id) + '"])';
+      }).join('');
+      rules.push('html[data-hpx-ultimate-mode="on"] #halo-tree li:has(> .treeviewnode[data-level="1"]' + keepIds + '){display:none!important;}');
+    }
+    // 沒有任何可驗證依據（title / data-id）時維持空 guard，避免整棵 tree 被藏。
+    style.textContent = rules.join('\n');
   }
 
   window.__HPXUltimateBootstrap = { updateTeams: updateTeamGuard, normalizeTeams: normalizedTeams };
@@ -90,6 +118,14 @@
     chrome.storage.local.get(STORAGE_KEY, function (data) {
       const settings = (data && data[STORAGE_KEY]) || {};
       updateTeamGuard(settings[TEAMS_FIELD]);
+      // 整頁載入（例如 Team 快捷列的 <a> 導頁）時，theme attribute 與 accent
+      // 必須在第一幀就存在，theme-cute-ios.css 的 Sidebar 樣式才不會晚到。
+      // 正規化規則與 theme.js loadAll 相同：非 'default' 一律視為 cute-ios。
+      if (settings.theme !== 'default') {
+        document.documentElement.setAttribute('data-hpx-theme', 'cute-ios');
+        const accent = /^#[0-9a-f]{6}$/i.test(String(settings.accent || '')) ? String(settings.accent).toLowerCase() : '#0c2d55';
+        document.documentElement.style.setProperty('--hpx-accent', accent);
+      }
       if (settings[FIELD] === true) {
         document.documentElement.setAttribute('data-hpx-ultimate-mode', 'on');
         document.documentElement.setAttribute('data-hpx-ultimate-bootstrap', 'pending');

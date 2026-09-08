@@ -433,36 +433,55 @@
 
   function findHaloDetailSection(sectionCfg) {
     const detailsCfg = cfg.DETAILS;
-    const heading = safeQueryAll(document, detailsCfg.HALO_HEADING_SELECTOR).find(function (node) {
-      return matchesLabel(node, sectionCfg.HEADINGS, { allowTrailingCounter: true });
-    });
-    if (!heading) return null;
-    const section = safeClosest(heading, detailsCfg.HALO_GROUP_SELECTOR, document.body);
-    if (!section || isOwnUi(section)) return null;
-    let info = null;
-    try { info = section.querySelector(detailsCfg.HALO_INFO_SELECTOR); } catch (e) { info = null; }
-    if (!info) return null;
-
     const keepSet = new Set(normalizedLabels(sectionCfg.KEEP_FIELDS));
-    const keepMatches = new Set();
-    let encounteredLabeledField = false;
-    const rows = safeQueryAll(info, detailsCfg.HALO_FIELD_ROW_SELECTOR).map(function (row) {
-      let labelNode = null;
-      try { labelNode = row.querySelector(detailsCfg.HALO_FIELD_LABEL_SELECTOR); } catch (e) { labelNode = null; }
-      const leadingUnlabeled = !labelNode && !encounteredLabeledField;
-      if (labelNode) encounteredLabeledField = true;
-      const label = labelNode ? matchedLabel(labelNode, sectionCfg.KEEP_FIELDS) : '';
-      if (label) keepMatches.add(label);
-      return {
-        labels: labelNode ? labelVariants(labelNode) : [],
-        label: label || (labelNode ? normalizeText(directText(labelNode)) : ''),
-        nodes: [row],
-        keep: !!label || leadingUnlabeled,
+    let best = null;
+
+    // New Ticket 儲存後 Halo 以 SPA 分批換頁，舊的 details-group 可能短暫和
+    // 新區塊同時留在 DOM。不能只取第一個同名 heading；第一個若是隱藏／未完成
+    // 的舊節點，會讓整輪白名單辨識直接失敗，右欄因而保持未精簡狀態。
+    safeQueryAll(document, detailsCfg.HALO_HEADING_SELECTOR).forEach(function (heading) {
+      if (!matchesLabel(heading, sectionCfg.HEADINGS, { allowTrailingCounter: true }) ||
+          !isVisible(heading)) return;
+
+      const section = safeClosest(heading, detailsCfg.HALO_GROUP_SELECTOR, document.body);
+      if (!section || isOwnUi(section) || !isVisible(section)) return;
+      let info = null;
+      try { info = section.querySelector(detailsCfg.HALO_INFO_SELECTOR); } catch (e) { info = null; }
+      if (!info) return;
+
+      const keepMatches = new Set();
+      let encounteredLabeledField = false;
+      const rows = safeQueryAll(info, detailsCfg.HALO_FIELD_ROW_SELECTOR).map(function (row) {
+        let labelNode = null;
+        try { labelNode = row.querySelector(detailsCfg.HALO_FIELD_LABEL_SELECTOR); } catch (e) { labelNode = null; }
+        const leadingUnlabeled = !labelNode && !encounteredLabeledField;
+        if (labelNode) encounteredLabeledField = true;
+        const label = labelNode ? matchedLabel(labelNode, sectionCfg.KEEP_FIELDS) : '';
+        if (label) keepMatches.add(label);
+        return {
+          labels: labelNode ? labelVariants(labelNode) : [],
+          label: label || (labelNode ? normalizeText(directText(labelNode)) : ''),
+          nodes: [row],
+          keep: !!label || leadingUnlabeled,
+          halo: true,
+        };
+      });
+      if (rows.length < detailsCfg.MIN_FIELD_ROWS || keepMatches.size < 2) return;
+
+      const candidate = {
+        section: section,
+        rows: rows,
+        keepSet: keepSet,
+        score: keepMatches.size,
         halo: true,
       };
+      if (!best || candidate.score > best.score ||
+          (candidate.score === best.score && candidate.rows.length < best.rows.length)) {
+        best = candidate;
+      }
     });
-    if (rows.length < detailsCfg.MIN_FIELD_ROWS || keepMatches.size < 2) return null;
-    return { section: section, rows: rows, keepSet: keepSet, score: keepMatches.size, halo: true };
+
+    return best;
   }
 
   function findDetailSection(sectionCfg) {

@@ -21,15 +21,19 @@
   let textEl = null;
   let hideTimer = null;
   let removeTimer = null;
+  let elapsedTimer = null;
+  let startedAt = 0;
 
   function ensure() {
     if (el && document.body.contains(el)) return el;
     el = document.createElement('div');
     el.className = 'hpx-loader';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
 
     tigerEl = document.createElement('span');
     tigerEl.className = 'hpx-loader__tiger';
-    tigerEl.textContent = '🐯';
+    tigerEl.setAttribute('aria-hidden', 'true');
 
     textEl = document.createElement('span');
     textEl.className = 'hpx-loader__text';
@@ -41,6 +45,8 @@
   }
 
   function clearTimers() {
+    clearInterval(elapsedTimer);
+    elapsedTimer = null;
     if (hideTimer) {
       clearTimeout(hideTimer);
       hideTimer = null;
@@ -58,6 +64,10 @@
       ensure();
       el.classList.remove('hpx-loader--done');
       textEl.textContent = text || '正在處理中…';
+      startedAt = Date.now();
+      elapsedTimer = setInterval(function () {
+        textEl.textContent = (text || '等待 AI 回覆…') + ' · 已耗時 ' + ((Date.now() - startedAt) / 1000).toFixed(1) + ' 秒';
+      }, 1000);
       // 觸發進場動畫
       requestAnimationFrame(function () {
         el.classList.add('hpx-loader--visible');

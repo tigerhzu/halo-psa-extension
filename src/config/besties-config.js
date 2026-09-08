@@ -7,7 +7,7 @@
  *  2. 若使用者尚未設定，回退到本檔的 defaultGroups（種子資料）。
  * 因此「之後要新增 主管 / 同事 / 專案經理」只要在設定頁加群組即可，不必改任何程式。
  *
- * EMAIL_WINDOW / CC 相關 selector 是「最常需要對著實際 HaloPSA DOM 微調」的部分，
+ * EMAIL_WINDOW / CC / Action 相關 selector 是「最常需要對著實際 HaloPSA DOM 微調」的部分，
  * 全部集中在這裡，方便上線後調整。
  */
 (function () {
@@ -27,8 +27,9 @@
     defaultGroups: [],
 
     /**
-     * 「寄信視窗」容器的候選 selector（任一命中即視為一個 email 視窗容器）。
-     * 偵測主要靠「找得到 CC 欄位」，這裡是用來決定按鈕掛在哪個外層容器。
+     * 允許寄信 Action 容器的候選 selector。
+     * 偵測主要靠「找得到 CC 欄位」再搭配 Action 類型判斷，這裡用來決定
+     * 按鈕掛在哪個外層容器。
      * 依實際 DOM 由窄到寬排列。
      */
     EMAIL_WINDOW_SELECTORS: [
@@ -81,13 +82,42 @@
     ],
 
     /**
-     * 「一看到就確定是寄信視窗」的強訊號欄位（HaloPSA 專屬命名）。
-     * 命中其一就視為寄信視窗，不必再過 EMAIL_WINDOW_KEYWORDS（避免被關鍵字濾掉）。
+     * CC 欄位可能是隱藏值 input + 可見 react-select 輸入框；
+     * 用這些控制項確認目前確實處於寄信模式，避免只因 hidden emailcc
+     * 還留在 Resolve Ticket DOM 就誤掛工具列。
      */
-    STRONG_FIELD_SELECTORS: [
-      'input[name="emailcc" i]',
-      'input[name="emailto" i]',
-      'input[name="emailbcc" i]',
+    VISIBLE_CC_CONTROL_SELECTORS: [
+      'input[id^="react-select" i]',
+      'input[role="combobox"]',
+    ],
+
+    /** HaloPSA Action 標題；只從這些節點判斷 Action，避免讀到下方 AI 工具列文字。 */
+    ACTION_TITLE_SELECTORS: [
+      '.history-header .outcome.oneline',
+      '.history-header .outcome',
+      '.history-header',
+    ],
+    ACTION_TITLE_LOOKUP_DEPTH: 12,
+
+    /**
+     * 聯絡人／CC 工具列的寄信 Action 白名單。
+     * 只有 Email User、First Contract（Halo 實際顯示 First Contact）與
+     * Resolve Ticket／Resolved Ticket 可以顯示；其它 Action 一律不得顯示工具列。
+     */
+    EMAIL_ACTION_KEYWORDS: [
+      'email user',
+      'first contract',
+      'first contact',
+      'resolve ticket',
+      'resolved ticket',
+    ],
+
+    /** Activity Note 等非寄信 Action 即使帶有 emailcc，也不得顯示 CC 工具列。 */
+    NON_EMAIL_ACTION_KEYWORDS: [
+      'activity note',
+      'internal note',
+      '活動備註',
+      '內部備註',
     ],
 
     /**
@@ -95,23 +125,6 @@
      * 用於 selector 全部落空時的後援尋找。
      */
     CC_LABEL_KEYWORDS: ['cc', '副本', '抄送', '抄送人'],
-
-    /**
-     * 判斷某容器是否「像寄信視窗」的關鍵字（避免把按鈕掛到不相干區塊）。
-     * 刻意不含裸 "cc"（子字串太容易誤命中 account / success…）；偵測本身已以 CC 欄位為主訊號。
-     */
-    EMAIL_WINDOW_KEYWORDS: [
-      'bcc',
-      'subject',
-      'send email',
-      'reply',
-      'email customer',
-      '收件',
-      '主旨',
-      '副本',
-      '寄送',
-      '回覆',
-    ],
 
     /**
      * CC 欄位寫入策略：

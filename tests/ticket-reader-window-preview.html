@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>Ticket Reader visual preview</title>
+</head>
+<body>
+  <script>
+    window.chrome = window.chrome || {};
+    window.chrome.runtime = {
+      getURL: function (assetPath) { return '../' + assetPath + '?v=0.9.22'; },
+    };
+  </script>
+  <script src="../src/core/namespace.js"></script>
+  <script src="../src/core/html-sanitizer.js"></script>
+  <script>window.__HPX.ui.toast = { show: function () {} };</script>
+  <script src="../src/features/ticket-reader.js"></script>
+  <script>
+    (function () {
+      const reader = window.__HPX.features.ticketReader;
+      reader.debug.makeReaderShell(window);
+      reader.debug.renderSnapshot({
+        ticket: {
+          id: '646478',
+          label: 'Ticket 646478',
+          summary: '電腦鍵盤無反應－饌元股份有限公司',
+          sourceUrl: 'https://example.halopsa.com/ticket?id=646478',
+        },
+        capturedAt: '2026/9/4 18:58:00',
+        activities: [
+          {
+            id: '8', index: 1, kind: 'note', outcome: 'Note', actor: 'Tiger Tiger (You)',
+            when: '2026/9/4 16:48', duration: '00:15', status: '', emailMeta: '',
+            header: 'Tiger Tiger Note',
+            html: '<ul><li><strong style="color:#2368d8">【資訊】</strong> 與使用者通電話以及連線過去</li><li><strong style="color:#7547c8">【處理動作】</strong> 從設定查看藍芽有掛上</li><li><strong style="color:#db334f">【異常】</strong> 單獨的「1」、「Q」、「A」這幾個按鍵有問題</li></ul>',
+          },
+          {
+            id: '7', index: 2, kind: 'email', outcome: 'Email Update', actor: 'Ling Huang',
+            when: '2026/9/4 16:37', duration: '', status: 'Updated',
+            emailMeta: 'To: "Support Ticket" <support@freedom.net.tw>', header: 'Ling Huang Email Update',
+            html: '<p>Hi,</p><p>因為目前還是不能打出鍵盤上 1qa 按鈕，是否可協助處理。</p><hr><p><strong style="color:#3264bb;font-size:22px">UrMart</strong></p><p>Ling<br>人資部 資深 HR｜饌元股份有限公司<br>Tel：02-77515350#318｜E-mail：<a href="mailto:ling@urmart.com">ling@urmart.com</a></p><blockquote><p>感謝您向自由系統提出技術支援需求，我們已經受理您的案件並進行處理。</p></blockquote>',
+          },
+          {
+            id: '5', index: 3, kind: 'status', outcome: 'In Progress', actor: 'Tiger Tiger (You)',
+            when: '2026/9/4 14:09', duration: '00:01', status: '', emailMeta: '',
+            header: 'Tiger Tiger In Progress', html: '',
+          },
+        ],
+      });
+      document.body.setAttribute('data-preview-ready', 'true');
+    })();
+  </script>
+</body>
+</html>

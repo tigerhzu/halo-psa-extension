@@ -59,6 +59,46 @@
     labelLookupDepth: 6,
 
     /**
+     * Extension 工具列的掛載規則（UI Mounting）。
+     * 工具列一律掛在富文字編輯器 DOM「之外」的正常 document flow，
+     * 插在 editor 欄位 label（Note 的「note」、Email 的「Service Status
+     * Note」）正上方。Email User 因此位於 To / Cc / 聯絡人工具列之下、
+     * label 之上，且不建立會蓋過 Halo 原生 autocomplete 的圖層。
+     */
+    TOOLBAR_MOUNT: {
+      /**
+       * 富文字編輯器「最外層 wrapper」的候選 selector。
+       * EDITOR_SELECTORS 命中的是內層可編輯區；工具列必須掛在這層 wrapper 之外，
+       * 才不會被編輯器 rerender / scroll / overflow 影響。
+       */
+      EDITOR_ROOT_SELECTORS: [
+        '.fr-box', // Froala（HaloPSA 主要編輯器）
+        '.ck-editor', // CKEditor 5
+        '.tox-tinymce', // TinyMCE (classic)
+        '.note-editor', // Summernote
+      ],
+
+      /**
+       * Email action 的強訊號欄位（HaloPSA 專屬命名，與 besties-config 同源）。
+       * 從 editor root 往上回溯時，第一個包含這些欄位的祖先即視為 Email action 容器。
+       */
+      EMAIL_FIELD_SELECTORS: [
+        'input[name="emailto" i]',
+        'input[name="emailcc" i]',
+        'input[name="emailbcc" i]',
+      ],
+
+      /** 從 editor root 往上找 Email action 容器的最大層數。 */
+      ACTION_LOOKUP_DEPTH: 8,
+
+      /** editor 欄位 label（例如「note」）的文字長度上限。 */
+      NOTE_LABEL_MAX_LENGTH: 40,
+
+      /** 從 editor root 往上穿過「薄 wrapper」找欄位 label 的最大層數。 */
+      NOTE_LABEL_LOOKUP_DEPTH: 3,
+    },
+
+    /**
      * 「Cute」主題用：HaloPSA 左側選單容器的候選 selector。
      * 偵測到後會被加上 marker class（hpx-theme-sidebar），CSS 只認那個 marker，
      * 所以這裡找錯/找不到都不會誤套到其他區塊。
@@ -121,6 +161,31 @@
       dayColumn: '.rbc-day-slot',
     },
 
+    /** Halo 原生 Category 欄位與 rc-tree-select popup。 */
+    CATEGORY_PICKER: {
+      FIELD_LABEL_SELECTOR: 'label[for^="input-field-for-category_1"]',
+      FIELD_CONTAINER_SELECTOR: '.col-md-12',
+      READ_VALUE_SELECTOR: '.noedit-value .read-value.readedit',
+      NATIVE_CONTROL_SELECTOR: '.rc-tree-select',
+      NATIVE_TRIGGER_SELECTOR: '.rc-tree-select-selector',
+      NATIVE_COMBOBOX_SELECTOR: 'input[id^="input-field-for-category_1"][role="combobox"]',
+      NATIVE_POPUP_SELECTOR: '.rc-tree-select-dropdown',
+      NATIVE_POPUP_HIDDEN_CLASS: 'rc-tree-select-dropdown-hidden',
+      NATIVE_TREE_SELECTOR: '.rc-tree-select-tree',
+      NATIVE_SCROLL_HOLDER_SELECTOR: '.rc-tree-select-tree-list-holder',
+      NATIVE_SCROLL_INNER_SELECTOR: '.rc-tree-select-tree-list-holder-inner',
+      NATIVE_NODE_SELECTOR: '.rc-tree-select-tree-treenode',
+      NATIVE_TITLE_SELECTOR: '.rc-tree-select-tree-title',
+      NATIVE_CONTENT_SELECTOR: '.rc-tree-select-tree-node-content-wrapper',
+      NATIVE_SWITCHER_SELECTOR: '.rc-tree-select-tree-switcher',
+      NATIVE_INDENT_SELECTOR: '.rc-tree-select-tree-indent-unit',
+      NATIVE_SWITCHER_OPEN_CLASS: 'rc-tree-select-tree-switcher_open',
+      NATIVE_SWITCHER_NOOP_CLASS: 'rc-tree-select-tree-switcher-noop',
+      SEARCH_DEBOUNCE_MS: 120,
+      VIRTUAL_SCAN_DELAY_MS: 16,
+      NATIVE_WAIT_MS: 4000,
+    },
+
     /**
      * 極致模式的 HaloPSA DOM 規則。
      *
@@ -169,6 +234,10 @@
       ],
       OBSERVER_URGENT_SELECTORS: [
         '#halo-tree',
+        // Halo 先掛空的 tree / nav 容器，資料回來後才逐批塞入 row 與 icon link；
+        // 這些晚到節點也必須觸發同步 reconcile，才能趕在該幀 paint 前隱藏。
+        '#halo-tree .treeviewnode',
+        '.app-side-link',
         '#app-nav-menu .app-nav-menu-sidebar',
         '.details_page_title',
         '.details-group-header',
@@ -403,7 +472,6 @@
         ],
         KEEP_FIELDS: [
           'Date Created',
-          'Created By',
           'Ticket Type',
           'Status',
           'Team',
@@ -463,7 +531,10 @@
         KEEP_LABELS: [
           'New Ticket',
           'New ticket',
+          'Search',
+          'Search (Ctrl + Shift + F)',
         ],
+        NEW_TICKET_LABELS: ['New Ticket', 'New ticket'],
         MAX_ROOT_TOP_PX: 140,
         MIN_ROOT_WIDTH_PX: 280,
         RIGHT_START_RATIO: 0.62,

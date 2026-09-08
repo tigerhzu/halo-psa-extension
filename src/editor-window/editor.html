@@ -2,6 +2,7 @@
 <html lang="zh-Hant" data-hpx-theme="cute-ios">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Note 編輯器</title>
   <!--
     獨立 Note 編輯視窗（chrome.windows.create 的 popup）。
@@ -13,48 +14,42 @@
     所以所有邏輯都在 editor.js，這裡只有結構。
   -->
   <link rel="stylesheet" href="../styles/toolbar.css" />
-  <link rel="stylesheet" href="../styles/theme-cute-ios.css" />
+  <link rel="stylesheet" href="../styles/workbench.css" />
   <link rel="stylesheet" href="../styles/modal.css" />
   <link rel="stylesheet" href="editor.css" />
 </head>
 <body>
   <div class="hpx-ew">
     <header class="hpx-ew__header">
-      <div class="hpx-ew__title" id="hpx-ew-title">Note 編輯器</div>
-      <div class="hpx-ew__subtitle">
-        套用只會把內容放回 HaloPSA 的編輯框，<strong>不會自動儲存</strong>；請自行按 Halo 的儲存鍵。
-      </div>
+      <div class="hpx-ew__identity"><h1 class="hpx-ew__title" id="hpx-ew-title">Note 編輯器</h1></div>
+      <span class="hpx-ew__draft-label">草稿</span>
     </header>
 
-    <div class="hpx-ew__notice hpx-ew__notice--hidden" id="hpx-ew-notice"></div>
+    <div class="hpx-ew__notice hpx-ew__notice--hidden" id="hpx-ew-notice" role="status" aria-live="polite"></div>
 
-    <div
-      class="hpx-ew__format-toolbar"
-      id="hpx-ew-format-toolbar"
-      role="toolbar"
-      aria-label="文字格式工具列"
-    ></div>
+    <section class="hpx-ew__assistance" aria-label="撰寫輔助">
+      <div class="hpx-ew__assistance-heading"><span class="hpx-ew__section-label">AI</span><span class="hpx-ew__scope" id="hpx-ew-scope" aria-live="polite">未選取文字</span></div>
+      <div class="hpx-toolbar hpx-ew__toolbar" id="hpx-ew-toolbar" role="toolbar" aria-label="AI 與快速範本"></div>
+    </section>
 
-    <div class="hpx-toolbar hpx-ew__toolbar" id="hpx-ew-toolbar"></div>
-
-    <div class="hpx-ew__hint" id="hpx-ew-selhint">
-      上方工具列可直接編輯文字格式；AI 預設<strong>只處理選取的文字</strong>，未選取的部分連同表格、圖片、連結原樣保留。
-    </div>
-
+    <main class="hpx-ew__paper" aria-label="編輯文件">
+    <div class="hpx-ew__format-toolbar" id="hpx-ew-format-toolbar" role="toolbar" aria-label="文字格式工具列"></div>
     <div
       class="hpx-ew__editor"
       id="hpx-ew-editor"
       contenteditable="true"
       spellcheck="false"
       role="textbox"
+      aria-label="Note 草稿內容"
       aria-multiline="true"
     ></div>
+    </main>
 
     <footer class="hpx-ew__footer">
-      <div class="hpx-ew__status" id="hpx-ew-status"></div>
+      <div class="hpx-ew__footer-info"><div class="hpx-ew__status" id="hpx-ew-status" role="status" aria-live="polite"></div><div class="hpx-ew__subtitle">套用後，請在 HaloPSA 儲存。</div></div>
       <div class="hpx-ew__actions">
-        <button type="button" class="hpx-btn hpx-btn--secondary" id="hpx-ew-cancel">取消</button>
-        <button type="button" class="hpx-btn hpx-btn--primary" id="hpx-ew-apply">套用回 HaloPSA</button>
+        <button type="button" class="hpx-btn hpx-btn--secondary" id="hpx-ew-cancel">關閉</button>
+        <button type="button" class="hpx-btn hpx-btn--primary" id="hpx-ew-apply" title="套用回 Halo 草稿（Ctrl+Enter）">套用回 HaloPSA <span aria-hidden="true">↗</span></button>
       </div>
     </footer>
   </div>

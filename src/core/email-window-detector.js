@@ -1,8 +1,9 @@
 /**
  * email-window-detector.js
- * SPA 安全的「寄信視窗」偵測器（功能：聯絡人名單 / CC 快速加入）。
+ * SPA 安全的「允許寄信 Action 視窗」偵測器（功能：聯絡人名單 / CC 快速加入）。
  *
- * 偵測訊號：找得到 CC 欄位 → 視為一個寄信視窗，並推導出要掛按鈕的容器。
+ * 偵測訊號：找得到可見的 CC 欄位，再確認 Action 名稱符合寄信白名單；
+ * Activity Note、狀態類 Action 即使帶有 emailcc 也必須排除。
  * 與 editor-detector 相同設計：單一 MutationObserver + rAF 合併爆量變動，
  * 對「新出現的寄信視窗」呼叫 onFound，對「已消失的」呼叫 onRemoved。
  *
@@ -67,43 +68,132 @@
     );
   }
 
-  /** 容器鄰近文字是否「像寄信視窗」（避免誤掛）。同時看可見文字與欄位的 placeholder/aria-label。 */
-  function looksLikeEmailWindow(container) {
-    const kws = NS.config.besties.EMAIL_WINDOW_KEYWORDS.map(function (k) {
-      return k.toLowerCase();
-    });
-    let text = (container.textContent || '').toLowerCase();
-    // 有些 UI 只有 placeholder / aria-label（無可見 label 文字），一併納入比對
-    try {
-      container.querySelectorAll('input, textarea, [aria-label]').forEach(function (f) {
-        text += ' ' + (f.getAttribute('placeholder') || '') + ' ' + (f.getAttribute('aria-label') || '');
-      });
-    } catch (e) {
-      /* 略過 */
-    }
-    text = text.toLowerCase();
-    return kws.some(function (k) {
-      return text.indexOf(k) !== -1;
-    });
-  }
+  /** 判斷元素及其祖先目前是否可見；hidden input 本身不算可見控制項。 */
+  function isVisibleElement(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return false;
+    if (element.hidden || element.getAttribute('aria-hidden') === 'true') return false;
+    if (element.tagName && element.tagName.toLowerCase() === 'input'
+        && String(element.type || '').toLowerCase() === 'hidden') return false;
 
-  /** 容器內是否有可編輯欄位（用來確認這是一個「撰寫中」的寄信區）。 */
-  function hasEditableField(container) {
-    return !!(
-      container.querySelector &&
-      container.querySelector('input, textarea, [contenteditable="true"]')
-    );
-  }
-
-  /** 容器內是否有 HaloPSA 專屬的寄信欄位（emailcc / emailto…）→ 確定是寄信視窗。 */
-  function hasStrongSignal(container) {
-    const sels = NS.config.besties.STRONG_FIELD_SELECTORS || [];
-    return sels.some(function (s) {
+    let node = element;
+    for (let depth = 0; depth < 10 && node; depth += 1) {
+      if (node.hidden || node.getAttribute('aria-hidden') === 'true') return false;
       try {
-        return !!container.querySelector(s);
+        const style = window.getComputedStyle(node);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
       } catch (e) {
-        return false;
+        // Continue with the DOM checks when a browser cannot compute styles yet.
       }
+      node = node.parentElement;
+    }
+
+    // getClientRects() is the reliable check for Halo's display:none wrappers.
+    // Do not require a non-zero rect in test/fallback DOMs that do not implement it.
+    if (typeof element.getClientRects === 'function' && element.getClientRects().length === 0) return false;
+    return true;
+  }
+
+  function isVisibleControl(element) {
+    if (!isVisibleElement(element)) return false;
+    if (element.disabled) return false;
+    return true;
+  }
+
+  /** 只取得 Halo Action 標題文字，不把編輯器內容或 AI 工具列按鈕算進來。 */
+  function getActionTitleText(container) {
+    const selectors = NS.config.besties.ACTION_TITLE_SELECTORS || [
+      '.history-header .outcome.oneline',
+      '.history-header .outcome',
+      '.history-header',
+    ];
+    const maxDepth = Number(NS.config.besties.ACTION_TITLE_LOOKUP_DEPTH) || 12;
+    let node = container;
+    for (let i = 0; i < maxDepth && node; i++) {
+      for (let j = 0; j < selectors.length; j++) {
+        try {
+          const titleNode = node.querySelector && node.querySelector(selectors[j]);
+          const text = titleNode && (titleNode.textContent || '').trim();
+          if (text) return text.replace(/\s+/g, ' ').toLowerCase();
+        } catch (e) {
+          /* 無效 selector 略過 */
+        }
+      }
+      node = node.parentElement;
+    }
+    return '';
+  }
+
+  function hasKeyword(container, keywords) {
+    const text = getActionTitleText(container);
+    return (keywords || []).some(function (keyword) {
+      return text.indexOf(String(keyword || '').toLowerCase()) !== -1;
+    });
+  }
+
+  /** 向上看兩層，涵蓋 Halo 將 Action 標題放在 form 外側的 .newaction 版型。 */
+  function hasActionKeyword(container, keywords) {
+    let node = container;
+    for (let i = 0; i < 3 && node; i++) {
+      if (hasKeyword(node, keywords)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  /** Activity Note 等非寄信 Action 優先排除，避免 emailcc 強訊號誤判。 */
+  function isNonEmailAction(container) {
+    return hasActionKeyword(container, NS.config.besties.NON_EMAIL_ACTION_KEYWORDS);
+  }
+
+  /** 只允許白名單中的寄信 Action；沒有明確 Action 名稱就不顯示 CC 工具列。 */
+  function isSupportedEmailAction(container) {
+    if (isNonEmailAction(container)) return false;
+    return hasActionKeyword(container, NS.config.besties.EMAIL_ACTION_KEYWORDS);
+  }
+
+  /**
+   * 確認 CC 目前真的顯示在畫面上。
+   * HaloPSA 的 react-select 會把 emailcc 留成 hidden input，實際可操作的
+   * input 在同一個小元件內；因此也檢查 hidden input 附近的可見 companion。
+   */
+  function hasVisibleCcSignal(container) {
+    const c = NS.config.besties;
+    const ccNodes = [];
+    const seen = new Set();
+    (c.CC_FIELD_SELECTORS || []).forEach(function (selector) {
+      try {
+        container.querySelectorAll(selector).forEach(function (node) {
+          if (seen.has(node)) return;
+          seen.add(node);
+          ccNodes.push(node);
+        });
+      } catch (e) {
+        /* 無效 selector 略過 */
+      }
+    });
+
+    if (ccNodes.some(isVisibleControl)) return true;
+
+    const companionSelectors = (c.VISIBLE_CC_CONTROL_SELECTORS || []).join(',');
+    if (!companionSelectors) return false;
+    return ccNodes.some(function (ccNode) {
+      let parent = ccNode.parentElement;
+      // 只在 CC 元件本身與緊鄰的欄位列找 companion，避免把同一個 Action
+      // 裡仍可見的 To 欄位或解決方案編輯器誤認成 CC。
+      for (let depth = 0; depth < 2 && parent && parent !== container; depth += 1) {
+        try {
+          const companion = parent.querySelectorAll(companionSelectors);
+          for (let index = 0; index < companion.length; index += 1) {
+            const control = companion[index];
+            if (control === ccNode) continue;
+            if (isVisibleControl(control)) return true;
+          }
+        } catch (e) {
+          /* 無效 selector 略過 */
+        }
+        parent = parent.parentElement;
+      }
+      return false;
     });
   }
 
@@ -144,9 +234,9 @@
   }
 
   /**
-   * 找出寄信視窗容器。
-   * 偵測「按鈕要不要出現」不再硬性要求找得到 CC 欄位（CC 改在點擊時解析、找不到才報錯），
-   * 而是看：像寄信視窗（含 主旨/副本/送出/回覆… 關鍵字）+ 內含可編輯欄位。
+   * 找出允許顯示聯絡人／CC 工具列的視窗容器。
+   * 必須通過寄信 Action 白名單判斷與可見 CC 欄位檢查；
+   * Activity Note、狀態類 Action 等其他 Action 一律排除。
    */
   function findEmailWindows() {
     if (isNewTicketPage()) return [];
@@ -155,8 +245,9 @@
 
     let windows = candidates.filter(function (el) {
       if (isExcluded(el)) return false;
-      // 強訊號（emailcc/emailto…）直接認定；否則才需「像寄信視窗 + 有可編輯欄位」
-      return hasStrongSignal(el) || (looksLikeEmailWindow(el) && hasEditableField(el));
+      // emailcc 可能只是 Halo 留下的 hidden input；只有可見 CC 控制項
+      // 存在時才算寄信模式，避免信封關閉後仍殘留工具列。
+      return isSupportedEmailAction(el) && hasVisibleCcSignal(el);
     });
 
     // 只留最內層，避免外層 + 內層重複掛工具列
@@ -225,6 +316,30 @@
     (window.requestAnimationFrame || window.setTimeout)(scan, 50);
   }
 
+  /**
+   * 信封切換有些版本只改 React state / class，不一定新增或移除節點；
+   * tracked window 內的按鈕點擊因此也要觸發一次生命週期掃描。
+   */
+  function onDocumentClick(event) {
+    const target = event && event.target;
+    if (!target) return;
+    for (const windowEl of tracked) {
+      if (windowEl.contains && windowEl.contains(target)) {
+        scheduleScan();
+        return;
+      }
+    }
+    const control = target.closest && target.closest('button, a, [role="button"], [role="menuitem"]');
+    if (!control) return;
+    const signal = [
+      control.getAttribute('title'),
+      control.getAttribute('aria-label'),
+      control.className,
+      control.textContent,
+    ].join(' ').toLowerCase();
+    if (/(?:email|mail|寄信|信封)/i.test(signal)) scheduleScan();
+  }
+
   const EmailWindowDetector = {
     start: function (opts) {
       callbacks.onFound = opts && opts.onFound;
@@ -232,7 +347,17 @@
 
       scan();
       observer = new MutationObserver(scheduleScan);
-      observer.observe(document.body, { childList: true, subtree: true });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: [
+          'class', 'style', 'hidden', 'aria-hidden', 'aria-expanded',
+          'aria-pressed', 'aria-checked', 'data-state', 'data-active',
+          'data-selected', 'title',
+        ],
+      });
+      document.addEventListener('click', onDocumentClick, true);
       NS.log('寄信視窗偵測器已啟動');
     },
 
@@ -241,6 +366,7 @@
         observer.disconnect();
         observer = null;
       }
+      document.removeEventListener('click', onDocumentClick, true);
     },
 
     rescan: scheduleScan,

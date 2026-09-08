@@ -27,6 +27,7 @@
       opts = opts || {};
       const el = document.createElement('div');
       el.className = 'hpx-toast hpx-toast--' + (opts.type || 'info');
+      el.setAttribute('role', opts.type === 'error' ? 'alert' : 'status');
       el.textContent = message;
       ensureContainer().appendChild(el);
 

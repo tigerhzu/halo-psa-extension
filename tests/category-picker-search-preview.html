@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Category picker search preview</title>
+  <link rel="stylesheet" href="../src/styles/workbench.css">
+  <link rel="stylesheet" href="../src/styles/category-picker.css">
+  <link rel="stylesheet" href="../src/styles/workbench-surfaces.css">
+  <style>html,body{margin:0;min-height:100%;background:#d7dde7}.hpx-category-modal-layer{position:fixed}</style>
+</head>
+<body>
+  <div class="hpx-category-modal-layer">
+    <div class="hpx-category-modal-backdrop"></div>
+    <div class="hpx-category-shell">
+      <aside class="hpx-category-favorites">
+        <header class="hpx-category-favorites-header"><h3>★ 我的最愛</h3></header>
+        <div class="hpx-category-favorites-list">
+          <div class="hpx-category-favorite-item"><button class="hpx-category-favorite-select"><strong>New Hire</strong><span class="hpx-category-favorite-path">Personnel Changes</span></button></div>
+          <div class="hpx-category-favorite-item"><button class="hpx-category-favorite-select"><strong>Offboarding</strong><span class="hpx-category-favorite-path">Personnel Changes</span></button></div>
+        </div>
+      </aside>
+      <button class="hpx-category-favorites-handle">‹</button>
+      <section class="hpx-category-dialog">
+        <button class="hpx-category-dialog-close">×</button>
+        <header class="hpx-category-toolbar">
+          <label class="hpx-category-search">
+            <span class="hpx-category-search-icon">⌕</span>
+            <input type="search" aria-label="搜尋 Category" placeholder="搜尋 Category…">
+            <button class="hpx-category-search-clear" hidden>×</button>
+          </label>
+          <div class="hpx-category-status">顯示 15 個分類；使用 ＋ 展開下一層</div>
+        </header>
+        <div class="hpx-category-tree">
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Access Permissions</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Advance Notice</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Alerts / Notifications</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Client Computers</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Cloud Services</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Hardware Setup / Updates / Troubleshooting</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Information Security</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">IT Service Request</button><button class="hpx-category-star">☆</button></div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const shell = document.querySelector('.hpx-category-shell');
+      const handle = document.querySelector('.hpx-category-favorites-handle');
+      handle.addEventListener('click', function () {
+        const collapsed = shell.classList.toggle('hpx-category-shell--favorites-collapsed');
+        handle.textContent = collapsed ? '★' : '‹';
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-/** ultimate-mode/team-shortcuts.js — Timesheets／Tickets 左側與設定清單同步的 Team 快捷列。 */
+/** ultimate-mode/team-shortcuts.js — Halo 各頁左側與設定清單同步的 Team 快捷列。 */
 (function () {
   'use strict';
   const NS = window.__HPX;
@@ -6,20 +6,20 @@
   const cfg = shared.cfg.SIDEBAR;
   const knownTeamIds = new Map();
   const LOGO_ASSETS = Object.freeze({
-    A: 'assets/ultimate-mode/team-a.webp',
-    B: 'assets/ultimate-mode/team-b.webp',
-    C: 'assets/ultimate-mode/team-c.webp',
-    TIMESHEETS: 'assets/ultimate-mode/timesheets.webp',
+    A: 'assets/ultimate-mode/team-a-transparent.png',
+    B: 'assets/ultimate-mode/team-b-transparent.png',
+    C: 'assets/ultimate-mode/team-c-transparent.png',
+    TIMESHEETS: 'assets/ultimate-mode/timesheets-transparent.png',
   });
   const TEAM_LOGO_ASSETS = Object.freeze({
-    'other support': 'assets/ultimate-mode/team-other-support.png',
-    'project manager': 'assets/ultimate-mode/team-project-manager.png',
+    'other support': 'assets/ultimate-mode/team-other-support-transparent.png',
+    'project manager': 'assets/ultimate-mode/team-project-manager-transparent.png',
     // normalizeText 會將 Halo 的「SecOp」拆成「Sec Op」。
-    'sec op team a': 'assets/ultimate-mode/team-sec-a.png',
-    'technical solutions division': 'assets/ultimate-mode/team-technical-solutions.png',
-    'rd': 'assets/ultimate-mode/team-rd.png',
-    'thailand team': 'assets/ultimate-mode/team-thailand.png',
-    'sales&admin': 'assets/ultimate-mode/team-sales-admin.png',
+    'sec op team a': 'assets/ultimate-mode/team-sec-a-transparent.png',
+    'technical solutions division': 'assets/ultimate-mode/team-technical-solutions-transparent.png',
+    'rd': 'assets/ultimate-mode/team-rd-transparent.png',
+    'thailand team': 'assets/ultimate-mode/team-thailand-transparent.png',
+    'sales&admin': 'assets/ultimate-mode/team-sales-admin-transparent.png',
   });
 
   function createLogoImage(className, assetPath) {
@@ -70,16 +70,8 @@
     return true;
   }
 
-  function isTimesheetsRoute() {
-    return /^\/timesheets(?:\/|$)/i.test(window.location.pathname);
-  }
-
   function isTicketsRoute() {
     return /^\/tickets(?:\/|$)/i.test(window.location.pathname);
-  }
-
-  function isTeamNavigationRoute() {
-    return isTimesheetsRoute() || isTicketsRoute();
   }
 
   function shortcutItems() {
@@ -102,15 +94,35 @@
     }) || null;
   }
 
+  /**
+   * 把已驗證的 Team data-id 交給 bootstrap.js 的第一幀 CSS guard：
+   * live Halo 的 tree row 沒有 title 屬性，document_start 只能靠 data-id
+   * 在原生 Sidebar 第一次 paint 前隱藏未保留的 Team。
+   */
+  function persistTeamIds(discovered) {
+    try {
+      const stored = JSON.parse(window.sessionStorage.getItem('hpx_ultimate_team_ids') || '{}');
+      const merged = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
+      Object.keys(discovered).forEach(function (key) { merged[key] = discovered[key]; });
+      window.sessionStorage.setItem('hpx_ultimate_team_ids', JSON.stringify(merged));
+    } catch (error) {
+      // sessionStorage 不可用時，第一幀 guard 會 fail open，由 JS reconcile 接手。
+    }
+  }
+
   function discoverTeamIds() {
     let found = 0;
+    const discovered = {};
     shortcutItems().forEach(function (label) {
       const row = findTeamRow(label);
       const id = row && row.getAttribute('data-id');
       if (!id) return;
       knownTeamIds.set(shared.normalizeText(label), id);
+      // bootstrap 端以「設定 label 的簡單小寫」為 key，兩邊都來自同一份設定字串。
+      discovered[String(label).replace(/\s+/g, ' ').trim().toLocaleLowerCase()] = id;
       found += 1;
     });
+    if (found > 0) persistTeamIds(discovered);
     return found;
   }
 
@@ -242,11 +254,6 @@
     const discovered = discoverTeamIds();
     const resumed = resumePendingTeam();
     const branded = brandCurrentTimesheets();
-    if (!isTeamNavigationRoute()) {
-      removeShortcuts();
-      return { found: discovered > 0 || branded, mounted: false, resumed: resumed, teams: discovered, branded: branded };
-    }
-
     const root = mount();
     if (!root) {
       shared.warnOnce('missing:team-shortcuts', '找不到 Team 快捷列的左側導覽容器，本輪不加入 Team 快捷按鈕。');

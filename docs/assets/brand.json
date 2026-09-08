@@ -1,0 +1,15 @@
+{
+  "title": "Halo Companion",
+  "subtitle": "More room for the work that matters.",
+  "description": "A focused workspace for HaloPSA writing, tickets and timesheets.",
+  "accent": "#80d6b1",
+  "eyebrow": "COMPOSE / REVIEW / RESOLVE",
+  "chips": [
+    "Vanilla JavaScript",
+    "Manifest V3",
+    "HaloPSA"
+  ],
+  "footer": "A LITTLE HELP. A BETTER WORKDAY.",
+  "number": "02",
+  "logoSource": "assets/branding/companion-mark.svg"
+}

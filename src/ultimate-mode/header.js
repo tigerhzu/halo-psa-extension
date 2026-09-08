@@ -46,8 +46,12 @@
   }
 
   function isNewTicket(control) {
-    return shared.matchesLabel(control, cfg.KEEP_LABELS) ||
+    return shared.matchesLabel(control, cfg.NEW_TICKET_LABELS) ||
       /^new\s+ticket$/i.test(shared.directText(control));
+  }
+
+  function isKeepControl(control) {
+    return isNewTicket(control) || shared.matchesLabel(control, cfg.KEEP_LABELS);
   }
 
   function isLikelyIcon(control) {
@@ -167,7 +171,7 @@
       shared.clearWarning('missing:' + section);
       let hidden = 0;
       candidate.controls.forEach(function (control) {
-        if (isNewTicket(control)) return;
+        if (isKeepControl(control)) return;
         if (shared.hide(control, section)) hidden += 1;
       });
       return { found: true, hidden: hidden, controls: candidate.controls.length };

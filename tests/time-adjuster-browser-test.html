@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><title>Time Taken row regression</title>
+<link rel="stylesheet" href="../src/styles/time-adjuster.css">
+<link rel="stylesheet" href="../src/styles/workbench-surfaces.css">
+<style>
+  body { margin:24px; color:#172b29; font:14px/1.5 "Segoe UI",sans-serif; }
+  h1 { font-size:22px; } h2 { margin:0 0 12px; font-size:14px; }
+  #fixtures { display:grid; gap:20px; justify-items:start; }
+  .halo-action { border:1px solid #d8e2d9; border-radius:8px; padding:12px; box-sizing:content-box; }
+  .time-slot { min-width:0; }
+  .native-line { display:flex; align-items:center; gap:12px; }
+  .native-line label { flex:none; }
+  .native-controls { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+  .halo-action .native-controls > input, .halo-action .native-controls > span > input { width:36px!important; min-width:36px!important; height:28px; padding:2px!important; margin:0!important; text-align:center; box-sizing:border-box; }
+  .halo-action .native-controls > input.combined { width:108px!important; min-width:108px!important; }
+  .halo-action .details-group { width:100%; }
+  .halo-action .col-md-4.inline { display:inline-block; width:var(--native-column-width,100%); max-width:var(--native-column-width,100%); flex:0 0 var(--native-column-width,100%); vertical-align:top; }
+  .halo-action .col-md-12.inline { display:block; width:100%; }
+  .halo-action .row { display:flex; width:100%; }
+  .halo-action .col-md-12.native-controls { display:block; width:100%; max-width:100%; min-height:74px; padding:0 15px; box-sizing:border-box; }
+  .halo-action .col-md-12.native-controls > label { display:block; line-height:22px; margin-bottom:8px; }
+  .halo-action .col-md-12.native-controls > input { display:inline-block; width:60px!important; min-width:60px!important; height:30px; }
+  .halo-action .action-form-btn { display:inline-block; width:30px!important; min-width:30px!important; height:30px; padding:0!important; margin:0 0 0 4px!important; line-height:1; }
+  .native-following { display:block; margin:8px 0 0; font-size:12px; color:#637568; }
+  /* Host rules deliberately load last, as Halo may add form CSS after injection. */
+  .halo-action button, .halo-action input { display:block; width:100%!important; min-width:130px!important; padding:12px!important; margin:8px 5px!important; white-space:normal; line-height:2; }
+  .halo-action span { margin-bottom:10px; }
+  #result { white-space:pre-wrap; max-width:900px; font-size:11px; }
+</style>
+</head><body>
+<h1>Time Taken · all controls visible</h1>
+<div id="fixtures"></div><pre id="result">Running…</pre>
+<script src="../src/core/namespace.js"></script>
+<script src="../src/config/time-adjuster-config.js"></script>
+<script src="../src/features/time-adjuster-core.js"></script>
+<script src="../src/features/time-adjuster.js"></script>
+<script>
+(async function () {
+  const NS=window.__HPX;
+  NS.config.selectors={HALO_SIGNATURE_SELECTORS:['.halo-action']};
+  const checks=[];
+  function check(name, ok) { checks.push({name,ok:!!ok}); }
+  const frames=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  const bounds=node=>{const r=node.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+  const visibleChildren=node=>[...node.children].filter(child=>getComputedStyle(child).position!=='absolute');
+  const contrast=(a,b)=>{const luminance=color=>{const rgb=color.match(/[\d.]+/g).slice(0,3).map(value=>{const v=Number(value)/255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;});return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+  const cases=[];
+  let submits=0;
+  for (const width of [272,280,420,720,817]) {
+    for (const mode of (width===817?['halo-native','halo-readonly-seconds']:width===272?['halo-native']:['triple','nested','pair','combined','halo-native'])) {
+      const isHalo=mode.startsWith('halo-');
+      const readOnlySeconds=mode==='halo-readonly-seconds';
+      const form=document.createElement('form');
+      form.className='halo-action';
+      form.style.width=width+'px';
+      form.innerHTML='<h2>'+width+'px · '+mode+'</h2><div class="time-slot"><div class="native-line"><label>Time Taken</label><div class="native-controls"></div></div><span class="native-following">Job Code remains below this field</span></div>';
+      form.addEventListener('submit',event=>{event.preventDefault();submits++;});
+      if (isHalo) {
+        form.innerHTML='<h2>'+width+'px · live Halo hierarchy</h2><div class="details-group"><div class="col-md-4 inline time-slot"><div class="row"><div class="col-md-12 native-controls"></div></div></div><div class="col-md-12 inline native-following">Action details</div><div class="col-md-4 inline native-job"><label>Job Code</label><select aria-label="Job Code"><option>Service</option><option>Project</option></select></div></div>';
+        if (width===817) form.style.setProperty('--native-column-width','33.333333%');
+      }
+      const fields=form.querySelector('.native-controls');
+      if (mode==='combined') fields.innerHTML='<input class="combined" aria-label="Time" type="text" value="00:19:40">';
+      else {
+        const units=mode==='pair'?['Hours','Minutes']:['Hours','Minutes','Seconds'];
+        fields.innerHTML=units.map((unit,i)=>{
+          const input='<input aria-label="'+unit+'" type="text" maxlength="2" value="'+(readOnlySeconds?['00','36','56']:['00','19','40'])[i]+'">';
+          return (i?'<span>:</span>':'')+(mode==='nested'?'<span>'+input+'</span>':input);
+        }).join('');
+      }
+      if (isHalo) {
+        fields.insertAdjacentHTML('afterbegin','<label>Time Taken</label>');
+        [...fields.querySelectorAll('input')].forEach((input,i)=>{
+          input.placeholder=['hh','mm','ss'][i];
+          input.id='input-field-for-timetaken_'+width+'_!'+['hrs','mins','secs'][i];
+          input.name='timetaken_!'+['hrs','mins','secs'][i];
+          input.maxLength=i===0?4:3;
+          if (readOnlySeconds&&i===2) input.readOnly=true;
+        });
+        // Native timer belongs to the time group and must never be moved or clicked.
+        fields.insertAdjacentHTML('beforeend','<button type="button" class="action-form-btn fabtn size13" aria-label="Start timer">▶</button>');
+      }
+      document.getElementById('fixtures').appendChild(form);
+      cases.push({width,mode,readOnlySeconds,form,fields,inputs:[...fields.querySelectorAll('input')],timer:fields.querySelector('.action-form-btn'),column:form.querySelector('.col-md-4.time-slot'),job:form.querySelector('.native-job')});
+    }
+  }
+  const allReadOnlyForm=cases.find(entry=>entry.readOnlySeconds).form.cloneNode(true);
+  allReadOnlyForm.querySelector('h2').textContent='817px · all native time fields readonly';
+  [...allReadOnlyForm.querySelectorAll('.native-controls input')].forEach(input=>{input.readOnly=true;input.removeAttribute('id');});
+  document.getElementById('fixtures').appendChild(allReadOnlyForm);
+  await frames();
+  cases.forEach(entry=>{
+    const parent=bounds(entry.form);
+    entry.before=entry.inputs.map(input=>{const r=bounds(input);return {left:r.left-parent.left,top:r.top-parent.top,width:r.width,height:r.height,value:input.value};});
+    entry.nativeChildrenBefore=[...entry.fields.childNodes];
+    entry.nativeHtmlBefore=entry.fields.outerHTML;
+    if (entry.column) entry.columnBefore={width:bounds(entry.column).width,parent:entry.column.parentElement,next:entry.column.nextElementSibling};
+    if (entry.timer) { const r=bounds(entry.timer);entry.timerBefore={left:r.left-parent.left,top:r.top-parent.top,width:r.width,height:r.height}; }
+  });
+  NS.features.timeAdjuster.start();
+  await frames();
+  for (const entry of cases) {
+    const {width,mode,readOnlySeconds,form,fields,inputs}=entry;
+    const prefix=width+'px '+mode+': ';
+    const row=form.querySelector('.hpx-tta');
+    check(prefix+'one helper mounted',form.querySelectorAll('.hpx-tta').length===1);
+    if (!row) continue;
+    if (readOnlySeconds) {
+      check(prefix+'summary reads native readonly seconds accurately',row.querySelector('.hpx-tta-summary').textContent==='目前 36 分鐘 56 秒');
+      check(prefix+'reset label describes partial reset honestly',row.querySelector('.hpx-tta-btn--reset').textContent==='重設'&&row.querySelector('.hpx-tta-btn--reset').title.includes('秒數由計時器控制'));
+    }
+    const parent=bounds(form), r=bounds(row), native=bounds(fields);
+    if (entry.timer) check(prefix+'helper uses the full details group below the native row',row.parentElement===form.querySelector('.details-group')&&!fields.contains(row)&&r.top>=native.bottom&&entry.nativeChildrenBefore.every((node,i)=>fields.childNodes[i]===node));
+    else check(prefix+'unknown native structures retain safe separate helper row',!fields.contains(row)&&r.top>=native.bottom);
+    check(prefix+'native field sizes, parents and values preserved',inputs.every((input,i)=>{
+      const now=bounds(input), old=entry.before[i];
+      return fields.contains(input)&&now.width===old.width&&now.height===old.height&&input.value===old.value;
+    }));
+    if (entry.timer) {
+      const now=bounds(entry.timer), old=entry.timerBefore;
+      check(prefix+'native timer remains in original group with original size',entry.timer.parentElement===fields&&now.width===old.width&&now.height===old.height);
+      check(prefix+'current summary stays visible without live timer announcements',bounds(row.querySelector('.hpx-tta-summary')).width>20&&!row.querySelector('.hpx-tta-summary').hasAttribute('role')&&row.querySelector('.hpx-tta-summary').getAttribute('aria-live')==='off');
+      check(prefix+'only verified time column expands',entry.column.getAttribute('data-hpx-time-expanded')==='true'&&Math.abs(bounds(entry.column).width-width)<1);
+      check(prefix+'subsequent native fields stay in order after helper',entry.column.parentElement===entry.columnBefore.parent&&row.parentElement===entry.column.parentElement&&!!(row.compareDocumentPosition(entry.job)&Node.DOCUMENT_POSITION_FOLLOWING)&&entry.job.querySelector('select').value==='Service');
+      if (width===817) {
+        check(prefix+'real 272px column expands to 817px available group',Math.abs(entry.columnBefore.width-817/3)<1&&Math.abs(bounds(entry.column).width-817)<1);
+        const controls=[...inputs,entry.timer,...visibleChildren(row)].map(bounds);
+        const center=controls[0].top+controls[0].height/2;
+        check(prefix+'native fields and timer remain together above the helper',controls.slice(0,inputs.length+1).every(box=>Math.abs(box.top+box.height/2-center)<1)&&r.top>=bounds(entry.timer).bottom);
+        check(prefix+'desktop helper starts from the left on its own row',Math.abs(r.left-bounds(entry.column).left)<1);
+      }
+    }
+    check(prefix+'helper contained by action panel',r.width<=width+1&&r.left>=parent.left&&r.right<=parent.right);
+    const boxes=visibleChildren(row).map(bounds);
+    const middle=boxes[0].top+boxes[0].height/2;
+    if (width>=720) check(prefix+'all controls on one centered row',boxes.every(box=>Math.abs(box.top+box.height/2-middle)<1));
+    check(prefix+'all controls fit without clipping',boxes.every(box=>box.left>=r.left&&box.right<=r.right+1&&box.top>=r.top&&box.bottom<=r.bottom+1));
+    check(prefix+'no controls overlap',boxes.every((box,i)=>boxes.slice(i+1).every(other=>box.right<=other.left||other.right<=box.left||box.bottom<=other.top||other.bottom<=box.top)));
+    check(prefix+'labels stay unbroken', [...row.querySelectorAll('button')].every(button=>getComputedStyle(button).whiteSpace==='nowrap'));
+    check(prefix+'only Apply is boxed among action buttons',[...row.querySelectorAll('button:not(.hpx-tta-btn--apply)')].every(control=>getComputedStyle(control).borderTopWidth==='0px'&&getComputedStyle(control).borderBottomWidth==='0px')&&parseFloat(getComputedStyle(row.querySelector('.hpx-tta-btn--apply')).borderRadius)===6);
+    check(prefix+'manual minutes keep a usable fixed width',bounds(row.querySelector('.hpx-tta-input')).width===56);
+    check(prefix+'no horizontal scrolling on helper or panel',form.scrollWidth<=form.clientWidth+1&&row.scrollWidth<=row.clientWidth+1&&getComputedStyle(row).overflowX==='visible');
+    check(prefix+'last action immediately visible',bounds(row.lastElementChild).right<=r.right+1&&bounds(row.lastElementChild).bottom<=r.bottom+1&&row.scrollLeft===0);
+    check(prefix+'secondary actions are flat text with dividers',[...row.querySelectorAll('button:not(.hpx-tta-btn--apply)')].every(button=>{const style=getComputedStyle(button);return style.backgroundColor==='rgba(0, 0, 0, 0)'&&style.borderLeftWidth==='1px'&&contrast(style.color,'rgb(255,255,255)')>=4.5&&style.backgroundImage==='none';}));
+    const applyButton=row.querySelector('.hpx-tta-btn--apply');
+    form.style.setProperty('--hpx-accent','#fff');form.style.setProperty('--hpx-accent-ink','#24344b');
+    const whiteApplyStyle=getComputedStyle(applyButton);
+    check(prefix+'white custom accent retains visible Apply outline and label',contrast(whiteApplyStyle.borderColor,'rgb(255,255,255)')>=3&&contrast(whiteApplyStyle.color,whiteApplyStyle.backgroundColor)>=4.5);
+    form.style.removeProperty('--hpx-accent');form.style.removeProperty('--hpx-accent-ink');
+    const nativeEvents=[];
+    const announcement=row.querySelector('.hpx-tta-announcement');
+    let deliveredAnnouncements=0;
+    const announcementObserver=new MutationObserver(records=>{deliveredAnnouncements+=records.length;});
+    announcementObserver.observe(announcement,{childList:true,characterData:true,subtree:true});
+    check(prefix+'explicit-feedback live region starts empty',announcement.getAttribute('role')==='status'&&announcement.getAttribute('aria-live')==='polite'&&announcement.textContent==='');
+    inputs.forEach((input,i)=>['input','change','blur','focusout'].forEach(type=>input.addEventListener(type,()=>nativeEvents.push(i+':'+type))));
+    [...row.querySelectorAll('button')].find(button=>button.textContent==='+5 分').click();
+    const expectedAfterPreset=readOnlySeconds?['00','41','56']:mode==='pair'?['00','24']:mode==='combined'?['00:24:40']:['00','24','40'];
+    check(prefix+'preset updates native inputs and preserves seconds',inputs.every((input,i)=>input.value===expectedAfterPreset[i]));
+    check(prefix+'editable native input/change/blur/focusout events preserved',inputs.every((input,i)=>input.readOnly||['input','change','blur','focusout'].every(type=>nativeEvents.includes(i+':'+type))));
+    check(prefix+'preset announces final result once after all native updates',announcementObserver.takeRecords().length===1&&announcement.textContent==='Time Taken 已調整為 '+row.querySelector('.hpx-tta-summary').textContent.replace(/^目前\s*/,''));
+    row.querySelector('.hpx-tta-btn--reset').click();
+    check(prefix+'reset updates editable fields and respects readonly seconds',inputs.every(input=>input.readOnly?input.value==='56':/^(00|00:00:00)$/.test(input.value)));
+    if (readOnlySeconds) check(prefix+'reset summary retains native timer seconds',row.querySelector('.hpx-tta-summary').textContent==='目前 56 秒');
+    check(prefix+'reset announces final result once',announcementObserver.takeRecords().length===1&&announcement.textContent==='Time Taken 已調整為 '+row.querySelector('.hpx-tta-summary').textContent.replace(/^目前\s*/,''));
+    const manual=row.querySelector('.hpx-tta-input'); manual.value=readOnlySeconds?'60':'75';
+    const enter=new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}); manual.dispatchEvent(enter);
+    const expectedApplied=readOnlySeconds?['01','00','56']:mode==='pair'?['01','15']:mode==='combined'?['01:15:00']:['01','15','00'];
+    check(prefix+'manual application updates complete native group',inputs.every((input,i)=>input.value===expectedApplied[i]));
+    check(prefix+'Enter is prevented from submitting action',enter.defaultPrevented);
+    check(prefix+'helper buttons never submit', [...row.querySelectorAll('button')].every(button=>button.type==='button'));
+    check(prefix+'manual apply announces final result once',announcementObserver.takeRecords().length===1&&announcement.textContent==='Time Taken 已調整為 '+row.querySelector('.hpx-tta-summary').textContent.replace(/^目前\s*/,''));
+    const explicitFeedback=announcement.textContent;
+    ['input','change','blur'].forEach(type=>inputs[0].dispatchEvent(new Event(type,{bubbles:true})));
+    check(prefix+'passive native events never update the live region',announcementObserver.takeRecords().length===0&&announcement.textContent===explicitFeedback);
+    if (readOnlySeconds) {
+      check(prefix+'readonly seconds receive no writes or synthetic input events',inputs[2].readOnly&&inputs[2].value==='56'&&!nativeEvents.some(event=>event.startsWith('2:')));
+      check(prefix+'manual summary includes retained timer seconds',row.querySelector('.hpx-tta-summary').textContent==='目前 1 小時 56 秒');
+      inputs[2].value='57';inputs[2].dispatchEvent(new Event('input',{bubbles:true}));
+      check(prefix+'native timer changes still refresh readonly seconds summary',row.querySelector('.hpx-tta-summary').textContent==='目前 1 小時 57 秒');
+      check(prefix+'running timer updates no live feedback',announcementObserver.takeRecords().length===0&&announcement.textContent===explicitFeedback);
+      const originalValueAttr=inputs[2].getAttribute('value');
+      const deliveredBeforeTimer=deliveredAnnouncements;
+      inputs[2].setAttribute('value','57');
+      await frames();
+      check(prefix+'passive value-attribute observer never updates live feedback',announcement.textContent===explicitFeedback&&deliveredAnnouncements===deliveredBeforeTimer&&announcementObserver.takeRecords().length===0);
+      inputs[2].setAttribute('value',originalValueAttr);
+    }
+    const valuesBeforeInvalid=inputs.map(input=>input.value);
+    manual.value='-1';applyButton.click();
+    const error=row.querySelector('.hpx-tta-summary');
+    check(prefix+'invalid manual entry is visible and leaves native values unchanged',error.classList.contains('is-invalid')&&getComputedStyle(error).position!=='absolute'&&bounds(error).width>20&&manual.getAttribute('aria-invalid')==='true'&&inputs.every((input,i)=>input.value===valuesBeforeInvalid[i]));
+    check(prefix+'explicit validation error is announced once',announcementObserver.takeRecords().length===1&&announcement.textContent===error.textContent);
+    manual.value=readOnlySeconds?'60':'75';applyButton.click();
+    check(prefix+'valid correction clears manual validation',!manual.hasAttribute('aria-invalid')&&!error.classList.contains('is-invalid'));
+    announcementObserver.disconnect();
+  }
+  check('all-readonly time fields mount no helper or width marker',!allReadOnlyForm.querySelector('.hpx-tta')&&!allReadOnlyForm.querySelector('[data-hpx-time-expanded]'));
+  NS.features.timeAdjuster.rescan();
+  await new Promise(resolve=>setTimeout(resolve,NS.config.timeAdjuster.SCAN_DEBOUNCE_MS+30));
+  check('rescan does not duplicate helpers',document.querySelectorAll('.hpx-tta').length===cases.length);
+  const live=cases.find(entry=>entry.width===817);
+  const existingHelper=live.form.querySelector('.hpx-tta');
+  existingHelper.querySelector('.hpx-tta-input').value='42';
+  const lateField=document.createElement('select');
+  lateField.setAttribute('aria-label','Late native field');
+  lateField.innerHTML='<option value="retained">Retained</option>';
+  live.column.appendChild(lateField);
+  NS.features.timeAdjuster.rescan();
+  await new Promise(resolve=>setTimeout(resolve,NS.config.timeAdjuster.SCAN_DEBOUNCE_MS+30));
+  check('late native field releases exclusive width',!live.column.hasAttribute('data-hpx-time-expanded')&&!live.fields.hasAttribute('data-hpx-time-inline')&&Math.abs(bounds(live.column).width-live.columnBefore.width)<1);
+  check('late native field stays in place with its value',lateField.parentElement===live.column&&lateField.value==='retained');
+  check('layout recheck preserves one helper and unfinished manual value',live.form.querySelectorAll('.hpx-tta').length===1&&live.form.querySelector('.hpx-tta')===existingHelper&&existingHelper.querySelector('.hpx-tta-input').value==='42');
+  check('mixed narrow column still shows every helper control without scrolling',existingHelper.scrollWidth<=existingHelper.clientWidth+1&&visibleChildren(existingHelper).every(child=>bounds(child).right<=bounds(existingHelper).right+1));
+  lateField.remove();
+  NS.features.timeAdjuster.rescan();
+  await new Promise(resolve=>setTimeout(resolve,NS.config.timeAdjuster.SCAN_DEBOUNCE_MS+30));
+  check('removing extra native field restores full width and separate helper row',live.column.getAttribute('data-hpx-time-expanded')==='true'&&!live.fields.hasAttribute('data-hpx-time-inline')&&!live.fields.contains(existingHelper)&&Math.abs(bounds(live.column).width-817)<1);
+  check('restored full width retains helper identity and manual draft',live.form.querySelectorAll('.hpx-tta').length===1&&live.form.querySelector('.hpx-tta')===existingHelper&&existingHelper.querySelector('.hpx-tta-input').value==='42');
+  live.form.querySelector('.hpx-tta').remove();
+  NS.features.timeAdjuster.rescan();
+  await new Promise(resolve=>setTimeout(resolve,NS.config.timeAdjuster.SCAN_DEBOUNCE_MS+30));
+  check('native rerender removing only helper remounts it once',live.form.querySelectorAll('.hpx-tta').length===1&&live.column.getAttribute('data-hpx-time-expanded')==='true');
+  NS.features.timeAdjuster.stop();
+  await frames();
+  check('stop removes all helpers and owned layout markers',!document.querySelector('.hpx-tta')&&!document.querySelector('[data-hpx-time-expanded]')&&!document.querySelector('[data-hpx-time-inline]'));
+  check('stop restores original Halo column widths and sibling order',cases.filter(entry=>entry.column).every(entry=>Math.abs(bounds(entry.column).width-entry.columnBefore.width)<1&&entry.column.nextElementSibling===entry.columnBefore.next));
+  check('stop restores exact native DOM attributes and child order',cases.every(entry=>entry.fields.outerHTML===entry.nativeHtmlBefore&&entry.nativeChildrenBefore.length===entry.fields.childNodes.length&&entry.nativeChildrenBefore.every((node,i)=>entry.fields.childNodes[i]===node)));
+  check('stop restores exact original native input geometry',cases.every(entry=>{const parent=bounds(entry.form);return entry.inputs.every((input,i)=>{const box=bounds(input),old=entry.before[i];return Math.abs(box.left-parent.left-old.left)<1&&Math.abs(box.top-parent.top-old.top)<1&&box.width===old.width&&box.height===old.height;});}));
+  check('stop preserves edited native field values',cases.every(entry=>entry.inputs[0].value===(entry.mode==='combined'?'01:15:00':'01')));
+  NS.features.timeAdjuster.start();
+  await frames();
+  check('restart mounts exactly one helper per time field',document.querySelectorAll('.hpx-tta').length===cases.length);
+  check('restart still leaves all-readonly time fields untouched',!allReadOnlyForm.querySelector('.hpx-tta')&&[...allReadOnlyForm.querySelectorAll('.native-controls input')].every(input=>input.readOnly));
+  check('no action submitted',submits===0);
+  const result={ok:checks.every(c=>c.ok),passed:checks.filter(c=>c.ok).length,total:checks.length,checks};
+  document.body.dataset.ok=String(result.ok);
+  document.getElementById('result').textContent=JSON.stringify(result,null,2);
+  document.title=(result.ok?'PASS':'FAIL')+' · Time Taken row regression';
+})();
+</script></body></html>

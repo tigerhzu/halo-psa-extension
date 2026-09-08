@@ -1,0 +1,82 @@
+/* Halo feature layout. Shared product geometry and type live in paper.css. */
+:root {
+  --brand: #c92f3e; --brand-dark: #a52532;
+  --brand-pale: #fff0f1; --brand-line: #efc8cd;
+  --op-bg: var(--canvas); --op-surface: var(--paper); --op-ink: var(--ink); --op-muted: var(--muted);
+  --op-line: var(--line); --op-accent: var(--brand); --op-accent-ink: #fff;
+  --op-control: #fff; --op-control-hover: #f5f5f7; --op-control-border: #c0c4cd; --op-control-ink: var(--ink);
+  --op-soft: var(--brand-pale); --op-shadow: var(--shadow);
+}
+html body.hpx-options.settings-paper { background: var(--canvas) url('./paper-grain.svg') repeat; color: var(--ink); font: 14px "Segoe UI Variable", "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif; }
+.hpx-options.settings-paper .settings-shell { display: grid; margin: auto; min-height: 100vh; }
+.hpx-options.settings-paper .settings-sidebar { position: sticky; inset: 0 auto auto; top: 0; width: auto; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; border-right: 1px solid var(--line); }
+.hpx-options.settings-paper .settings-main { min-width: 0; max-width: none; margin-left: 0; }
+.hpx-options.settings-paper .settings-page { max-width: 870px; margin: 0 auto; }
+.hpx-options.settings-paper .settings-nav { display: grid; }
+.hpx-options.settings-paper .nav-item { gap: 11px; padding: 11px 13px; justify-content: flex-start; font-size: 13px; }
+.hpx-options.settings-paper .nav-item:not(.is-active) { color: #535b67 !important; }
+.hpx-options.settings-paper .nav-item.is-active { color: var(--brand-dark) !important; }
+.hpx-options.settings-paper .paper-brand-name { font-size: 22px; letter-spacing: -.8px; }
+.hpx-options.settings-paper .paper-masthead p, .hpx-options.settings-paper .paper-masthead h1 { margin-bottom: 0; }
+.hpx-options.settings-paper .workspace-grid { display: flex; flex-direction: column; gap: 20px; }
+.hpx-options.settings-paper .workspace-grid > .card { width: 100%; }
+.hpx-options.settings-paper .teams-layout { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+.hpx-options.settings-paper .teams-layout > div, .hpx-options.settings-paper .ultimate-team-name { min-width: 0; }
+.hpx-options.settings-paper .writing-layout { max-width: none; }
+.hpx-options.settings-paper .card { padding: 25px 27px; border-radius: 8px; border-color: var(--line); box-shadow: var(--shadow); background: #fff; }
+.hpx-options.settings-paper .card-heading { margin-bottom: 22px; }
+.hpx-options.settings-paper .card-heading h2 { font-size: 15px; line-height: 1.5; color: var(--ink); }
+.hpx-options.settings-paper .appearance-card .card-heading { margin-bottom: 18px; }
+.hpx-options.settings-paper .appearance-card > select { max-width: 360px; }
+.hpx-options.settings-paper .theme-preview { max-width: 420px; border-radius: 6px; background: #f5f6f8; border-color: #dedfe5; box-shadow: none; }
+.hpx-options.settings-paper .preview-status { border-radius: 5px; background: #e9ecf1; }
+.hpx-options.settings-paper .preview-button { background: var(--hpx-accent); color: var(--hpx-accent-ink); border-radius: 6px; }
+.hpx-options.settings-paper .mode-card { padding-block: 21px; }
+.hpx-options.settings-paper .mode-card .card-heading { margin-bottom: 14px; }
+.hpx-options.settings-paper .toggle-row { padding: 0; }
+.hpx-options.settings-paper .toggle-row input { width: 44px; height: 26px; }
+.hpx-options.settings-paper .switch-track { width: 44px; height: 26px; background: #e2e4e9; border-color: #939baa; }
+.hpx-options.settings-paper .switch-track:after { width: 20px; height: 20px; top: 2px; left: 2px; box-shadow: 0 1px 2px rgb(30 36 48 / .18); }
+.hpx-options.settings-paper .toggle-row input:checked + .switch-track { background: var(--brand); border-color: var(--brand-dark); }
+.hpx-options.settings-paper .toggle-row input:checked + .switch-track:after { transform: translateX(18px); }
+.hpx-options.settings-paper .toggle-row input:focus-visible + .switch-track { outline-color: var(--brand); }
+.hpx-options.settings-paper button { min-height: 40px; padding: 10px 16px; border-radius: 7px; font-size: 13px; font-weight: 500; box-shadow: none; }
+.hpx-options.settings-paper button:active { transform: none; }
+.hpx-options.settings-paper button.primary { color: #fff; background: var(--brand); border-color: var(--brand-dark); }
+.hpx-options.settings-paper button.primary:hover { background: var(--brand-dark); }
+.hpx-options.settings-paper :is(input[type=text], input[type=email], input[type=password], select) { min-height: 43px; padding: 11px 13px; border-radius: 6px; border-color: #b8bdc7; }
+.hpx-options.settings-paper .swatch { width: 29px; height: 29px; min-height: 29px; padding: 0; border-radius: 50%; box-shadow: 0 0 0 1px #8393a4; }
+.hpx-options.settings-paper .swatch.active { box-shadow: 0 0 0 2px var(--brand), 0 0 0 4px #fff, 0 0 0 5px var(--brand); }
+.hpx-options.settings-paper .custom-color input { width: 43px; height: 43px; padding: 5px; border-radius: 6px; border-color: #b8bdc7; }
+.hpx-options.settings-paper .btn-sm { min-height: 30px; font-size: 11px; padding: 5px 9px; border-radius: 6px; }
+.hpx-options.settings-paper .team-order-btn { width: 30px; padding: 4px 0; }
+.hpx-options.settings-paper .ultimate-team-row { border-radius: 6px; }
+.hpx-options.settings-paper .btn-danger { background: #fff; border-color: #d8afb4; }
+.hpx-options.settings-paper .btn-danger:hover { background: var(--brand-pale); }
+.hpx-options.settings-paper .onboarding-banner { margin-top: 20px; padding: 22px 27px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+.hpx-options.settings-paper .onboarding-banner h2 { font-size: 15px; }
+.hpx-options.settings-paper .onboarding-banner button { color: var(--brand-dark); background: var(--brand-pale); border-color: var(--brand-line); }
+.hpx-options.settings-paper .provider-choice { min-height: 54px; border-radius: 7px; background: #fff; border-color: var(--line); box-shadow: none; font-weight: 500; }
+.hpx-options.settings-paper .provider-choice:has(input:checked) { background: var(--brand-pale); border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.hpx-options.settings-paper .provider-remove { padding: 6px 0; min-height: 34px; background: transparent; border-color: transparent; }
+.hpx-options.settings-paper .provider-section.is-disabled input { background: #f3f4f6; }
+.hpx-options.settings-paper .group, .hpx-options.settings-paper .backup-option, .hpx-options.settings-paper .empty-hint { background: #f8f8f7; border-color: var(--line); border-radius: 7px; }
+.hpx-options.settings-paper .page-footnote { background: transparent; border-radius: 0; padding-inline: 0; }
+.hpx-options.settings-paper .status { line-height: 1.7; }
+@media (max-width: 900px) {
+  .hpx-options.settings-paper .teams-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 800px) {
+  .hpx-options.settings-paper .settings-shell { display: block; }
+  .hpx-options.settings-paper .settings-sidebar { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .hpx-options.settings-paper .settings-nav { display: flex; flex-direction: row; gap: 7px; overflow-x: auto; margin: 15px -10px 0; padding: 3px 10px 7px; }
+  .hpx-options.settings-paper .nav-item { flex: none; font-size: 12px; padding: 9px 12px; }
+  .hpx-options.settings-paper .paper-brand-name { font-size: 20px; }
+  .hpx-options.settings-paper .settings-page { max-width: 680px; }
+}
+@media (max-width: 550px) {
+  .hpx-options.settings-paper .settings-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; margin: 14px 0 0; padding: 0 0 5px; gap: 6px; }
+  .hpx-options.settings-paper .nav-item { min-height: 42px; padding: 9px 10px; gap: 5px; }
+  .hpx-options.settings-paper .card { padding: 21px 18px; border-radius: 7px; }
+  .hpx-options.settings-paper .onboarding-banner { padding: 21px 18px; gap: 12px; flex-wrap: wrap; }
+}

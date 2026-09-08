@@ -1,28 +1,30 @@
 {
   "manifest_version": 3,
-  "name": "Tiger 的第三隻手",
-  "version": "0.9.3",
+  "name": "Halopsa",
+  "version": "1.1.2",
   "minimum_chrome_version": "122",
-  "description": "強化 HaloPSA 工單撰寫、Timesheet、簡單模式與自訂介面。",
+  "description": "Halo Companion：整合 AI 草稿預覽、範本、工單閱讀、原生工時調整與個人化工作台的 HaloPSA 輔助工具。",
   "icons": {
-    "16": "assets/icons/halo-logo16.png",
-    "48": "assets/icons/halo-logo48.png",
-    "128": "assets/icons/halo-logo128.png"
+    "16": "assets/icons/companion16.png",
+    "48": "assets/icons/companion48.png",
+    "128": "assets/icons/companion128.png"
   },
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
-    "https://generativelanguage.googleapis.com/*",
-    "https://*.openai.azure.com/*"
+    "https://*.openai.azure.com/*",
+    "https://ornith.example.invalid/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js"
   },
   "action": {
-    "default_title": "HaloPSA Writing Helper 設定",
+    "default_title": "Halopsa 設定",
     "default_icon": {
-      "16": "assets/icons/halo-logo16.png",
-      "48": "assets/icons/halo-logo48.png",
-      "128": "assets/icons/halo-logo128.png"
+      "16": "assets/icons/companion16.png",
+      "48": "assets/icons/companion48.png",
+      "128": "assets/icons/companion128.png"
     }
   },
   "options_ui": {
@@ -39,8 +41,13 @@
       ],
       "run_at": "document_start",
       "all_frames": false,
-      "js": ["src/ultimate-mode/bootstrap.js"],
-      "css": ["src/ultimate-mode/ultimate.css"]
+      "js": [
+        "src/ultimate-mode/bootstrap.js"
+      ],
+      "css": [
+        "src/ultimate-mode/ultimate.css",
+        "src/styles/workbench.css"
+      ]
     },
     {
       "matches": [
@@ -52,7 +59,10 @@
       "run_at": "document_idle",
       "all_frames": false,
       "world": "MAIN",
-      "js": ["src/page/timesheet-bridge.js", "src/page/editor-probe-bridge.js"]
+      "js": [
+        "src/page/timesheet-bridge.js",
+        "src/page/editor-probe-bridge.js"
+      ]
     },
     {
       "matches": [
@@ -76,14 +86,17 @@
         "src/core/html-fidelity.js",
         "src/core/image-placeholder.js",
         "src/core/html-probe.js",
+        "src/ai/provider-settings.js",
         "src/ai/ai-adapter.js",
         "src/ui/toast.js",
         "src/ui/loader.js",
         "src/ui/theme.js",
         "src/ui/preview-modal.js",
+        "src/ui/category-picker.js",
         "src/features/ticket-rich-format.js",
         "src/features/ai-rewrite.js",
         "src/features/note-window.js",
+        "src/features/ticket-reader.js",
         "src/features/templates.js",
         "src/features/besties.js",
         "src/features/timesheet-align.js",
@@ -108,12 +121,30 @@
         "src/core/email-window-detector.js",
         "src/content.js"
       ],
-      "css": ["src/styles/toolbar.css", "src/styles/modal.css", "src/styles/theme-cute-ios.css", "src/styles/settings-panel.css", "src/styles/onboarding.css", "src/styles/timesheet-align.css", "src/styles/time-adjuster.css"]
+      "css": [
+        "src/styles/toolbar.css",
+        "src/styles/modal.css",
+        "src/styles/category-picker.css",
+        "src/styles/settings-panel.css",
+        "src/styles/onboarding.css",
+        "src/styles/timesheet-align.css",
+        "src/styles/time-adjuster.css",
+        "src/styles/ticket-reader.css",
+        "src/styles/workbench-surfaces.css"
+      ]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["assets/codex-pets/*", "assets/ultimate-mode/*", "assets/branding/*", "pet/*", "src/pets/*", "assets/icons/halo-logo48.png"],
+      "resources": [
+        "assets/codex-pets/*",
+        "assets/ultimate-mode/*",
+        "assets/branding/*",
+        "pet/*",
+        "src/pets/*",
+        "assets/icons/halo-logo48.png",
+        "src/styles/ticket-reader-window.css"
+      ],
       "matches": [
         "https://*.halopsa.com/*",
         "https://*.haloitsm.com/*",

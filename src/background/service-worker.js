@@ -12,9 +12,9 @@
  *
  * 職責：
  *  - 接收 content script（ai-adapter.js）送來的 HPX_AI_REQUEST 訊息
- *  - 從 chrome.storage 讀取設定（provider / API Keys / 模型 / 測試模式）
- *  - 依 provider 路由到 Azure OpenAI（DeepSeek）或 Gemini（fallback）
- *  - 未設定金鑰或開啟「測試模式」時，回退為 Stub 假資料（流程仍可跑）
+ *  - 從 chrome.storage 讀取設定（provider / API Keys / 模型）
+ *  - 依 provider 路由到 Azure OpenAI（DeepSeek）或公司地端 Ornith
+ *  - 未設定金鑰時，回退為 Stub 假資料（流程仍可跑）
  *  - 點擊工具列圖示 → 開啟設定頁
  */
 
@@ -22,13 +22,16 @@
 
 // ── 共用 Prompt 來源（與 tools/prompt-eval/runner.js 同一份）──
 // classic service worker 可用 importScripts 同步載入；路徑以 / 開頭代表擴充功能根目錄。
-importScripts('/src/ai/prompt-templates.js');
+importScripts('/src/ai/provider-settings.js', '/src/ai/prompt-templates.js', '/src/ai/output-validator.js');
 const buildPrompt = self.HPX_PROMPTS.buildPrompt;
+const buildOrnithRequest = self.HPX_PROMPTS.buildOrnithRequest;
+const AI_SETTINGS = self.HPX_AI_SETTINGS;
+const AI_OUTPUT = self.HPX_AI_OUTPUT;
 
 // ── 設定儲存 key（與 options.js 須一致）──
 const SETTINGS_KEY = 'hpx_settings';
 const ONBOARDING_PAGE = 'src/onboarding/onboarding.html';
-const DEFAULT_HALO_HOME = 'https://freedom.halopsa.com/';
+const DEFAULT_HALO_HOME = 'https://halopsa.com/';
 const LAST_HALO_ORIGIN_KEY = 'hpx_last_halo_origin';
 const LAST_HALO_TAB_KEY = 'hpx_last_halo_tab_id';
 let onboardingTabId = null;
@@ -37,21 +40,21 @@ let onboardingSourceTabId = null;
 let onboardingSourceOrigin = '';
 const DEFAULT_APPEARANCE = {
   theme: 'cute-ios',
-  accent: '#000000',
+  accent: '#0c2d55',
   ultimateMode: false,
 };
 const DEFAULTS = {
-  provider: 'azure-deepseek',
+  provider: '',
+  ornithBaseUrl: AI_SETTINGS.ORNITH_BASE_URL,
+  ornithModel: AI_SETTINGS.ORNITH_MODEL,
+  ornithApiKey: '',
   azureEndpoint: '',
   azureDeployment: '',
   azureApiKey: '',
-  apiKey: '',
-  model: 'gemini-2.5-flash',
-  useStub: false,
 };
 
 // 清理已下線功能的舊設定，並把已不存在的主題選項遷移到 Cute。
-const REMOVED_SETTINGS = ['casteSystem', 'timesheetReport', 'haloApiBaseUrl', 'haloApiKey', 'haloTicketUrlTemplate', 'customSkin'];
+const REMOVED_SETTINGS = ['casteSystem', 'timesheetReport', 'haloApiBaseUrl', 'haloApiKey', 'haloTicketUrlTemplate', 'customSkin', 'useStub'];
 
 function haloOriginFromUrl(value) {
   try {
@@ -215,21 +218,78 @@ purgeRemovedSettings();
 
 // ── Azure OpenAI 常數 ──
 const AZURE_API_VERSION = '2024-12-01-preview';
+const ORNITH_REQUEST_TIMEOUT_MS = 120000;
+const SUPPORTED_AI_ACTIONS = new Set(['improve_tone', 'professional', 'first_contact', 'translate']);
 
-// ── Gemini 常數 ──
-const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+function usageMetrics(data, elapsedMs, content) {
+  const usage = (data && data.usage) || {};
+  const completionDetails = usage.completion_tokens_details || usage.output_tokens_details || {};
+  const promptTokens = Number(usage.prompt_tokens != null ? usage.prompt_tokens : usage.input_tokens) || 0;
+  const completionValue = usage.completion_tokens != null ? usage.completion_tokens : usage.output_tokens;
+  const completionTokens = completionValue == null || !Number.isFinite(Number(completionValue)) || Number(completionValue) < 0 ? null : Number(completionValue);
+  const reasoningValue = completionDetails.reasoning_tokens != null
+    ? completionDetails.reasoning_tokens
+    : usage.reasoning_tokens;
+  const reasoningTokens = reasoningValue == null ? null : (Number(reasoningValue) || 0);
+  const effectiveOutputTokens = content ? Math.max(0, completionTokens - (reasoningTokens || 0)) : 0;
+  return {
+    promptTokens: promptTokens,
+    completionTokens: completionTokens,
+    reasoningTokens: reasoningTokens,
+    elapsedMs: elapsedMs,
+    effectiveOutputTokensPerSecond: completionTokens == null ? null : elapsedMs > 0
+      ? Number((effectiveOutputTokens / (elapsedMs / 1000)).toFixed(2))
+      : 0,
+  };
+}
 
-// ── Stub 後援（未設定金鑰 / 測試模式）──
+function recordAiPerformance(provider, action, data, elapsedMs, content, status) {
+  const choice = data && data.choices && data.choices[0];
+  const metrics = usageMetrics(data, elapsedMs, content);
+  // 僅記錄數值與固定識別欄位；不得加入 prompt、回覆、API Key 或工單資料。
+  console.info('[HPX][AI_PERF]', {
+    provider: provider,
+    action: action || 'unknown',
+    promptVersion: self.HPX_PROMPTS.PROMPT_VERSION,
+    promptTokens: metrics.promptTokens,
+    completionTokens: metrics.completionTokens,
+    reasoningTokens: metrics.reasoningTokens,
+    finishReason: (choice && choice.finish_reason) || (status >= 400 ? 'http_' + status : 'unknown'),
+    elapsedMs: metrics.elapsedMs,
+    effectiveOutputTokensPerSecond: metrics.effectiveOutputTokensPerSecond,
+  });
+  return metrics;
+}
+
+function responseContent(providerLabel, data, elapsedMs, action, status, metrics) {
+  const choice = data && data.choices && data.choices[0];
+  const message = (choice && choice.message) || {};
+  const out = String(message.content || '').trim();
+  const performance = recordAiPerformance(providerLabel, action, data, elapsedMs, out, status);
+  if (metrics) Object.assign(metrics, performance);
+  if (!choice) throw new Error(providerLabel + ' 沒有回傳 choices');
+  if (choice.finish_reason === 'length') {
+    throw new Error(providerLabel + ' 回應達到輸出長度上限，截斷結果未套用；請縮短內容後重試');
+  }
+  if (!out && String(message.reasoning_content || '').trim()) {
+    throw new Error(providerLabel + ' 只有 reasoning_content、沒有正式 content，結果未套用');
+  }
+  if (!out) throw new Error(providerLabel + ' 回傳空內容');
+  return out;
+}
+
+// ── Stub 後援（未設定金鑰）──
 function buildStub(action, text, targetLang) {
   const labelMap = {
-    improve_tone: '客戶版',
-    professional: '工單版',
+    improve_tone: '回覆客戶',
+    professional: '工單分析',
+    first_contact: 'First Contact',
     translate: targetLang === 'en' ? '翻譯成英文' : '翻譯成中文',
   };
   return (
     '【示意：' +
     (labelMap[action] || action) +
-    '】\n（測試模式 / 尚未設定 API Key，未呼叫真實 AI）\n\n' +
+    '】\n（尚未設定 API Key，未呼叫真實 AI）\n\n' +
     String(text || '').trim()
   );
 }
@@ -240,13 +300,13 @@ function getSettings() {
     chrome.storage.local.get(SETTINGS_KEY, function (data) {
       const s = (data && data[SETTINGS_KEY]) || {};
       resolve({
-        provider: s.provider || DEFAULTS.provider,
+        provider: AI_SETTINGS.resolveProvider(s),
+        ornithBaseUrl: (s.ornithBaseUrl || DEFAULTS.ornithBaseUrl).trim(),
+        ornithModel: (s.ornithModel || DEFAULTS.ornithModel).trim(),
+        ornithApiKey: s.ornithApiKey || DEFAULTS.ornithApiKey,
         azureEndpoint: (s.azureEndpoint || DEFAULTS.azureEndpoint).trim(),
         azureDeployment: (s.azureDeployment || DEFAULTS.azureDeployment).trim(),
         azureApiKey: s.azureApiKey || DEFAULTS.azureApiKey,
-        apiKey: s.apiKey || DEFAULTS.apiKey,
-        model: s.model || DEFAULTS.model,
-        useStub: typeof s.useStub === 'boolean' ? s.useStub : DEFAULTS.useStub,
       });
     });
   });
@@ -282,7 +342,7 @@ function validateAzureSettings(settings) {
 }
 
 // ── 呼叫 Azure OpenAI ──
-async function callAzureDeepSeek(settings, prompt) {
+async function callAzureDeepSeek(settings, prompt, action, metrics) {
   const azure = validateAzureSettings(settings);
   const url =
     azure.endpoint +
@@ -291,6 +351,7 @@ async function callAzureDeepSeek(settings, prompt) {
     '/chat/completions?api-version=' +
     AZURE_API_VERSION;
 
+  const startedAt = Date.now();
   const resp = await fetch(url, {
     method: 'POST',
     headers: {
@@ -309,93 +370,131 @@ async function callAzureDeepSeek(settings, prompt) {
   });
 
   if (!resp.ok) {
+    recordAiPerformance('azure-deepseek', action, data, Date.now() - startedAt, '', resp.status);
     const msg =
       (data && data.error && data.error.message) ||
       ('Azure OpenAI 回應 HTTP ' + resp.status);
     throw new Error(msg);
   }
 
-  const choice = data && data.choices && data.choices[0];
-  if (!choice) throw new Error('Azure OpenAI 沒有回傳內容');
-  const out = ((choice.message && choice.message.content) || '').trim();
-  if (!out) throw new Error('Azure OpenAI 回傳空內容');
-  return out;
+  return responseContent('azure-deepseek', data, Date.now() - startedAt, action, resp.status, metrics);
 }
 
-// ── 呼叫 Gemini（fallback）──
-async function callGemini(settings, prompt) {
-  const url = GEMINI_BASE + '/' + encodeURIComponent(settings.model) + ':generateContent';
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': settings.apiKey,
-    },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4 },
-    }),
-  });
+function validateOrnithSettings(settings) {
+  let url;
+  try {
+    url = new URL(String(settings.ornithBaseUrl || '').trim());
+  } catch (error) {
+    throw new Error('Ornith Base URL 格式不正確，請填入 ' + AI_SETTINGS.ORNITH_BASE_URL);
+  }
+  if (
+    url.protocol !== 'https:' ||
+    url.pathname.replace(/\/+$/, '') !== '/v1' ||
+    url.search ||
+    url.hash ||
+    url.username ||
+    url.password
+  ) {
+    throw new Error('Ornith Base URL 必須是 HTTPS 網址，路徑為 /v1，且不可包含帳密、參數或片段。');
+  }
+  const allowedHosts = chrome.runtime.getManifest().host_permissions || [];
+  if (!allowedHosts.includes(url.origin + '/*')) {
+    throw new Error('此 Ornith 主機尚未授權。請先執行 scripts/Configure-Ornith.ps1 設定該 HTTPS 主機，重新載入擴充功能後再試。');
+  }
+  const model = String(settings.ornithModel || '').trim();
+  if (!model) throw new Error('尚未設定 Ornith Model');
+  if (model.length > 128) throw new Error('Ornith Model 長度不正確');
+  return { baseUrl: url.origin + '/v1', model: model };
+}
 
-  const data = await resp.json().catch(function () {
-    return null;
-  });
+// ── 呼叫 OpenAI-compatible Ornith API ──
+async function callOrnith(settings, request, action, metrics) {
+  const ornith = validateOrnithSettings(settings);
+  const url = ornith.baseUrl + '/chat/completions';
+  const startedAt = Date.now();
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timeout = controller ? setTimeout(function () { controller.abort(); }, ORNITH_REQUEST_TIMEOUT_MS) : null;
+  let resp;
+  let data;
+  try {
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + settings.ornithApiKey,
+      },
+      body: JSON.stringify(Object.assign({ model: ornith.model }, request.body)),
+    };
+    if (controller) options.signal = controller.signal;
+    resp = await fetch(url, options);
+    data = await resp.json().catch(function () { return null; });
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      throw new Error('Ornith 請求超過 ' + ORNITH_REQUEST_TIMEOUT_MS / 1000 + ' 秒，已中止且不會改呼叫 Azure');
+    }
+    throw error;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 
   if (!resp.ok) {
-    const msg =
-      (data && data.error && data.error.message) ||
-      ('Gemini API 回應 HTTP ' + resp.status);
-    throw new Error(msg);
+    recordAiPerformance('ornith', action, data, Date.now() - startedAt, '', resp.status);
+    const providerError = (data && data.error) || {};
+    const msg = String(providerError.message || '');
+    const compatibilityDetail = msg + ' ' + JSON.stringify(providerError);
+    if (
+      (resp.status === 400 || resp.status === 422) &&
+      /chat_template_kwargs|enable_thinking/i.test(compatibilityDetail)
+    ) {
+      throw new Error(
+        'Ornith Gateway 不支援必要的 chat_template_kwargs.enable_thinking=false；' +
+        '為避免自動恢復無限制推理，本次請求已停止，且不會改呼叫 Azure'
+      );
+    }
+    throw new Error('Ornith API 回應 HTTP ' + resp.status + '，未改呼叫 Azure');
   }
 
-  const cand = data && data.candidates && data.candidates[0];
-  if (!cand) {
-    const blocked = data && data.promptFeedback && data.promptFeedback.blockReason;
-    throw new Error(blocked ? 'Gemini 拒絕回應（' + blocked + '）' : 'Gemini 沒有回傳內容');
-  }
-  const parts = (cand.content && cand.content.parts) || [];
-  const out = parts
-    .map(function (p) {
-      return p.text || '';
-    })
-    .join('')
-    .trim();
-
-  if (!out) throw new Error('Gemini 回傳空內容');
-  return out;
+  return responseContent('ornith', data, Date.now() - startedAt, action, resp.status, metrics);
 }
 
 // ── 依 provider 取得有效 API Key ──
 function getActiveKey(settings) {
-  return settings.provider === 'azure-deepseek' ? settings.azureApiKey : settings.apiKey;
+  if (settings.provider === AI_SETTINGS.PROVIDERS.ORNITH) return settings.ornithApiKey;
+  if (settings.provider === AI_SETTINGS.PROVIDERS.AZURE) return settings.azureApiKey;
+  return '';
 }
 
 // ── 測試連線（設定頁「測試連線」按鈕用）──
 async function handleAiPing() {
   const settings = await getSettings();
+  const state = AI_SETTINGS.validateExclusive(settings);
+  if (!state.provider) return { ok: false, error: '請先選擇 AI Provider' };
   const activeKey = getActiveKey(settings);
   if (!activeKey) {
     return { ok: false, error: '尚未設定 API Key' };
   }
 
-  if (settings.provider === 'azure-deepseek') {
-    const out = await callAzureDeepSeek(settings, '請只回覆兩個字：OK');
+  if (settings.provider === AI_SETTINGS.PROVIDERS.AZURE) {
+    const out = await callAzureDeepSeek(settings, '請只回覆兩個字：OK', 'ping');
     return { ok: true, provider: 'azure-deepseek', deployment: settings.azureDeployment, sample: out };
   }
 
-  const out = await callGemini(settings, '請只回覆兩個字：OK');
-  return { ok: true, provider: 'gemini', model: settings.model, sample: out };
+  const out = await callOrnith(settings, buildOrnithRequest('ping', ''), 'ping');
+  return { ok: true, provider: 'ornith', model: settings.ornithModel, sample: out };
 }
 
 // ── 處理一次 AI 請求 ──
 async function handleAiRequest(payload) {
+  const metrics = {};
   const action = payload.action;
   const text = payload.text;
   const targetLang = payload.targetLang;
+  if (!SUPPORTED_AI_ACTIONS.has(action)) throw new Error('不支援的 AI 功能');
   const settings = await getSettings();
+  AI_SETTINGS.validateExclusive(settings);
 
   const activeKey = getActiveKey(settings);
-  if (settings.useStub || !activeKey) {
+  if (!activeKey) {
     return {
       ok: true,
       text: buildStub(action, text, targetLang),
@@ -404,16 +503,20 @@ async function handleAiRequest(payload) {
     };
   }
 
-  const prompt = buildPrompt(action, text, targetLang);
-
-  if (settings.provider === 'azure-deepseek') {
-    const result = await callAzureDeepSeek(settings, prompt);
-    return { ok: true, text: result, stub: false, provider: 'azure-deepseek', deployment: settings.azureDeployment };
+  if (settings.provider === AI_SETTINGS.PROVIDERS.AZURE) {
+    // Azure 刻意維持既有單一 user message、prompt、temperature、max_tokens 與 API version。
+    const result = await callAzureDeepSeek(settings, buildPrompt(action, text, targetLang), action, metrics);
+    AI_OUTPUT.assertValid(action, text, result);
+    return { ok: true, text: result, metrics: metrics, stub: false, provider: 'azure-deepseek', deployment: settings.azureDeployment };
   }
 
-  // Fallback: Gemini
-  const result = await callGemini(settings, prompt);
-  return { ok: true, text: result, stub: false, provider: 'gemini', model: settings.model };
+  if (settings.provider === AI_SETTINGS.PROVIDERS.ORNITH) {
+    const result = await callOrnith(settings, buildOrnithRequest(action, text, targetLang), action, metrics);
+    AI_OUTPUT.assertValid(action, text, result);
+    return { ok: true, text: result, metrics: metrics, stub: false, provider: 'ornith', model: settings.ornithModel };
+  }
+
+  throw new Error('請先選擇 AI Provider');
 }
 
 // ═══════════════════════════════════════════════════════════════

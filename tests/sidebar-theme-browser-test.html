@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sidebar theme regression</title>
+  <!-- Keep the production cascade order: document_start theme, then idle surfaces. -->
+  <link rel="stylesheet" href="../src/ultimate-mode/ultimate.css">
+  <link rel="stylesheet" href="../src/styles/workbench.css">
+  <link rel="stylesheet" href="../src/styles/category-picker.css">
+  <link rel="stylesheet" href="../src/styles/settings-panel.css">
+  <link rel="stylesheet" href="../src/styles/timesheet-align.css">
+  <link rel="stylesheet" href="../src/styles/workbench-surfaces.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.5 "Segoe UI",sans-serif; background: #f4f6f8; }
+    [hidden] { display: none !important; }
+    #app-nav-menu { position: absolute; left: 0; top: 0; width: 82px; height: 100vh; background: #005170; color: white; text-align: center; }
+    #app-nav-menu .app-side-link { display: block; padding: 22px 3px; color: inherit; }
+    #halo-tree { position: absolute; left: 82px; top: 64px; width: 270px; height: calc(100vh - 64px); }
+    .treeview-options { padding: 12px 18px; }
+    .selected-view,.selected-filter { display: block; padding: 7px 0; }
+    .tree-container,.treeview-view-options { position: absolute; top: 120px; bottom: 0; left: 0; right: 0; }
+    .treeview-view-options { z-index: 1; }
+    .options-title { margin: 0; padding: 12px 20px; font-size: 16px; }
+    .treeviewnode { min-height: 54px; padding: 8px 14px; }
+    .treeviewnode-container,.treeviewtextholder { display: flex; align-items: center; gap: 12px; }
+    .avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; font-weight: 700; }
+    .treeviewcount { padding: 0 5px; border-radius: 4px; font-size: 11px; }
+    table { width: 100%; border-collapse: collapse; }
+    td { height: 56px; padding: 8px 12px; }
+    .tableimg { width: 64px; text-align: center; font-size: 23px; }
+    .tabletext { cursor: pointer; }
+    main { margin-left: 380px; max-width: 820px; padding: 24px; }
+    h1 { margin-top: 0; font-size: 24px; }
+    .fixture-controls,.surface-samples { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; align-items: center; }
+    .fixture-controls button { border: 1px solid #b8c2cd; border-radius: 6px; background: white; padding: 7px 10px; cursor: pointer; }
+    .fixture-controls input { height: 32px; width: 44px; padding: 2px; }
+    #result { background: white; border: 1px solid #dfe5df; padding: 14px; border-radius: 8px; max-height: 56vh; overflow: auto; font: 11px/1.5 Consolas,monospace; }
+    #main-dropdown { padding: 10px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <!-- These are generic fixtures of the observed Halo structure, without customer data. -->
+  <div id="app-nav-menu"><div id="rail-inner" class="app-nav-menu-sidebar"><a class="app-side-link active"><span>Tickets</span></a><a id="rail-timesheets" class="app-side-link"><img id="rail-clock" class="hpx-ultimate-timesheets-logo" src="../assets/ultimate-mode/timesheets-transparent.png" alt="" style="margin:auto"><span style="color:white">Timesheets</span></a>
+    <div class="hpx-ultimate-team-shortcuts">
+      <a id="current-team-shortcut" class="hpx-ultimate-team-shortcut" href="#" aria-current="page"><span class="hpx-ultimate-team-shortcut-label">Team A</span></a>
+      <a id="keyboard-team-shortcut" class="hpx-ultimate-team-shortcut" href="#"><span class="hpx-ultimate-team-shortcut-label">Team B</span></a>
+    </div>
+  </div></div>
+  <div id="halo-tree" class="tree-holder" style="background-color:rgb(0,81,112);color:white">
+    <div class="tv-opt theme-dark"><div class="treeview-options">
+      <div id="tv-selected-view-name" class="selected-view" data-id="team"><span>Tickets by Team</span></div>
+      <div id="tv-selected-filter-name" class="selected-filter" data-id="0">All Tickets</div>
+    </div></div>
+    <div class="tree-container">
+      <div id="tree-active" class="treeviewnode active" style="background-color:rgb(0,161,223);color:white">
+        <div class="treeviewnode-container"><div class="treeviewtextholder"><div class="avatar-new"><div id="sidebar-avatar" class="avatar" style="background-color:rgb(117,41,188);color:white">AT</div></div><div><div class="nodetitle">Agent Alpha</div></div></div><div class="treeviewcount" style="background-color:rgb(0,161,223)">12</div></div>
+      </div>
+      <div class="treeviewnode"><div class="treeviewnode-container"><div class="treeviewtextholder"><div class="avatar-new"><div class="avatar" style="background-color:rgb(37,128,162);color:white">BT</div></div><div><div class="nodetitle">Agent Beta</div></div></div><div class="treeviewcount" style="background-color:rgb(0,161,223)">23</div></div></div>
+      <div class="treeviewnode"><div class="nodetitle">Unassigned</div></div>
+      <div class="treeviewnode"><div class="nodetitle">Support Team</div></div>
+    </div>
+    <div id="view-panel" class="treeview-view-options scrollbar2025" style="background-color:rgb(0,81,112);color:white">
+      <h2 class="options-title">Select a View</h2>
+      <table class="viewselect-table"><tbody>
+        <tr id="view-agent"><td class="tableimg">◎</td><td class="tabletext" role="button" data-id="agent">Tickets by Agent</td></tr>
+        <tr id="view-team" style="background-color:rgb(0,161,223);color:white"><td class="tableimg">♧</td><td class="tabletext" role="button" data-id="team">Tickets by Team</td></tr>
+        <tr id="view-all"><td class="tableimg">≡</td><td class="tabletext" role="button" data-id="all">All Tickets</td></tr>
+      </tbody></table>
+    </div>
+    <div id="filter-panel" class="treeview-view-options scrollbar2025" style="background-color:rgb(0,81,112);color:white" hidden>
+      <h2 class="options-title">Select a Filter</h2>
+      <table class="filterselect-table"><tbody>
+        <tr id="filter-all" style="background-color:rgb(0,161,223);color:white"><td class="tableimg">≡</td><td class="tabletext" role="button" data-id="0">All Tickets</td></tr>
+        <tr id="filter-open"><td class="tableimg">○</td><td class="tabletext" role="button" data-id="1">Open Tickets</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+  <main>
+    <h1>Sidebar theme regression</h1>
+    <p>Real Halo layer structure · generic content · production styles and theme observer</p>
+    <div class="fixture-controls">
+      <button id="show-view">View layer</button><button id="show-filter">Filter layer</button><button id="show-tree">Tree</button>
+      <label>Accent <input id="accent-input" type="color" value="#ef4444"></label><button id="toggle-theme">Toggle native theme</button>
+    </div>
+    <label>Keyboard focus probe <input id="keyboard-origin" type="text" value="Tab to a team shortcut"></label>
+    <div class="surface-samples">
+      <button id="pet-toggle" class="hpx-sp-pet-visibility-toggle hpx-sp-on">Pet visible</button>
+      <button id="timesheet-trigger" class="hpx-ts-edit-trigger">Edit timesheet</button>
+      <div class="hpx-category-favorite-editor-actions"><button id="category-save" class="hpx-category-favorite-editor-save">Save</button></div>
+    </div>
+    <div id="main-dropdown" class="Select__menu" role="listbox" style="background-color:rgb(255,244,222);color:rgb(64,51,33)"><span>Unrelated main content dropdown</span></div>
+    <pre id="result">Running…</pre>
+  </main>
+  <script src="../src/core/namespace.js"></script>
+  <script src="../src/config/selectors.js"></script>
+  <script>
+    // Deterministic isolated storage: regression checks never read or change user settings.
+    window.chrome={storage:{local:{get(_key,callback){callback({hpx_settings:{theme:'cute-ios',accent:'#176b5b',opacity:100,ultimateMode:false}});},set(){}},onChanged:{addListener(){}}}};
+  </script>
+  <script src="../src/ui/theme.js"></script>
+  <script>
+    (async function () {
+      const theme=window.__HPX.ui.theme;
+      const checks=[];
+      const byId=id=>document.getElementById(id);
+      const style=el=>getComputedStyle(typeof el==='string'?byId(el):el);
+      const settle=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      function check(name,ok,detail){checks.push({name,ok:!!ok,...(!ok&&detail!==undefined?{detail}:{} )});}
+      function rgba(color) {
+        if(color.startsWith('#')) return [1,3,5].map(n=>parseInt(color.slice(n,n+2),16)).concat(1);
+        const values=color.match(/[\d.]+/g).map(Number);
+        if(color.startsWith('color(srgb')) return values.slice(0,3).map(x=>x*255).concat(values.length>3?values[3]:1);
+        return values.slice(0,3).concat(values.length>3?values[3]:1);
+      }
+      function sameColor(a,b) {const x=rgba(a),y=rgba(b);return x.every((n,i)=>Math.abs(n-y[i])<0.6);}
+      function luminance(color) {const [r,g,b]=rgba(color).slice(0,3).map(x=>{x/=255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;});return .2126*r+.7152*g+.0722*b;}
+      function contrast(a,b) {const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
+      function showPanel(kind) {byId('view-panel').hidden=kind!=='view';byId('filter-panel').hidden=kind!=='filter';}
+      let appearance={theme:'cute-ios',accent:'#ef4444'};
+      function apply(value) {appearance={...appearance,...value};theme.applyAppearance(appearance);}
+      byId('show-view').onclick=()=>showPanel('view');byId('show-filter').onclick=()=>showPanel('filter');byId('show-tree').onclick=()=>showPanel('tree');
+      byId('accent-input').oninput=event=>apply({accent:event.target.value});
+      byId('toggle-theme').onclick=()=>apply({theme:appearance.theme==='default'?'cute-ios':'default'});
+      byId('current-team-shortcut').onclick=event=>event.preventDefault();byId('keyboard-team-shortcut').onclick=event=>event.preventDefault();
+      try {
+        theme.start(); await settle();
+        const tree=byId('tree-active');
+        const treeText=tree.textContent;
+        const treeRect=tree.getBoundingClientRect();
+        const treeCount=document.querySelectorAll('.tree-container .treeviewnode').length;
+        for (const accent of ['#ef4444','#ffffff','#000000','#176b5b']) {
+          apply({theme:'cute-ios',accent});await settle();
+          const rootStyle=style('halo-tree');
+          const rootBackground=rootStyle.backgroundColor;
+          check(accent+' sidebar uses an opaque neutral background',rgba(rootBackground)[3]===1&&!sameColor(rootBackground,'rgb(0,81,112)')&&!sameColor(rootBackground,'rgb(21,46,41)'),rootBackground);
+          const expected='rgb(241,243,248)';
+          check(accent+' sidebar stays neutral with every chosen accent',sameColor(rootBackground,expected),rootBackground);
+          check(accent+' sidebar text remains readable',contrast(rootBackground,rootStyle.color)>=4.5,{background:rootBackground,color:rootStyle.color});
+          check(accent+' left rail follows chosen accent',sameColor(style('app-nav-menu').backgroundColor,accent),style('app-nav-menu').backgroundColor);
+          check(accent+' rail inner layer follows chosen accent',sameColor(style('rail-inner').backgroundColor,accent),style('rail-inner').backgroundColor);
+          check(accent+' unselected rail label remains readable',contrast(style('app-nav-menu').backgroundColor,style(byId('rail-timesheets').querySelector('span')).color)>=4.5);
+          check(accent+' unselected team shortcut remains readable',contrast(style('app-nav-menu').backgroundColor,style(byId('keyboard-team-shortcut').querySelector('.hpx-ultimate-team-shortcut-label')).color)>=4.5);
+          check(accent+' white rail artwork follows foreground contrast',style('rail-clock').filter===(luminance(accent)>.179?'invert(1)':'none'),style('rail-clock').filter);
+          check(accent+' active rail link retains a visible selection cue',style(document.querySelector('#app-nav-menu .app-side-link.active')).boxShadow!=='none');
+          check(accent+' current team remains visually distinct from other shortcuts',style('current-team-shortcut').boxShadow!=='none'&&style('current-team-shortcut').boxShadow!==style('keyboard-team-shortcut').boxShadow);
+          for (const kind of ['view','filter']) {
+            showPanel(kind);await settle();
+            const panel=byId(kind+'-panel');const panelStyle=style(panel);
+            check(accent+' '+kind+' layer is opaque and matches sidebar',rgba(panelStyle.backgroundColor)[3]===1&&sameColor(panelStyle.backgroundColor,rootBackground)&&panelStyle.opacity==='1',panelStyle.backgroundColor);
+            const box=panel.getBoundingClientRect();
+            const hit=document.elementFromPoint(box.left+8,Math.min(box.bottom-8,window.innerHeight-8));
+            check(accent+' '+kind+' layer stays above the underlying tree',panel.contains(hit));
+            const selected=panel.querySelector('[data-hpx-theme-selected="true"]');
+            check(accent+' '+kind+' native cyan selection follows accent',!!selected&&sameColor(style(selected).backgroundColor,accent),selected&&style(selected).backgroundColor);
+            const label=selected&&selected.querySelector('.tabletext');
+            check(accent+' '+kind+' selected text has accessible contrast',!!label&&contrast(style(selected).backgroundColor,style(label).color)>=4.5,label&&style(label).color);
+          }
+          check(accent+' active tree row follows accent',sameColor(style(tree).backgroundColor,accent),style(tree).backgroundColor);
+          check(accent+' active tree label has accessible contrast',contrast(style(tree).backgroundColor,style(tree.querySelector('.nodetitle')).color)>=4.5);
+          for(const id of ['pet-toggle','timesheet-trigger','category-save']) {
+            const current=style(id);
+            check(accent+' '+id+' uses chosen accent without old gradient',sameColor(current.backgroundColor,accent)&&current.backgroundImage==='none',{background:current.backgroundColor,image:current.backgroundImage});
+            check(accent+' '+id+' has accessible foreground',contrast(current.backgroundColor,current.color)>=4.5,current.color);
+          }
+          const currentShortcut=byId('current-team-shortcut');
+          check(accent+' current team shortcut follows accent',sameColor(style(currentShortcut).backgroundColor,accent),style(currentShortcut).backgroundColor);
+          check(accent+' current team shortcut label has accessible contrast',contrast(style(currentShortcut).backgroundColor,style(currentShortcut.querySelector('.hpx-ultimate-team-shortcut-label')).color)>=4.5);
+          // Focus starts in a text control, then transfers its native :focus-visible state
+          // to a link, exercising the keyboard style without manufacturing CSS classes.
+          const keyboardShortcut=byId('keyboard-team-shortcut');
+          byId('keyboard-origin').focus();keyboardShortcut.focus();
+          await new Promise(resolve=>setTimeout(resolve,160));
+          check(accent+' keyboard team shortcut receives native focus-visible',document.activeElement===keyboardShortcut&&keyboardShortcut.matches(':focus-visible'));
+          check(accent+' focused team shortcut follows accent',sameColor(style(keyboardShortcut).backgroundColor,accent),style(keyboardShortcut).backgroundColor);
+          check(accent+' focused team shortcut label has accessible contrast',contrast(style(keyboardShortcut).backgroundColor,style(keyboardShortcut.querySelector('.hpx-ultimate-team-shortcut-label')).color)>=4.5);
+          keyboardShortcut.blur();
+          check(accent+' team shortcut releases keyboard focus',document.activeElement!==keyboardShortcut&&!keyboardShortcut.matches(':focus-visible'));
+          check(accent+' sidebar avatar retains its native colors',sameColor(style('sidebar-avatar').backgroundColor,'rgb(117,41,188)')&&sameColor(style('sidebar-avatar').color,'rgb(255,255,255)'));
+          check(accent+' main content dropdown retains its native colors',sameColor(style('main-dropdown').backgroundColor,'rgb(255,244,222)')&&sameColor(style('main-dropdown').color,'rgb(64,51,33)'));
+          check(accent+' overlapping tree remains structurally intact',tree.isConnected&&tree.textContent===treeText&&document.querySelectorAll('.tree-container .treeviewnode').length===treeCount&&tree.getBoundingClientRect().top===treeRect.top&&style(tree).display!=='none'&&style(tree).visibility!=='hidden');
+        }
+        // Halo changes only header attributes and inline row paint during some SPA updates.
+        byId('tv-selected-view-name').setAttribute('data-id','agent');
+        byId('view-team').style.backgroundColor='transparent';byId('view-agent').style.backgroundColor='rgb(0,161,223)';
+        byId('tv-selected-filter-name').setAttribute('data-id','1');
+        byId('filter-all').style.backgroundColor='transparent';byId('filter-open').style.backgroundColor='rgb(0,161,223)';
+        await settle();
+        check('observer moves view selection after header data-id changes',byId('view-agent').getAttribute('data-hpx-theme-selected')==='true'&&!byId('view-team').hasAttribute('data-hpx-theme-selected'));
+        check('observer moves filter selection after header data-id changes',byId('filter-open').getAttribute('data-hpx-theme-selected')==='true'&&!byId('filter-all').hasAttribute('data-hpx-theme-selected'));
+        check('updated native view selection is recolored without refresh',sameColor(style('view-agent').backgroundColor,appearance.accent));
+        check('updated native filter selection is recolored without refresh',sameColor(style('filter-open').backgroundColor,appearance.accent));
+        apply({theme:'default'});await settle();
+        check('native theme removes selection and sidebar markers',!document.querySelector('[data-hpx-theme-selected],.hpx-theme-sidebar,.hpx-theme-wrap,.hpx-theme-main,.hpx-theme-iconbar'));
+        check('native theme restores root and panel colors',sameColor(style('halo-tree').backgroundColor,'rgb(0,81,112)')&&sameColor(style('view-panel').backgroundColor,'rgb(0,81,112)')&&sameColor(style('filter-panel').backgroundColor,'rgb(0,81,112)'));
+        check('native theme restores inline selected row color',sameColor(style('view-agent').backgroundColor,'rgb(0,161,223)')&&sameColor(style('tree-active').backgroundColor,'rgb(0,161,223)'));
+        check('native theme restores rail color and artwork',sameColor(style('app-nav-menu').backgroundColor,'rgb(0,81,112)')&&style('rail-clock').filter==='drop-shadow(rgba(0, 25, 48, 0.28) 0px 2px 2px)',{background:style('app-nav-menu').backgroundColor,filter:style('rail-clock').filter});
+        // Leave the fixture in the screenshot's red selection state for visual inspection.
+        byId('tv-selected-view-name').setAttribute('data-id','team');byId('view-agent').style.backgroundColor='transparent';byId('view-team').style.backgroundColor='rgb(0,161,223)';
+        byId('tv-selected-filter-name').setAttribute('data-id','0');byId('filter-open').style.backgroundColor='transparent';byId('filter-all').style.backgroundColor='rgb(0,161,223)';
+        apply({theme:'cute-ios',accent:'#ef4444'});showPanel('view');await settle();
+      } catch(error) {checks.push({name:'Unexpected fixture error',ok:false,detail:String(error.stack||error)});}
+      const result={ok:checks.every(item=>item.ok),passed:checks.filter(item=>item.ok).length,total:checks.length,checks};
+      byId('result').textContent=JSON.stringify(result,null,2);document.body.dataset.ok=String(result.ok);document.title=(result.ok?'PASS':'FAIL')+' · Sidebar theme regression';
+    })();
+  </script>
+</body>
+</html>

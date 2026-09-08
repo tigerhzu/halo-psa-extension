@@ -1,373 +1,81 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#000000;--hpx-opacity:1">
+<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#0c2d55;--hpx-opacity:1">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HaloPSA Writing Helper 設定</title>
-  <link rel="stylesheet" href="../styles/theme-cute-ios.css" />
-  <style>
-    :root {
-      --fg: #1f2933;
-      --muted: #67707a;
-      --line: #e2e6ea;
-      --brand: var(--hpx-accent, #2563eb);
-      --brand-dark: var(--hpx-accent, #1d4ed8);
-      --ok: #15803d;
-      --err: #b91c1c;
-      --bg-soft: #f7f9fb;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
-      color: var(--fg);
-      background: #fff;
-      line-height: 1.6;
-    }
-    .wrap { max-width: 680px; margin: 0 auto; padding: 32px 24px 64px; }
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-    .card h2 { font-size: 15px; margin: 0 0 12px; }
-    label { display: block; font-weight: 600; font-size: 13px; margin: 14px 0 6px; }
-    .hint { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
-    input[type="text"], input[type="password"], select {
-      width: 100%;
-      padding: 9px 11px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-    }
-    input:focus, select:focus { outline: 2px solid var(--brand); border-color: var(--brand); }
-    .key-row { display: flex; gap: 8px; }
-    .key-row input { flex: 1; }
-    .checkbox-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 16px; }
-    .checkbox-row input { margin-top: 4px; }
-    .checkbox-row label { margin: 0; font-weight: 600; }
-    button {
-      font-family: inherit;
-      font-size: 14px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--fg);
-      padding: 9px 14px;
-      cursor: pointer;
-    }
-    button:hover { background: var(--bg-soft); }
-    button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
-    button.primary:hover { background: var(--brand-dark); }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    .actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; }
-    .status { font-size: 13px; min-height: 20px; }
-    .status.ok { color: var(--ok); }
-    .status.err { color: var(--err); }
-    .status.busy { color: var(--muted); }
-    ol { margin: 8px 0 0; padding-left: 20px; }
-    ol li { margin-bottom: 6px; font-size: 13px; }
-    a { color: var(--brand); }
-    code {
-      background: var(--bg-soft);
-      border: 1px solid var(--line);
-      border-radius: 4px;
-      padding: 1px 5px;
-      font-size: 12px;
-    }
-    /* 聯絡人名單管理 */
-    .group {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 14px;
-      margin-bottom: 14px;
-      background: var(--bg-soft);
-    }
-    .group-head { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
-    .group-head input { flex: 1; font-weight: 600; }
-    .member-row { display: flex; gap: 8px; margin-bottom: 8px; }
-    .member-row .m-name { flex: 0 0 34%; }
-    .member-row .m-email { flex: 1; }
-    .btn-sm { padding: 6px 10px; font-size: 13px; }
-    .btn-danger { color: var(--err); border-color: #f0c5c5; }
-    .btn-danger:hover { background: #fef2f2; }
-    .group-actions { margin-top: 6px; }
-    .empty-hint { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
-    .setting-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
-    .setting-row { display: flex; gap: 8px; align-items: center; }
-    .ultimate-team-row { padding: 4px 0 4px 6px; border: 1px solid transparent; border-radius: 10px; transition: background .15s ease, border-color .15s ease, opacity .15s ease; }
-    .ultimate-team-row:hover { background: #f8fafc; border-color: #e2e8f0; }
-    .ultimate-team-row.is-dragging { opacity: .45; background: #eef6ff; border-color: #93c5fd; }
-    .team-drag-handle { flex: 0 0 26px !important; color: #64748b; font-size: 18px !important; line-height: 1; letter-spacing: -3px; text-align: center; cursor: grab; user-select: none; }
-    .team-drag-handle:active { cursor: grabbing; }
-    .ultimate-team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .team-order-actions { flex: 0 0 auto !important; display: inline-flex; gap: 4px; }
-    .team-order-btn { width: 30px; padding: 5px 0 !important; color: #475569; }
-    .team-order-btn:disabled { cursor: not-allowed; opacity: .35; }
-    .setting-row input { flex: 1; }
-    .setting-row > span { flex: 1; font-size: 14px; }
-    .preset-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
-    /* 外觀面板：Accent 色票 / 預覽 */
-    .swatches { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 4px; max-width: 500px; }
-    .swatch {
-      width: 30px; height: 30px; border-radius: 999px;
-      border: 2px solid rgba(0,0,0,0.06);
-      background: var(--sw); cursor: pointer; padding: 0;
-      transition: transform .12s ease, box-shadow .12s ease;
-    }
-    .swatch:hover { transform: translateY(-2px) scale(1.06); }
-    .swatch.active {
-      box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--sw);
-    }
-    .custom-color {
-      display: inline-flex; align-items: center; gap: 8px;
-      margin: 8px 0 2px; padding: 5px 10px 5px 6px;
-      border: 1px solid var(--line); border-radius: 999px;
-      color: var(--muted); font-size: 12px;
-    }
-    .custom-color.active { border-color: var(--brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 16%, transparent); }
-    #accentCustom {
-      width: 28px; height: 28px; padding: 0; border: 0;
-      border-radius: 50%; background: transparent; cursor: pointer; overflow: hidden;
-    }
-    #accentCustom::-webkit-color-swatch-wrapper { padding: 0; }
-    #accentCustom::-webkit-color-swatch { border: 0; border-radius: 50%; }
-    #accentValue { font: 600 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--fg); }
-    .theme-preview {
-      margin-top: 4px; padding: 18px; border-radius: 14px;
-      background:
-        radial-gradient(70% 60% at 100% 0%, var(--hpx-accent-soft, rgba(58,130,247,.16)), transparent 60%),
-        linear-gradient(180deg, #eef2fb, #f7eef7);
-      border: 1px solid var(--line);
-    }
-    .preview-card {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 14px; border-radius: 14px;
-      background: rgba(255,255,255, var(--hpx-glass-opacity, 0.85));
-      box-shadow: 0 10px 26px rgba(80,90,130,0.16);
-      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.6);
-    }
-    .preview-dot {
-      width: 26px; height: 26px; border-radius: 999px; flex: 0 0 auto;
-      background: linear-gradient(135deg, var(--hpx-accent, #3a82f7), var(--hpx-accent-2, #6a5cff));
-    }
-    .preview-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-    .preview-lines i { height: 7px; border-radius: 999px; background: #d7deea; display: block; }
-    .preview-lines i:first-child { width: 70%; }
-    .preview-lines i:last-child { width: 45%; }
-    .preview-btn {
-      border: none; border-radius: 999px; padding: 7px 14px; cursor: pointer;
-      font-weight: 700; color: #fff;
-      background: linear-gradient(135deg, var(--hpx-accent, #3a82f7), var(--hpx-accent-2, #6a5cff));
-      box-shadow: 0 6px 14px var(--hpx-accent-soft, rgba(58,130,247,.25));
-    }
-    .backup-title { display: flex; align-items: baseline; gap: 8px; }
-    .backup-title small { color: var(--muted); font-size: 13px; font-weight: 500; }
-    .backup-actions {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 14px;
-    }
-    .backup-actions button { min-height: 48px; }
-    .backup-actions .primary { box-shadow: 0 6px 14px color-mix(in srgb, var(--brand) 24%, transparent); }
-    .backup-note { margin-top: 8px; }
-    @media (max-width: 620px) {
-      .backup-actions { grid-template-columns: 1fr; }
-    }
-  </style>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="color-scheme" content="light" />
+<title>設定 · Halopsa</title><link rel="stylesheet" href="../styles/workbench.css" /><link rel="stylesheet" href="options.css" /><link rel="stylesheet" href="paper.css" /><link rel="stylesheet" href="halo-paper.css" />
 </head>
-<body class="hpx-options">
-  <div class="wrap">
-    <div class="card">
-      <label for="theme">主題 Theme</label>
-      <select id="theme">
-        <option value="cute-ios">果凍</option>
-        <option value="default">預設</option>
-      </select>
-
-      <label>Accent Color</label>
-      <div class="swatches" id="accentRow">
-        <button class="swatch" data-accent="#ff7a1a" style="--sw:#ff7a1a" title="Orange" type="button"></button>
-        <button class="swatch" data-accent="#f5b82e" style="--sw:#f5b82e" title="Amber" type="button"></button>
-        <button class="swatch" data-accent="#ef4444" style="--sw:#ef4444" title="Red" type="button"></button>
-        <button class="swatch" data-accent="#ff6fa5" style="--sw:#ff6fa5" title="Pink" type="button"></button>
-        <button class="swatch" data-accent="#9b6bff" style="--sw:#9b6bff" title="Purple" type="button"></button>
-        <button class="swatch" data-accent="#6366f1" style="--sw:#6366f1" title="Indigo" type="button"></button>
-        <button class="swatch" data-accent="#3a82f7" style="--sw:#3a82f7" title="Blue" type="button"></button>
-        <button class="swatch" data-accent="#06b6d4" style="--sw:#06b6d4" title="Cyan" type="button"></button>
-        <button class="swatch" data-accent="#14b8a6" style="--sw:#14b8a6" title="Teal" type="button"></button>
-        <button class="swatch" data-accent="#2fb968" style="--sw:#2fb968" title="Green" type="button"></button>
-        <button class="swatch" data-accent="#84cc16" style="--sw:#84cc16" title="Lime" type="button"></button>
-        <button class="swatch" data-accent="#64748b" style="--sw:#64748b" title="Slate" type="button"></button>
-      </div>
-      <div class="custom-color" id="customColorWrap">
-        <input id="accentCustom" type="color" value="#000000" aria-label="自訂 Accent 顏色" title="自訂顏色" />
-        <span>自訂</span>
-        <code id="accentValue">#000000</code>
-      </div>
-
-      <label>即時預覽 Preview</label>
-      <div class="theme-preview">
-        <div class="preview-card">
-          <span class="preview-dot"></span>
-          <div class="preview-lines"><i></i><i></i></div>
-          <button class="preview-btn" type="button">Aa</button>
-        </div>
-      </div>
-
-      <div class="actions">
-        <span id="themeStatus" class="status"></span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>簡單模式</h2>
-      <div class="checkbox-row">
-        <input id="ultimateMode" type="checkbox" />
-        <div>
-          <label for="ultimateMode">簡單模式（ON / OFF）</label>
-        </div>
-      </div>
-      <h2 style="margin-top:22px">保留 Team</h2>
-      <p class="hint">清單中的 Team 會保留在簡單介面；可以加入 HaloPSA 顯示的任何 Team 名稱，Timesheets 永遠保留。</p>
-      <p class="hint">拖曳左側手柄，或使用 ↑ ↓ 調整 Team 顯示順序。</p>
-      <div id="ultimateTeams" class="setting-list"></div>
-      <div class="key-row">
-        <input id="newUltimateTeam" type="text" placeholder="例如：Project Manager" />
-        <button id="addUltimateTeam" type="button">＋ 新增</button>
-      </div>
-      <div id="teamPresets" class="preset-actions"></div>
-      <div class="actions">
-        <span id="ultimateTeamsStatus" class="status"></span>
-      </div>
-    </div>
-
-    <div class="card" id="onboardingCard">
-      <h2>首次登入提示</h2>
-      <p class="hint">在獨立頁面重新設定 Team、AI API 與永遠 CC；三個步驟都可以略過。</p>
-      <div class="actions">
-        <button id="reopenOnboarding" class="primary" type="button">開啟首次登入提示</button>
-        <span id="onboardingStatus" class="status"></span>
-      </div>
-    </div>
-
-    <div class="card" id="backupCard">
-      <h2 class="backup-title"><span>完整設定檔</span><small>Backup</small></h2>
-      <div class="backup-actions">
-        <button id="exportSettingsWithKeys" class="primary" type="button">匯出全部設定（含 API Key）</button>
-        <button id="exportSettingsWithoutKeys" type="button">匯出所有設定（不含 API Key）</button>
-        <button id="importSettings" type="button">匯入全部設定</button>
-        <input id="importSettingsFile" type="file" accept="application/json,.json" hidden />
-      </div>
-      <p class="hint backup-note">包含外觀、Team、聯絡名單、Quick Links 與 AI 設定；匯入會完整取代目前設定。含 API Key 的檔案請妥善保管。</p>
-      <div class="actions">
-        <span id="backupStatus" class="status"></span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>如何取得免費的 Gemini API Key</h2>
-      <ol>
-        <li>前往 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → API Keys</a>（aistudio.google.com/apikey）。</li>
-        <li>用 Google 帳號登入，點選 <strong>「Create API key」</strong>。</li>
-        <li>可選「Create API key in new project」自動建立專案，或選現有專案。</li>
-        <li>複製產生的金鑰（格式類似 <code>AIza…</code>），貼到下方欄位後會自動套用。</li>
-      </ol>
-      <p class="hint">
-        透過 AI Studio 取得的金鑰預設使用 <strong>免費額度</strong>（free tier）；
-        只要不在 Google Cloud 啟用付費結算，就不會產生費用。免費額度有每分鐘 / 每日請求上限，
-        個人撰寫工單的用量通常綽綽有餘。
-      </p>
-    </div>
-
-    <div class="card">
-      <h2>API 設定</h2>
-
-      <label for="provider">AI Provider</label>
-      <select id="provider">
-        <option value="azure-deepseek">Azure OpenAI（預設）</option>
-        <option value="gemini">Google Gemini（備用）</option>
-      </select>
-
-      <!-- Azure OpenAI 設定區塊 -->
-      <div id="azureSection">
-        <label for="azureEndpoint">Azure Endpoint</label>
-        <input id="azureEndpoint" type="text" inputmode="url" placeholder="https://your-resource.openai.azure.com" autocomplete="off" spellcheck="false" />
-
-        <label for="azureDeployment">Azure Deployment Name</label>
-        <input id="azureDeployment" type="text" placeholder="例如：gpt-4.1 或自訂部署名稱" autocomplete="off" spellcheck="false" />
-
-        <label for="azureApiKey">Azure OpenAI API Key</label>
-        <div class="key-row">
-          <input id="azureApiKey" type="password" placeholder="貼上 Azure OpenAI API Key" autocomplete="off" spellcheck="false" />
-          <button id="toggleAzureKey" type="button">顯示</button>
-        </div>
-        <p class="hint">
-          Endpoint、Deployment 與金鑰只儲存在本機瀏覽器（chrome.storage.local），
-          不會寫入專案檔案或出現在 HaloPSA 頁面。
-        </p>
-      </div>
-
-      <!-- Gemini 設定區塊（切換 provider 後顯示）-->
-      <div id="geminiSection" style="display:none">
-        <label for="apiKey">Gemini API Key</label>
-        <div class="key-row">
-          <input id="apiKey" type="password" placeholder="貼上 AIza… 開頭的金鑰" autocomplete="off" spellcheck="false" />
-          <button id="toggleKey" type="button">顯示</button>
-        </div>
-        <p class="hint">金鑰只儲存在本機瀏覽器（chrome.storage.local），並只在背景服務中使用，不會出現在 HaloPSA 頁面。</p>
-
-        <label for="model">Gemini 模型</label>
-        <select id="model">
-          <option value="gemini-2.5-flash">gemini-2.5-flash（推薦，速度與品質均衡，免費額度可用）</option>
-          <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（更快更省，免費額度可用）</option>
-          <option value="gemini-2.0-flash">gemini-2.0-flash（上一代，免費額度可用）</option>
-        </select>
-        <p class="hint">以上模型皆在 Google AI Studio 免費額度範圍內。</p>
-      </div>
-
-      <div class="checkbox-row">
-        <input id="useStub" type="checkbox" />
-        <div>
-          <label for="useStub">測試模式（不呼叫真實 AI）</label>
-          <p class="hint">勾選後一律回傳示意文字，方便在沒有金鑰時測試介面流程。</p>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button id="test" type="button">測試連線</button>
-        <span id="status" class="status"></span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>永遠 CC 收件人</h2>
-      <p class="hint">所有文件自動cc。</p>
-      <div id="defaultCcRecipients" class="setting-list"></div>
-      <button id="addDefaultCc" type="button">＋ 新增永遠 CC</button>
-      <div class="actions">
-        <span id="defaultCcStatus" class="status"></span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>自訂cc收件人</h2>
-      <p class="hint">可以依照情況自主快速cc</p>
-
-      <div id="groups"></div>
-
-      <div class="actions">
-        <button id="addGroup" type="button">＋ 新增群組</button>
-        <span id="groupsStatus" class="status"></span>
-      </div>
-    </div>
-
-  </div>
-
-  <script src="options.js"></script>
-</body>
-</html>
+<body class="hpx-options settings-paper">
+<a class="skip-link paper-skip" href="#main">跳至設定內容</a>
+<div class="settings-shell settings-app">
+<aside class="settings-sidebar settings-rail" aria-label="設定導覽">
+<div class="paper-brand"><span class="paper-brand-name">Halopsa</span></div>
+<nav class="settings-nav" aria-label="設定分類">
+<a href="#workspace" class="nav-item is-active" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg></span><span>外觀與 Team</span></a>
+<a href="#writing" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2.5"/><circle cx="15" cy="17" r="2.5"/></svg></span><span>AI 服務</span></a>
+<a href="#contacts" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span>收件人</span></a>
+<a href="#backup" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m-4-4 4 4 4-4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg></span><span>資料備份</span></a>
+</nav>
+</aside>
+<main id="main" class="settings-main" tabindex="-1">
+<header class="paper-masthead">
+<h1>設定</h1>
+<figure class="paper-portrait"><img src="../../assets/branding/halopsa-logo.png" width="512" height="512" alt="" /></figure>
+</header>
+<span id="saveStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true">載入中</span>
+<section id="workspace" class="settings-page" aria-labelledby="workspaceTitle">
+<h2 id="workspaceTitle" class="sr-only">工作空間設定</h2>
+<div class="workspace-grid">
+<section class="card appearance-card" aria-labelledby="appearanceTitle">
+<div class="card-heading"><h2 id="appearanceTitle">外觀</h2></div>
+<label for="theme">介面主題</label><select id="theme"><option value="cute-ios">玻璃</option><option value="default">原生配色</option></select>
+<fieldset class="accent-fieldset"><legend>主題色</legend><div class="swatches" id="accentRow">
+<button class="swatch" data-accent="#0c2d55" style="--sw:#0c2d55" title="藍色" aria-label="藍色" aria-pressed="false" type="button"></button>
+<button class="swatch" data-accent="#5856d6" style="--sw:#5856d6" title="紫色" aria-label="紫色" aria-pressed="false" type="button"></button>
+<button class="swatch" data-accent="#ff2d55" style="--sw:#ff2d55" title="玫瑰" aria-label="玫瑰" aria-pressed="false" type="button"></button>
+<button class="swatch" data-accent="#ff9500" style="--sw:#ff9500" title="橙色" aria-label="橙色" aria-pressed="false" type="button"></button>
+<button class="swatch" data-accent="#34c759" style="--sw:#34c759" title="綠色" aria-label="綠色" aria-pressed="false" type="button"></button>
+<button class="swatch" data-accent="#64748b" style="--sw:#64748b" title="石墨" aria-label="石墨" aria-pressed="false" type="button"></button>
+</div><label class="custom-color" id="customColorWrap" for="accentCustom"><input id="accentCustom" type="color" value="#0c2d55" aria-label="自訂主題色" /><span>自訂</span><code id="accentValue">#0C2D55</code></label></fieldset>
+<div class="theme-preview" aria-label="主題色即時預覽"><span class="preview-status">處理中</span><span class="preview-button">撰寫回覆</span></div>
+<p id="themeStatus" class="status" role="status" aria-live="polite"></p></section>
+<section class="card mode-card" aria-labelledby="modeTitle"><div class="card-heading"><h2 id="modeTitle">導覽</h2></div>
+<label class="toggle-row" for="ultimateMode"><span><strong>簡單模式</strong><small>僅顯示常用 Team 與 Timesheets</small></span><input id="ultimateMode" type="checkbox" role="switch" /><span class="switch-track" aria-hidden="true"></span></label>
+</section>
+<section class="card teams-card" aria-labelledby="teamsTitle"><div class="card-heading"><h2 id="teamsTitle">常用 Team</h2></div><p class="card-description">拖曳或使用箭頭排序。</p>
+<div class="teams-layout"><div><div class="list-caption"><span>Team</span><span id="teamCount"></span></div><div id="ultimateTeams" class="setting-list"></div></div><div class="team-add-panel"><label for="newUltimateTeam">新增 Team</label><div class="key-row"><input id="newUltimateTeam" type="text" placeholder="完整 Team 名稱" maxlength="80" /><button id="addUltimateTeam" type="button">新增</button></div><span class="preset-label">快速加入</span><div id="teamPresets" class="preset-actions"></div></div></div>
+<p id="ultimateTeamsStatus" class="status" role="status" aria-live="polite"></p></section>
+</div>
+<section class="onboarding-banner" id="onboardingCard"><div><h2>快速設定</h2><span id="onboardingStatus" class="status" role="status" aria-live="polite"></span></div><button id="reopenOnboarding" type="button">開啟導引</button></section>
+</section>
+<section id="writing" class="settings-page" aria-labelledby="writingTitle" hidden><h2 id="writingTitle" class="sr-only">AI 撰寫設定</h2><div class="writing-layout">
+<section class="card provider-card" aria-labelledby="providerTitle"><div class="card-heading"><h2 id="providerTitle">連線設定</h2></div>
+<fieldset class="provider-choices"><legend class="sr-only">選擇服務</legend><div class="provider-grid">
+<label class="provider-choice" for="providerOrnith"><input id="providerOrnith" name="provider" type="radio" value="ornith" /><span>Local Ornith</span></label>
+<label class="provider-choice" for="providerAzure"><input id="providerAzure" name="provider" type="radio" value="azure-deepseek" /><span>Azure OpenAI</span></label></div></fieldset>
+<p id="providerLockHint" class="provider-notice"></p>
+<div id="ornithSection" class="provider-section is-disabled">
+<h3>Local Ornith</h3><label for="ornithBaseUrl">Base URL</label><input id="ornithBaseUrl" data-provider-input type="text" inputmode="url" autocomplete="off" spellcheck="false" />
+<label for="ornithModel">Model</label><input id="ornithModel" data-provider-input type="text" autocomplete="off" spellcheck="false" />
+<label for="ornithApiKey">API Key</label><div class="key-row"><input id="ornithApiKey" data-provider-input type="password" placeholder="貼上 Ornith API Key" autocomplete="off" spellcheck="false" /><button id="toggleOrnithKey" data-provider-input type="button" aria-controls="ornithApiKey" aria-pressed="false">顯示</button></div>
+<button id="removeOrnith" class="provider-remove" type="button" disabled>移除 Ornith 設定</button></div>
+<div id="azureSection" class="provider-section is-disabled">
+<h3>Azure OpenAI</h3><label for="azureEndpoint">Azure Endpoint</label><input id="azureEndpoint" data-provider-input type="text" inputmode="url" placeholder="https://your-resource.openai.azure.com" autocomplete="off" spellcheck="false" />
+<label for="azureDeployment">Deployment Name</label><input id="azureDeployment" data-provider-input type="text" placeholder="例如：gpt-4.1 或自訂部署名稱" autocomplete="off" spellcheck="false" />
+<label for="azureApiKey">API Key</label><div class="key-row"><input id="azureApiKey" data-provider-input type="password" placeholder="貼上 Azure OpenAI API Key" autocomplete="off" spellcheck="false" /><button id="toggleAzureKey" data-provider-input type="button" aria-controls="azureApiKey" aria-pressed="false">顯示</button></div>
+<button id="removeAzure" class="provider-remove" type="button" disabled>移除 Azure 設定</button></div>
+<div class="connection-actions"><button id="test" class="primary" type="button">測試連線</button></div><p id="status" class="status" role="status" aria-live="polite"></p>
+</section>
+</div></section>
+<section id="contacts" class="settings-page" aria-labelledby="contactsTitle" hidden><h2 id="contactsTitle" class="sr-only">收件人設定</h2>
+<section class="card" aria-labelledby="defaultCcTitle"><div class="card-heading"><h2 id="defaultCcTitle">永遠 CC</h2></div><p class="card-description">寄信時自動加入。</p><div class="contact-columns" aria-hidden="true"><span>姓名（選填）</span><span>Email</span></div><div id="defaultCcRecipients" class="setting-list"></div><div class="actions"><button id="addDefaultCc" type="button">新增收件人</button><span id="defaultCcStatus" class="status" role="status" aria-live="polite"></span></div></section>
+<section class="card" aria-labelledby="groupsTitle"><div class="card-heading"><h2 id="groupsTitle">CC 群組</h2></div><div id="groups"></div><div class="actions"><button id="addGroup" type="button">新增群組</button><span id="groupsStatus" class="status" role="status" aria-live="polite"></span></div></section>
+<p class="page-footnote">Email 必填，姓名選填。</p>
+</section>
+<section id="backup" class="settings-page" aria-labelledby="backupTitle" hidden><h2 id="backupTitle" class="sr-only">備份與移轉設定</h2>
+<section class="card" id="backupCard"><div class="card-heading"><h2>匯出設定</h2></div>
+<div class="backup-grid"><div class="backup-option"><h3>一般備份</h3><span class="backup-tag">不含 API Key</span><button id="exportSettingsWithoutKeys" class="primary" type="button">匯出設定</button></div><div class="backup-option"><h3>完整備份</h3><span class="backup-tag">含 API Key，請妥善保管</span><button id="exportSettingsWithKeys" type="button">匯出完整設定</button></div></div>
+<div class="import-row"><div><h3>還原備份</h3><p>匯入會取代設定；備份未含金鑰時，保留現有金鑰。</p></div><button id="importSettings" type="button">選擇備份檔</button><input id="importSettingsFile" type="file" accept="application/json,.json" hidden /></div><p id="backupStatus" class="status" role="status" aria-live="polite"></p>
+</section></section>
+</main></div>
+<script src="../ai/provider-settings.js"></script><script src="options.js"></script>
+</body></html>

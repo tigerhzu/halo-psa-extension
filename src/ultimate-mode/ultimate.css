@@ -11,7 +11,10 @@
 /*
  * The icon rail is reconciled by sidebar.js.  Its Team allow-list comes from
  * chrome.storage, so a static first-frame selector cannot safely distinguish
- * configured Team links from the native links that should be hidden.
+ * configured Team links from the native links that should be hidden.  Instead,
+ * observer.js runs the reconcile synchronously inside the MutationObserver
+ * callback (microtask checkpoint, before the frame paints), so newly mounted
+ * rail links are hidden before they can flash.
  */
 
 html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> .actionmenubtn) > .actionmenubtn:not([title="Re-Assign"]):not([title="First Contact"]):not([title="Pending"]):not([title="In Progress"]):not([title="On Hold"]):not([title="Postponed"]):not([title="Awaiting Customer"]):not([title="Awaiting Customer Reply"]):not([title="Vendor Processing"]):not([title="Resolve Ticket"]):not([title="Resolved Ticket"]):not([title="Email User"]):not([title="Activity Note"]) {
@@ -27,12 +30,29 @@ html[data-hpx-ultimate-mode="on"] .details_page_title .buttons-container:has(> .
   display: none !important;
 }
 
-html[data-hpx-ultimate-mode="on"] .details-group:has(> .details-group-header[id^="Ticket information"]) > .info.info-form > .col-md-12.inline.nopad:not([data-hpx-ultimate-keep="ticket-info"]),
-html[data-hpx-ultimate-mode="on"] .details-group:has(> .details-group-header[id^="End-User details"]) > .info.info-form > .col-md-12.inline.nopad:not([data-hpx-ultimate-keep="user-info"]) {
+/*
+ * 工單清單右側的「+ New」是另一組 New Ticket 下拉入口；簡單模式只保留
+ * 頁首的全域「+ New Ticket」，因此以清單標題列父層精準區隔後隱藏整組。
+ */
+html[data-hpx-ultimate-mode="on"] .main_table_title .buttons-container > [role="listbox"]:has(> button.fabtn[title="New Ticket"]) {
   display: none !important;
 }
 
-/* Team 導覽頁：放在原生 Timesheets 圖示後方的保留 Team 快捷入口。 */
+/* 精簡頁首後，Halo 的 Search 外層仍保留原本的頂端位移；往下微調以和 New Ticket 對齊。 */
+html[data-hpx-ultimate-mode="on"] #halo-nav .nhd-nav-rightAlign > .buttoncontainer > .nhd-nav-btn[title="Search (Ctrl + Shift + F)"] {
+  position: relative;
+  top: 6px;
+}
+
+/*
+ * Ticket / End-User 詳細列不使用「尚未 keep 就先隱藏」的首幀規則。
+ * New Ticket 建立完成後，Halo 會以 SPA 分批換入標題與欄位；若 CSS 在
+ * ultimate-mode JS 完成白名單辨識前就隱藏所有未標記列，右側會只剩空白卡片。
+ * 這兩區維持 fail-open，由 shared.hide() 明確加上 .halo-ultimate-hidden 後
+ * 才隱藏非白名單欄位；辨識尚未完成或失敗時至少保留 Halo 原始內容。
+ */
+
+/* Halo 各頁：放在原生 Timesheets 圖示後方的保留 Team 快捷入口。 */
 .hpx-ultimate-timesheets-branded .hpx-ultimate-timesheets-icon-host {
   display: flex !important;
   align-items: center;
@@ -52,7 +72,8 @@ html[data-hpx-ultimate-mode="on"] .details-group:has(> .details-group-header[id^
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  object-fit: cover;
+  background: transparent;
+  object-fit: contain;
   filter: drop-shadow(0 2px 2px rgba(0, 25, 48, 0.28));
 }
 
@@ -98,7 +119,8 @@ html[data-hpx-ultimate-mode="on"] .details-group:has(> .details-group-header[id^
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  object-fit: cover;
+  background: transparent;
+  object-fit: contain;
   filter: drop-shadow(0 2px 2px rgba(0, 25, 48, 0.3));
   transition: transform 120ms ease, filter 120ms ease;
 }

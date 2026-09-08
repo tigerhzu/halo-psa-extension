@@ -2,11 +2,11 @@
  * theme.js
  * 外觀主題 / Accent / 透明度 切換器。樣式不寫死在程式裡 ——
  * 只在 <html> 設定 data-hpx-theme 與 CSS 變數 --hpx-accent（hex）/ --hpx-opacity，
- * 由各 theme CSS（content_scripts 注入 / 設定頁 <link>）依屬性套用。
+ * 由 workbench.css（content_scripts 注入 / 設定頁 <link>）依屬性套用。
  *
  * 主題：
  *  - 'default'        原始外觀
- *  - 'cute-ios'       Cute iOS（毛玻璃 / 圓角 / 浮動陰影 / Accent / 透明度）
+ *  - 'cute-ios'       Halo Companion 工作台（沿用舊 ID，保留既有設定）
  *  - 只保留 'default' 與 'cute-ios' 兩種主題
  *
  * 設定存在 chrome.storage（hpx_settings.theme / accent / opacity），變更即時全域生效，
@@ -19,7 +19,7 @@
 
   const STORAGE_KEY = 'hpx_settings';
   const DEFAULT_THEME = 'cute-ios';
-  const DEFAULT_ACCENT = '#000000'; // 首次使用 Cute／果凍模式的預設 Accent
+  const DEFAULT_ACCENT = '#0c2d55'; // 預設深藍色；保留既有使用者自訂色
   const DEFAULT_OPACITY = 100; // 百分比 40~100
   const VALID = ['default', 'cute-ios'];
 
@@ -198,6 +198,32 @@
         n.classList.remove(cls);
       });
     });
+    document.querySelectorAll('[data-hpx-theme-selected]').forEach(function (row) {
+      row.removeAttribute('data-hpx-theme-selected');
+    });
+  }
+
+  // Halo's View/Filter rows expose their IDs, but only paint selection inline.
+  // Read the selected header ID rather than matching Halo's configured color.
+  function markNativeSelection() {
+    const root = document.getElementById('halo-tree');
+    if (!root) return;
+    [
+      ['#tv-selected-view-name', '.viewselect-table'],
+      ['#tv-selected-filter-name', '.filterselect-table'],
+    ].forEach(function (pair) {
+      const header = root.querySelector(pair[0]);
+      const selected = header && header.getAttribute('data-id');
+      root.querySelectorAll(pair[1] + ' tr').forEach(function (row) {
+        const cell = row.querySelector('[data-id]');
+        const active = selected !== null && !!cell && cell.getAttribute('data-id') === selected;
+        if (active && row.getAttribute('data-hpx-theme-selected') !== 'true') {
+          row.setAttribute('data-hpx-theme-selected', 'true');
+        } else if (!active && row.hasAttribute('data-hpx-theme-selected')) {
+          row.removeAttribute('data-hpx-theme-selected');
+        }
+      });
+    });
   }
 
   function clearColumnMarkersExcept(keep) {
@@ -266,16 +292,16 @@
     const keep = new Set(cols);
     clearColumnMarkersExcept(keep);
     cols.forEach(function (el) {
-      el.classList.add(SIDEBAR_MARKER);
+      if (!el.classList.contains(SIDEBAR_MARKER)) el.classList.add(SIDEBAR_MARKER);
       const w = Math.round(el.getBoundingClientRect().width);
       if (w < 120) {
-        el.classList.remove(MAIN_MARK);
-        el.classList.add(ICONBAR_MARK);
+        if (el.classList.contains(MAIN_MARK)) el.classList.remove(MAIN_MARK);
+        if (!el.classList.contains(ICONBAR_MARK)) el.classList.add(ICONBAR_MARK);
         // eslint-disable-next-line no-console
         console.log('[HPX] theme sidebar matched', 'width=' + w + 'px', 'class=' + String(el.className || ''));
       } else {
-        el.classList.remove(ICONBAR_MARK);
-        el.classList.add(MAIN_MARK);
+        if (el.classList.contains(ICONBAR_MARK)) el.classList.remove(ICONBAR_MARK);
+        if (!el.classList.contains(MAIN_MARK)) el.classList.add(MAIN_MARK);
         // eslint-disable-next-line no-console
         console.log('[HPX] theme main sidebar matched', 'width=' + w + 'px', 'class=' + String(el.className || ''));
       }
@@ -293,11 +319,15 @@
    *  - Default：清除。
    */
   function updateSidebarMarker(theme) {
+    // Standalone extension pages have no native Halo sidebar to discover.
+    if (document.querySelector('.hpx-ew, .hpx-options, .hpx-onboarding-page')) return;
     const isSidebarTheme = theme === 'cute-ios';
     if (!isSidebarTheme) {
       clearMarkers();
       return;
     }
+
+    markNativeSelection();
 
     const wrap = findLeftWrapper();
     if (wrap) {
@@ -308,6 +338,7 @@
       }
       // wrapper 升級（例如 DOM 動態載入後涵蓋範圍變大），重新標記。
       clearMarkers();
+      markNativeSelection();
       warnedNoWrapper = false;
       wrap.el.classList.add(WRAP_MARK);
       // wrapper 負責填滿欄與欄之間的 gap / 底部；各欄也要標記，避免原始背景蓋住皮膚。
@@ -324,7 +355,10 @@
     }
 
     // 找不到共同 wrapper → 先逐欄套用（wrapper 之後出現會自動升級）。
-    if (document.querySelector('.' + WRAP_MARK)) clearMarkers();
+    if (document.querySelector('.' + WRAP_MARK)) {
+      clearMarkers();
+      markNativeSelection();
+    }
     if (!warnedNoWrapper) {
       warnedNoWrapper = true;
       // eslint-disable-next-line no-console
@@ -371,6 +405,7 @@
           'aria-hidden',
           'aria-expanded',
           'aria-selected',
+          'data-id',
         ],
       });
     } catch (e) {
@@ -390,6 +425,14 @@
     // accent 直接以 hex 設成 CSS 變數（不經對照表）；所有自訂 UI 都吃 var(--hpx-accent)
     const accent = normalizeAccent(s.accent);
     root.style.setProperty('--hpx-accent', accent);
+    // Choose readable foreground for both light and dark custom accent colors.
+    const rgb = [1, 3, 5].map(function (offset) {
+      const channel = parseInt(accent.slice(offset, offset + 2), 16) / 255;
+      return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+    });
+    const luminance = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+    root.style.setProperty('--hpx-accent-ink', luminance > 0.179 ? '#000000' : '#ffffff');
+    root.style.setProperty('--hpx-accent-icon-filter', luminance > 0.179 ? 'invert(1)' : 'none');
 
     let op = typeof s.opacity === 'number' ? s.opacity : DEFAULT_OPACITY;
     op = Math.max(40, Math.min(100, op));
@@ -403,7 +446,7 @@
   }
 
   function loadAll(cb) {
-    if (!(chrome && chrome.storage && chrome.storage.local)) {
+    if (!(typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local)) {
       cb && cb({});
       return;
     }
@@ -447,7 +490,7 @@
       loadAll(applyAppearance);
       bindSidebarObserver();
 
-      if (chrome && chrome.storage && chrome.storage.onChanged) {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
         chrome.storage.onChanged.addListener(function (changes, area) {
           if (area !== 'local' || !changes[STORAGE_KEY]) return;
           loadAll(applyAppearance);

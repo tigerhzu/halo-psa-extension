@@ -1,10 +1,9 @@
 /* time-adjuster.css — Time Taken 快速調整工具列。
-   全部使用 hpx-tta- 前綴，只作用在本擴充插入的節點，不影響 HaloPSA 既有樣式。
+   使用自有前綴與標記；只有已確認的時間欄位容器會暫時擴展為完整寬度。
 
    版面原則：
-   1. 放在完整的「時：分：秒」欄位正下方，靠左，獨立一行。
-      絕不插進欄位之間，HaloPSA 原本的欄位排列必須保持完整。
-   2. 單一橫向緊湊長條（無邊框、無底色、不換行），不是方塊面板。
+   1. 原生欄位與計時器保留原位；快速調整工具列固定放在下一行。
+   2. 窄視窗自然換行，不捲動、不隱藏操作控制項。
 
    關於選擇器權重：本檔的節點是「注入到 HaloPSA 自己的表單裡」，
    Halo 表單常有 `.xxx input { width: 100% }` 這類規則會蓋過單一 class。
@@ -12,19 +11,78 @@
    其餘外觀屬性維持一般權重，方便日後覆寫。 */
 
 .hpx-tta {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 6px;
+  display: flex !important;
+  align-items: center !important;
+  flex-flow: row wrap !important;
+  column-gap: 0;
+  row-gap: 8px;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
   padding: 0;
   border: 0;
   background: none;
   font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
   font-size: 12px;
   line-height: 1.4;
-  color: #1f2933;
-  white-space: nowrap;
-  box-sizing: border-box;
+  color: #424b59;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+/* Native controls and their siblings stay in place in the DOM. Removing the
+   marker on stop/remount restores Halo's original column layout. */
+.details-group > .col-md-4.inline[data-hpx-time-expanded="true"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  flex: 0 0 100% !important;
+  grid-column: 1 / -1 !important;
+  box-sizing: border-box !important;
+}
+
+.col-md-12[data-hpx-time-inline="true"] {
+  display: flex !important;
+  flex-flow: row wrap !important;
+  align-items: center !important;
+  column-gap: 0 !important;
+  row-gap: 4px !important;
+}
+.col-md-12[data-hpx-time-inline="true"] > label {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+}
+.col-md-12[data-hpx-time-inline="true"] > :is(input, span, .action-form-btn) {
+  flex: 0 0 auto !important;
+  align-self: center !important;
+}
+.col-md-12[data-hpx-time-inline="true"] > span {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.hpx-tta.hpx-tta--native-inline {
+  display: inline-flex !important;
+  width: max-content !important;
+  max-width: calc(100% - 8px) !important;
+  flex: 0 0 auto !important;
+  margin: 0 0 0 8px !important;
+}
+/* Explicit feedback is announced without adding another visible label. */
+.hpx-tta > .hpx-tta-announcement {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+}
+
+/* Halo's form rules can apply full-width controls and paragraph margins. */
+.hpx-tta > :is(.hpx-tta-summary, .hpx-tta-btn, .hpx-tta-input) {
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  align-self: center !important;
 }
 
 /* 預設：完整 Time Taken 欄位的正下方，靠左，自成一行。 */
@@ -34,7 +92,7 @@
   /* 萬一還是落在 flex row 容器裡，這行會把自己擠到下一整行 */
   flex: 1 0 100% !important;
   justify-content: flex-start;
-  margin: 5px 0 2px;
+  margin: 8px 0 4px;
 }
 
 /* 選用：和欄位同一行（INSERT_MODE: 'beside'）。 */
@@ -47,22 +105,14 @@
   align-self: center;
 }
 
-/* 項目之間的細分隔線（對應「目前 55 分鐘｜-5 分｜…」的視覺分隔）。 */
-.hpx-tta > .hpx-tta-sep {
-  flex: 0 0 auto !important;
-  width: 1px !important;
-  min-width: 1px;
-  height: 14px;
-  padding: 0;
-  background: #d5dce5;
-}
-
 .hpx-tta > .hpx-tta-summary {
   flex: 0 0 auto !important;
   width: auto !important;
-  font-weight: 700;
+  padding: 0 12px 0 0;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
-  color: #1f2933;
+  color: #697383;
 }
 .hpx-tta > .hpx-tta-summary.is-invalid {
   color: #b91c1c;
@@ -70,71 +120,93 @@
 }
 
 .hpx-tta > .hpx-tta-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   flex: 0 0 auto !important;
   width: auto !important;
   min-width: 0 !important;
-  padding: 2px 7px;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: none;
+  height: auto !important;
+  min-height: 28px !important;
+  padding: 3px 12px !important;
+  border: 0;
+  border-left: 1px solid var(--hpx-line, #cbd3df);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   font-family: inherit;
   font-size: 12px;
-  line-height: 1.4;
-  color: #2c6cd6;
+  line-height: 20px !important;
+  color: var(--hpx-accent-text, #216ad9);
   cursor: pointer;
   white-space: nowrap;
   box-sizing: border-box;
   transition: background .12s ease, color .12s ease;
 }
 .hpx-tta > .hpx-tta-btn:hover {
-  background: var(--hpx-accent, #000000);
-  border-color: var(--hpx-accent, #000000);
-  color: #fff;
+  background: color-mix(in srgb, var(--hpx-accent, #216ad9) 8%, transparent);
+  border-left-color: var(--hpx-line, #cbd3df);
+  color: var(--hpx-accent-text, #1557b0);
 }
 .hpx-tta > .hpx-tta-btn:focus-visible {
-  outline: 2px solid var(--hpx-accent, #000000);
-  outline-offset: 1px;
+  outline: 2px solid var(--hpx-accent-text, #216ad9);
+  outline-offset: 2px;
 }
-.hpx-tta > .hpx-tta-btn:active { transform: translateY(1px); }
+.hpx-tta > .hpx-tta-btn:active { transform: scale(.96); }
 
-.hpx-tta > .hpx-tta-btn--reset { color: #6b7480; }
+.hpx-tta > .hpx-tta-btn--reset {
+  margin-right: 12px !important;
+  border-right: 1px solid var(--hpx-line, #cbd3df);
+  color: var(--hpx-control-ink, #4b5565);
+}
 .hpx-tta > .hpx-tta-btn--reset:hover {
-  background: #6b7480;
-  border-color: #6b7480;
+  background: color-mix(in srgb, var(--hpx-accent, #216ad9) 8%, transparent);
+  border-left-color: var(--hpx-line, #cbd3df);
+  border-right-color: var(--hpx-line, #cbd3df);
+  color: var(--hpx-control-ink, #24344b);
 }
 
 .hpx-tta > .hpx-tta-btn--apply {
-  border-color: #cfdcf2;
-  background: #eef4fe;
+  margin-left: 8px !important;
+  padding: 3px 10px !important;
+  border: 1px solid var(--hpx-control-border, #8493a8);
+  border-radius: 6px;
+  background: #f4f8ff;
+  color: var(--hpx-accent-text, #1557b0);
   font-weight: 650;
 }
 .hpx-tta > .hpx-tta-btn--apply:hover {
-  background: var(--hpx-accent, #000000);
-  border-color: var(--hpx-accent, #000000);
-  color: #fff;
+  background: #e8f1ff;
+  border-color: var(--hpx-accent-text, #216ad9);
+  color: var(--hpx-accent-text, #1557b0);
 }
 
 /* 分鐘輸入框：固定小尺寸。
    Halo 表單的 `input { width: 100% }` 會把它拉滿整行，把「套用」推到畫面最右側，
    所以這裡三個寬度屬性一起鎖死。 */
 .hpx-tta > .hpx-tta-input {
+  display: inline-block !important;
   flex: 0 0 auto !important;
   width: 56px !important;
   min-width: 56px !important;
   max-width: 56px !important;
-  padding: 2px 6px;
-  border: 1px solid #d5dce5;
-  border-radius: 5px;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 3px 6px !important;
+  border: 1px solid var(--hpx-line, #cbd3df);
+  border-radius: 6px;
   background: #fff;
+  box-shadow: inset 0 1px 2px rgba(31,65,109,.05);
   font-family: inherit;
   font-size: 12px;
-  line-height: 1.4;
-  color: inherit;
+  line-height: 20px !important;
+  color: var(--hpx-control-ink, #24344b);
   text-align: center;
   box-sizing: border-box;
 }
+.hpx-tta > .hpx-tta-input::placeholder { color: #5e6d81; opacity: 1; }
 .hpx-tta > .hpx-tta-input:focus-visible {
-  outline: 2px solid var(--hpx-accent, #000000);
+  outline: 2px solid var(--hpx-accent-text, #216ad9);
   outline-offset: -1px;
 }
 .hpx-tta > .hpx-tta-input.is-invalid {

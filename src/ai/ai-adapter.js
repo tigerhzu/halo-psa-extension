@@ -1,14 +1,14 @@
 /**
  * ai-adapter.js（content script 端）
  *
- * AI 接口。實際的 Azure OpenAI / Gemini 呼叫在 background service worker
+ * AI 接口。實際的 Azure OpenAI / Ornith 呼叫在 background service worker
  *（見 src/background/service-worker.js）：
  *  - content script 直接 fetch 外部 API 會踩 CORS，且金鑰會暴露在頁面環境；
  *  - 因此這裡只負責把請求透過 chrome.runtime.sendMessage 轉發給背景，再把結果回傳上層。
  *
  * 上層（ai-rewrite.js）只需要：呼叫 request() 取得 Promise，介面保持穩定。
  *
- * 設定（API Key / 模型 / 測試模式）由設定頁寫入 chrome.storage，背景讀取，這裡不碰金鑰。
+ * 設定（API Key / 模型）由設定頁寫入 chrome.storage，背景讀取，這裡不碰金鑰。
  */
 (function () {
   'use strict';
@@ -16,18 +16,21 @@
 
   // AI 請求可能因網路或模型負載而久候；設一個逾時上限，
   // 避免背景服務無回應時，前端 UI 永遠卡在「處理中…」。
-  const REQUEST_TIMEOUT_MS = 30000;
+  // Ornith 在背景層會於 120 秒主動中止；前端多留 5 秒接收明確錯誤，
+  // 避免原本 30 秒先逾時、背景卻仍持續耗用模型的殭屍請求。
+  const REQUEST_TIMEOUT_MS = 125000;
 
   const AiAdapter = {
     /**
      * 請求 AI 處理文字（透過背景服務轉發，見檔頭說明）。
      * @param {Object} req
-     * @param {string} req.action  'improve_tone' | 'professional' | 'translate'
+     * @param {string} req.action  'improve_tone' | 'professional' | 'first_contact' | 'translate'
      * @param {string} req.text
      * @param {string} [req.targetLang]  'en' | 'zh'
      * @returns {Promise<{text: string, stub: boolean, provider: string, model?: string, deployment?: string}>}
      */
     request: function (req) {
+      const startedAt = Date.now();
       return new Promise(function (resolve, reject) {
         if (!chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
           reject(new Error('擴充套件背景服務無法連線（chrome.runtime 不可用）'));
@@ -68,6 +71,7 @@
                   provider: response.provider || '',
                   deployment: response.deployment || '',
                   model: response.model || '',
+                  metrics: Object.assign({}, response.metrics, { totalElapsedMs: Date.now() - startedAt, stub: !!response.stub }),
                 });
               } else {
                 finish(reject, new Error(response.error || 'AI 請求失敗'));

@@ -30,6 +30,7 @@
   const toolbarEl = document.getElementById('hpx-ew-toolbar');
   const editorEl = document.getElementById('hpx-ew-editor');
   const statusEl = document.getElementById('hpx-ew-status');
+  const scopeEl = document.getElementById('hpx-ew-scope');
   const applyBtn = document.getElementById('hpx-ew-apply');
   const cancelBtn = document.getElementById('hpx-ew-cancel');
   const layoutEl = document.querySelector('.hpx-ew');
@@ -73,7 +74,10 @@
     statusEl.className = 'hpx-ew__status' + (isBusy ? ' hpx-ew__status--busy' : '');
   }
 
+  let busyTimer = null;
   function setBusy(value, message) {
+    clearInterval(busyTimer);
+    busyTimer = null;
     busy = value;
     applyBtn.disabled = value;
     [formatToolbarEl, toolbarEl].forEach(function (toolbar) {
@@ -84,6 +88,12 @@
     });
     if (formatToolbarEl) formatToolbarEl.setAttribute('aria-disabled', String(value));
     setStatus(value ? message || '處理中…' : '', value);
+    if (value) {
+      const startedAt = Date.now();
+      busyTimer = setInterval(function () {
+        setStatus((message || '處理中…') + ' · 已耗時 ' + ((Date.now() - startedAt) / 1000).toFixed(1) + ' 秒', true);
+      }, 1000);
+    }
   }
 
   function fingerprint(text) {
@@ -101,7 +111,7 @@
     return NS.core.imagePlaceholder.fromPlaceholders(editorEl.innerHTML).html;
   }
 
-  /** 自訂確認對話框。回傳 Promise<boolean>。 */
+  /** 共用確認 / 輸入對話框；以同一組焦點管理保護背景編輯範圍。 */
   function confirmDialog(opts) {
     return new Promise(function (resolve) {
       const overlay = document.createElement('div');
@@ -109,14 +119,43 @@
 
       const box = document.createElement('div');
       box.className = 'hpx-ew-confirm__box';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-modal', 'true');
+      box.setAttribute('aria-labelledby', 'hpx-ew-confirm-title');
+      box.setAttribute('aria-describedby', 'hpx-ew-confirm-body');
+      const previousFocus = document.activeElement;
+      const previousRange = savedRange && savedRange.cloneRange();
 
       const title = document.createElement('div');
       title.className = 'hpx-ew-confirm__title';
+      title.id = 'hpx-ew-confirm-title';
       title.textContent = opts.title;
 
       const body = document.createElement('div');
       body.className = 'hpx-ew-confirm__body';
+      body.id = 'hpx-ew-confirm-body';
       body.textContent = opts.message;
+
+      let input = null;
+      let field = null;
+      if (opts.input) {
+        field = document.createElement('div');
+        field.className = 'hpx-ew-confirm__field';
+        const label = document.createElement('label');
+        label.className = 'hpx-ew-confirm__label';
+        label.htmlFor = 'hpx-ew-confirm-input';
+        label.textContent = opts.inputLabel || '內容';
+        input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'hpx-ew-confirm-input';
+        input.className = 'hpx-ew-confirm__input';
+        input.value = opts.value == null ? '' : String(opts.value);
+        input.placeholder = opts.placeholder || '';
+        input.spellcheck = false;
+        input.autocomplete = 'off';
+        input.setAttribute('aria-describedby', body.id);
+        field.append(label, input);
+      }
 
       const actions = document.createElement('div');
       actions.className = 'hpx-ew-confirm__actions';
@@ -135,26 +174,51 @@
       actions.appendChild(yes);
       box.appendChild(title);
       box.appendChild(body);
+      if (field) box.appendChild(field);
       box.appendChild(actions);
       overlay.appendChild(box);
       document.body.appendChild(overlay);
-      no.focus();
+      const focusable = input ? [input, no, yes] : [no, yes];
+      focusable[0].focus();
+      if (input) input.select();
 
       function done(value) {
         document.removeEventListener('keydown', onKey);
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        if (previousFocus && previousFocus.isConnected) previousFocus.focus();
+        if (previousRange && editorEl.contains(previousRange.commonAncestorContainer)) {
+          savedRange = previousRange;
+          restoreSavedSelection();
+        }
         resolve(value);
       }
       function onKey(e) {
-        if (e.key === 'Escape') done(false);
+        if (e.key === 'Escape') { e.preventDefault(); done(false); }
+        if (e.key === 'Tab') {
+          const index = focusable.indexOf(document.activeElement);
+          if (e.shiftKey && index <= 0) { e.preventDefault(); yes.focus(); }
+          else if (!e.shiftKey && (index === focusable.length - 1 || index < 0)) { e.preventDefault(); focusable[0].focus(); }
+        }
+        if (input && e.key === 'Enter' && !e.isComposing && !e.ctrlKey && !e.metaKey && document.activeElement === input) {
+          e.preventDefault();
+          done(input.value);
+        }
       }
       no.addEventListener('click', function () {
         done(false);
       });
       yes.addEventListener('click', function () {
-        done(true);
+        done(input ? input.value : true);
       });
       document.addEventListener('keydown', onKey);
+    });
+  }
+
+  /** 用可存取的工作室輸入框取代阻塞式原生 prompt。取消仍回傳 null。 */
+  function inputDialog(opts) {
+    if (document.querySelector('.hpx-ew-confirm')) return Promise.resolve(null);
+    return confirmDialog(Object.assign({}, opts, { input: true })).then(function (value) {
+      return value === false ? null : value;
     });
   }
 
@@ -167,6 +231,10 @@
     const range = sel.getRangeAt(0);
     if (editorEl.contains(range.commonAncestorContainer)) {
       savedRange = range.cloneRange();
+      if (scopeEl) {
+        const count = range.toString().trim().length;
+        scopeEl.textContent = count ? '已選取 ' + count + ' 字' : '未選取文字';
+      }
     }
   });
 
@@ -190,10 +258,10 @@
   }
 
   /** 讓自訂 DOM 插入也進入 contenteditable 的輸入流程。 */
-  function dispatchEditorInput() {
+  function dispatchEditorInput(inputType) {
     let event;
     try {
-      event = new InputEvent('input', { bubbles: true, inputType: 'insertText' });
+      event = new InputEvent('input', { bubbles: true, inputType: inputType || 'insertText' });
     } catch (error) {
       event = new Event('input', { bubbles: true });
     }
@@ -245,6 +313,162 @@
     return true;
   }
 
+  // Chrome 在「從網頁複製圖片」時，剪貼簿可能同時放入兩種資料：
+  //   1. text/html：<img src="blob:..." 或需要來源網站登入的 URL>
+  //   2. image/png / image/jpeg：真正的圖片位元資料
+  // 原生 contenteditable 會優先採用第 1 種，切換到 chrome-extension:// 編輯視窗後
+  // 來源 URL 就失效，因而出現破圖。貼上時必須優先使用第 2 種資料，轉成 data URL。
+  const PASTABLE_IMAGE_TYPE = /^image\/(?:png|gif|jpe?g|webp|bmp)$/i;
+
+  function isPastableImageType(type) {
+    return PASTABLE_IMAGE_TYPE.test(String(type || '').trim());
+  }
+
+  function readClipboardImage(file) {
+    return new Promise(function (resolve) {
+      if (!file || !isPastableImageType(file.type)) {
+        resolve(null);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        const dataUrl = String(reader.result || '');
+        resolve(/^data:image\/(?:png|gif|jpe?g|webp|bmp);/i.test(dataUrl) ? dataUrl : null);
+      };
+      reader.onerror = function () {
+        resolve(null);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /** 取得剪貼簿內的實際圖片檔；某些 Chrome 版本只會填 files、不會填 items。 */
+  function clipboardImageFiles(clipboard) {
+    const files = [];
+    const items = clipboard && clipboard.items ? Array.prototype.slice.call(clipboard.items) : [];
+
+    items.forEach(function (item) {
+      if (item.kind !== 'file' || !isPastableImageType(item.type)) return;
+      let file = null;
+      try {
+        file = item.getAsFile();
+      } catch (error) {
+        file = null;
+      }
+      if (file) files.push(file);
+    });
+
+    if (files.length) return files;
+
+    const fallback = clipboard && clipboard.files ? Array.prototype.slice.call(clipboard.files) : [];
+    return fallback.filter(function (file) {
+      return isPastableImageType(file && file.type);
+    });
+  }
+
+  function parseClipboardHtml(html) {
+    if (!html) return null;
+    try {
+      const doc = new DOMParser().parseFromString('<body>' + String(html) + '</body>', 'text/html');
+      return doc && doc.body ? doc : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function appendClipboardImage(doc, dataUrl) {
+    const image = doc.createElement('img');
+    image.setAttribute('src', dataUrl);
+    image.setAttribute('alt', '貼上的圖片');
+    image.setAttribute('style', 'max-width: 100%; height: auto;');
+    doc.body.appendChild(image);
+  }
+
+  /**
+   * 將剪貼簿的 HTML 與實際圖片資料合併。
+   * ChatGPT 的 HTML 常是 blob / 需要登入的 URL；只要剪貼簿有 image/*，
+   * 就以實際檔案依序取代 HTML 裡的 <img>，避免把失效 URL 留進編輯器。
+   */
+  function buildClipboardImageHtml(rawHtml, plainText, imageDataUrls) {
+    const urls = Array.isArray(imageDataUrls) ? imageDataUrls.filter(Boolean) : [];
+    const doc = parseClipboardHtml(rawHtml) || document.implementation.createHTMLDocument('clipboard');
+    const images = Array.prototype.slice.call(doc.body.querySelectorAll('img'));
+    let used = 0;
+
+    images.forEach(function (image) {
+      if (used >= urls.length) return;
+      image.setAttribute('src', urls[used]);
+      image.removeAttribute('srcset');
+      if (!image.getAttribute('alt')) image.setAttribute('alt', '貼上的圖片');
+      used += 1;
+    });
+
+    // 有些來源只提供 image/*，沒有提供可用的 text/html <img>，直接補到尾端。
+    while (used < urls.length) {
+      appendClipboardImage(doc, urls[used]);
+      used += 1;
+    }
+
+    if (!rawHtml && plainText) {
+      const text = String(plainText).trim();
+      if (text) {
+        const paragraph = doc.createElement('p');
+        paragraph.textContent = text;
+        doc.body.insertBefore(paragraph, doc.body.firstChild);
+      }
+    }
+
+    return NS.core.htmlSanitizer.sanitize(doc.body.innerHTML);
+  }
+
+  function editorSelectionRange() {
+    const selection = document.getSelection();
+    if (selection && selection.rangeCount) {
+      const range = selection.getRangeAt(0);
+      if (editorEl.contains(range.commonAncestorContainer)) return range.cloneRange();
+    }
+    if (savedRange && editorEl.contains(savedRange.commonAncestorContainer)) {
+      return savedRange.cloneRange();
+    }
+    return null;
+  }
+
+  /**
+   * 貼上圖片時攔截原生 HTML 優先順序，改用剪貼簿的 image/* 實際資料。
+   * 沒有圖片檔時不攔截，保留瀏覽器原本的純文字 / 富文字貼上行為。
+   */
+  async function handleImagePaste(event) {
+    if (busy || sourceMode || !event.clipboardData) return;
+
+    const files = clipboardImageFiles(event.clipboardData);
+    if (!files.length) return;
+
+    const rawHtml = event.clipboardData.getData('text/html') || '';
+    const plainText = event.clipboardData.getData('text/plain') || '';
+    const range = editorSelectionRange();
+    event.preventDefault();
+
+    const dataUrls = (await Promise.all(files.map(readClipboardImage))).filter(Boolean);
+    if (!dataUrls.length) {
+      showNotice('無法讀取剪貼簿中的圖片，請重新複製圖片後再貼上。', 'error');
+      return;
+    }
+
+    const html = buildClipboardImageHtml(rawHtml, plainText, dataUrls);
+    if (!html) {
+      showNotice('剪貼簿中的圖片格式無法在編輯器中使用。', 'error');
+      return;
+    }
+
+    if (range) savedRange = range;
+    if (!insertHtmlAtSelection(html)) {
+      showNotice('找不到圖片要貼上的位置，請先點一下編輯區再重試。', 'error');
+      return;
+    }
+    setStatus('圖片已從剪貼簿貼上。');
+  }
+
   function insertTextAtSelection(text) {
     if (runEditorCommand('insertText', String(text))) return true;
 
@@ -278,14 +502,28 @@
     return 'https://' + url;
   }
 
-  /** 內容裡有沒有會被純文字處理破壞的東西 */
-  function hasRichContent() {
+  /** 內容裡有沒有「圖片遮罩以外」仍會被純文字處理破壞的東西 */
+  function hasUnpreservedRichContent() {
     const fidelity = NS.core.htmlFidelity;
-    const inv = fidelity.inventory(modelHtml());
+    const doc = new DOMParser().parseFromString('<body>' + modelHtml() + '</body>', 'text/html');
+    Array.prototype.slice.call(doc.body.querySelectorAll('img')).forEach(function (image) {
+      if (image.parentNode) image.parentNode.removeChild(image);
+    });
+    const inv = fidelity.inventory(doc.body.innerHTML);
     const rich = fidelity.CRITICAL_FEATURES.some(function (feature) {
+      if (feature === 'image') return false;
       return (inv.counts[feature] || 0) > 0;
     });
     return rich || inv.styled > 0;
+  }
+
+  function imageMaskedScope(html, fallbackText) {
+    const clean = NS.core.htmlSanitizer.sanitize(html);
+    const masked = NS.core.imagePlaceholder.maskForAi(clean);
+    return {
+      text: masked.count > 0 ? masked.text : fallbackText,
+      imageMasks: masked.masks,
+    };
   }
 
   // ── 文字 → 節點 ────────────────────────────────────────────────────────
@@ -321,33 +559,48 @@
   async function resolveScope(actionLabel) {
     const sel = activeSelection();
     if (sel) {
-      return { mode: 'selection', range: sel.range, text: sel.text };
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(sel.range.cloneContents());
+      const restoredSelection = NS.core.imagePlaceholder.fromPlaceholders(wrapper.innerHTML);
+      const selectionMask = imageMaskedScope(restoredSelection.html, sel.text);
+      return {
+        mode: 'selection',
+        range: sel.range,
+        text: selectionMask.text,
+        imageMasks: selectionMask.imageMasks,
+      };
     }
 
     const fullText = editorEl.innerText;
-    if (!fullText.trim()) {
+    const fullMask = imageMaskedScope(modelHtml(), fullText);
+    if (!fullMask.text.trim()) {
       showNotice('編輯器內沒有文字可以處理。', 'error');
       return null;
     }
 
-    // 沒有選取 + 內容含格式 = 會造成資料破壞，必須明確確認。
-    if (hasRichContent()) {
+    // 圖片會自動遮罩保留；其餘富文字格式仍可能因整篇 AI 改寫而消失。
+    if (hasUnpreservedRichContent()) {
       const proceed = await confirmDialog({
-        title: '這會讓格式全部消失',
+        title: '部分文字格式會消失',
         message:
           '你沒有選取任何文字，「' +
           actionLabel +
           '」會處理整篇內容。\n\n' +
-          '整篇處理的結果是純文字，目前內容裡的表格、圖片、連結、粗體與顏色都會被移除。\n\n' +
+          '圖片會自動遮罩並保留；表格、連結、粗體與顏色等其他格式仍會被移除。\n\n' +
           '建議做法：先選取要處理的那一段文字，再按一次這個按鈕 —— 未選取的部分會完整保留。',
-        confirmLabel: '仍要整篇轉成純文字',
+        confirmLabel: '仍要處理整篇',
         cancelLabel: '返回選取文字',
         danger: true,
       });
       if (!proceed) return null;
     }
 
-    return { mode: 'full', range: null, text: fullText };
+    return {
+      mode: 'full',
+      range: null,
+      text: fullMask.text,
+      imageMasks: fullMask.imageMasks,
+    };
   }
 
   /** 把處理結果放回編輯區 */
@@ -406,22 +659,37 @@
     }
     setBusy(false);
 
+    const imageCount = (scope.imageMasks || []).length;
+    const imageNote = imageCount
+      ? ' 已遮罩 ' + imageCount + ' 張圖片；圖片內容不會送給 AI，套用時會自動還原。'
+      : '';
     const scopeNote =
       scope.mode === 'selection'
         ? '只會取代你選取的那一段文字，其餘內容（含表格 / 圖片 / 連結）不受影響。'
-        : '⚠ 這會取代整篇內容，且結果為純文字。';
+        : imageCount
+          ? '這會取代整篇文字內容，圖片會保留。'
+          : '⚠ 這會取代整篇內容，且結果為純文字。';
 
     const finalText = await NS.ui.previewModal.open({
       title: opts.title,
-      original: scope.text,
-      result: result.text,
-      note: (result.note ? result.note + ' ' : '') + scopeNote,
+      metrics: result.metrics,
+      original: NS.core.imagePlaceholder.toDisplayText(scope.text, scope.imageMasks),
+      result: NS.core.imagePlaceholder.toDisplayText(result.text, scope.imageMasks),
+      note: (result.note ? result.note + ' ' : '') + scopeNote + imageNote,
     });
 
     if (finalText == null) return;
-    if (typeof opts.toHtml === 'function') {
-      const safeHtml = NS.core.htmlSanitizer.sanitize(opts.toHtml(finalText));
-      applyHtmlResult(scope, safeHtml);
+    if (typeof opts.toHtml === 'function' || imageCount > 0) {
+      let html =
+        typeof opts.toHtml === 'function'
+          ? opts.toHtml(finalText)
+          : NS.core.imagePlaceholder.plainTextToHtml(finalText);
+      if (imageCount > 0) {
+        html = NS.core.imagePlaceholder.restoreAiMasks(html, scope.imageMasks).html;
+      }
+      const safeHtml = NS.core.htmlSanitizer.sanitize(html);
+      const placed = NS.core.imagePlaceholder.toPlaceholders(safeHtml);
+      applyHtmlResult(scope, placed.html);
     } else {
       applyResult(scope, finalText);
     }
@@ -448,13 +716,15 @@
           .then(function (res) {
             let note;
             if (res.stub) {
-              note = '⚠ 測試模式 / 尚未設定 API Key —— 這是示意文字，未呼叫真實 AI。';
+              note = '⚠ 尚未設定 API Key —— 這是示意文字，未呼叫真實 AI。';
             } else if (res.provider === 'azure-deepseek') {
               note = 'Azure OpenAI（' + (res.deployment || '目前部署') + '）產生。';
+            } else if (res.provider === 'ornith') {
+              note = 'Local Ornith（' + (res.model || '目前模型') + '）產生。';
             } else {
-              note = 'Gemini（' + (res.model || '') + '）產生。';
+              note = 'AI（' + (res.model || '') + '）產生。';
             }
-            return { text: res.text, note: note };
+            return { text: res.text, note: note, metrics: res.metrics };
           });
       },
     });
@@ -601,12 +871,16 @@
     dispatchEditorInput();
   }
 
-  function insertLink() {
+  async function insertLink() {
     if (busy || sourceMode) return;
 
     const existing = selectionAnchor();
     const currentUrl = existing ? existing.getAttribute('href') || '' : '';
-    const entered = window.prompt('請輸入連結網址', currentUrl || 'https://');
+    const entered = await inputDialog({
+      title: existing ? '編輯連結' : '插入連結',
+      message: existing ? '清空網址可移除連結，保留文字。' : '將網址套用至選取文字或目前游標位置。',
+      inputLabel: '連結網址', value: currentUrl || 'https://', confirmLabel: existing || activeSelection() ? '套用連結' : '下一步',
+    });
     if (entered == null) return;
 
     const rawUrl = entered.trim();
@@ -622,6 +896,10 @@
     }
 
     if (existing) {
+      if (!editorEl.contains(existing)) {
+        showNotice('原連結已不在編輯區內，請重新選取後再試一次。', 'info');
+        return;
+      }
       existing.setAttribute('href', url);
       dispatchEditorInput();
       return;
@@ -632,7 +910,10 @@
       return;
     }
 
-    const text = window.prompt('請輸入連結文字', url);
+    const text = await inputDialog({
+      title: '連結顯示文字', message: '連結會插入目前游標位置。',
+      inputLabel: '顯示文字', value: url, confirmLabel: '插入連結',
+    });
     if (text == null || !text.trim()) return;
     const anchor = document.createElement('a');
     anchor.setAttribute('href', url);
@@ -640,10 +921,13 @@
     insertHtmlAtSelection(anchor.outerHTML);
   }
 
-  function insertImage() {
+  async function insertImage() {
     if (busy || sourceMode) return;
 
-    const entered = window.prompt('請輸入圖片網址（目前支援 http、https 或安全的 data:image）', 'https://');
+    const entered = await inputDialog({
+      title: '插入圖片', message: '支援 http、https 與安全的圖片 data URL。',
+      inputLabel: '圖片網址', value: 'https://', confirmLabel: '插入圖片',
+    });
     if (entered == null || !entered.trim()) return;
 
     const url = normalizeUrl(entered.trim());
@@ -781,25 +1065,33 @@
     else image.removeAttribute('width');
   }
 
-  function resizeSelectedImage() {
+  async function resizeSelectedImage() {
     if (busy || sourceMode) return;
     if (!selectedImageTarget || !editorEl.contains(selectedImageTarget)) {
       showNotice('請先點選要調整的圖片，再按「圖片大小」。', 'info');
       return;
     }
 
-    const entered = window.prompt('輸入圖片寬度：例如 50%、320px，或 auto 還原原始大小。', '50%');
+    const imageTarget = selectedImageTarget;
+    const entered = await inputDialog({
+      title: '調整圖片大小', message: '可填 1–100%、16–5000px，或 auto 還原原始大小。',
+      inputLabel: '圖片寬度', value: '50%', placeholder: '例如 50% 或 320px', confirmLabel: '調整大小',
+    });
     if (entered == null) return;
+    if (!editorEl.contains(imageTarget)) {
+      showNotice('原圖片已不在編輯區內，請重新選取後再試一次。', 'info');
+      return;
+    }
     const width = normalizeImageWidth(entered);
     if (!width) {
       showNotice('圖片寬度請填 1–100% 或 16–5000px，也可填 auto。', 'error');
       return;
     }
 
-    if (selectedImageTarget.tagName.toLowerCase() === 'img') {
-      applyImageWidth(selectedImageTarget, width);
+    if (imageTarget.tagName.toLowerCase() === 'img') {
+      applyImageWidth(imageTarget, width);
     } else {
-      const original = selectedImageTarget.getAttribute(NS.core.imagePlaceholder.ATTR);
+      const original = imageTarget.getAttribute(NS.core.imagePlaceholder.ATTR);
       const doc = new DOMParser().parseFromString('<body>' + String(original || '') + '</body>', 'text/html');
       const image = doc.body.querySelector('img');
       if (!image) {
@@ -807,7 +1099,7 @@
         return;
       }
       applyImageWidth(image, width);
-      selectedImageTarget.setAttribute(NS.core.imagePlaceholder.ATTR, image.outerHTML);
+      imageTarget.setAttribute(NS.core.imagePlaceholder.ATTR, image.outerHTML);
     }
 
     dispatchEditorInput();
@@ -815,10 +1107,13 @@
     updateImageResizeHandle();
   }
 
-  function insertTable() {
+  async function insertTable() {
     if (busy || sourceMode) return;
 
-    const entered = window.prompt('請輸入表格大小，例如 3x3（最多 20x20）', '3x3');
+    const entered = await inputDialog({
+      title: '插入表格', message: '輸入「列數 × 欄數」，例如 3x3。每邊最多 20 格。',
+      inputLabel: '表格大小', value: '3x3', confirmLabel: '插入表格',
+    });
     if (entered == null) return;
     const match = entered.trim().match(/^(\d+)\s*[x×*]\s*(\d+)$/i);
     if (!match) {
@@ -928,7 +1223,7 @@
     fullscreen.setAttribute('aria-pressed', 'false');
     textGroup.appendChild(fullscreen);
     textGroup.appendChild(
-      makeFormatMenu('A!', '文字格式與段落樣式', [
+      makeFormatMenu('樣式', '文字格式與段落樣式', [
         { label: '一般段落', action: function () { applyBlockFormat('p'); } },
         { label: '標題 1', action: function () { applyBlockFormat('h1'); } },
         { label: '標題 2', action: function () { applyBlockFormat('h2'); } },
@@ -949,7 +1244,7 @@
       ], true)
     );
     textGroup.appendChild(
-      makeFormatMenu('☰', '段落對齊', [
+      makeFormatMenu('對齊', '段落對齊', [
         { label: '靠左對齊', action: function () { runEditorCommand('justifyLeft'); } },
         { label: '置中對齊', action: function () { runEditorCommand('justifyCenter'); } },
         { label: '靠右對齊', action: function () { runEditorCommand('justifyRight'); } },
@@ -963,10 +1258,10 @@
 
     const richGroup = document.createElement('div');
     richGroup.className = 'hpx-ew-format-group';
-    richGroup.appendChild(makeFormatButton('↔', '調整選取圖片的大小', resizeSelectedImage, 'hpx-ew-format-btn--icon'));
-    richGroup.appendChild(makeFormatButton('🔗', '插入或編輯連結', insertLink, 'hpx-ew-format-btn--icon'));
-    richGroup.appendChild(makeFormatButton('▧', '插入圖片（網址）', insertImage, 'hpx-ew-format-btn--icon'));
-    richGroup.appendChild(makeFormatButton('▦', '插入表格', insertTable, 'hpx-ew-format-btn--icon'));
+    richGroup.appendChild(makeFormatButton('圖片大小', '調整選取圖片的大小', resizeSelectedImage));
+    richGroup.appendChild(makeFormatButton('連結', '插入或編輯連結', insertLink));
+    richGroup.appendChild(makeFormatButton('圖片', '插入圖片（網址）', insertImage));
+    richGroup.appendChild(makeFormatButton('表格', '插入表格', insertTable));
     richGroup.appendChild(makeFormatButton('―', '插入水平線', function () { runEditorCommand('insertHorizontalRule'); }, 'hpx-ew-format-btn--icon'));
     richGroup.appendChild(makeFormatButton('A̸', '清除文字格式', function () { runEditorCommand('removeFormat'); }, 'hpx-ew-format-btn--icon'));
     formatToolbarEl.appendChild(richGroup);
@@ -976,7 +1271,7 @@
     miscGroup.appendChild(makeFormatButton('↶', '復原', function () { runEditorCommand('undo'); }, 'hpx-ew-format-btn--icon'));
     miscGroup.appendChild(makeFormatButton('↷', '重做', function () { runEditorCommand('redo'); }, 'hpx-ew-format-btn--icon'));
     miscGroup.appendChild(
-      makeFormatMenu('⋯', '更多編輯功能', [
+      makeFormatMenu('更多', '更多編輯功能', [
         { label: '減少縮排', action: function () { runEditorCommand('outdent'); } },
         { label: '增加縮排', action: function () { runEditorCommand('indent'); } },
         { label: '選取全部內容', action: function () { runEditorCommand('selectAll'); } },
@@ -992,6 +1287,13 @@
     if (!formatMenuDocumentBound) {
       document.addEventListener('click', function () {
         closeFormatMenus();
+      });
+      formatToolbarEl.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        const open = formatToolbarEl.querySelector('.hpx-ew-format-menu--open');
+        const toggle = open && open.parentElement.querySelector('.hpx-ew-format-toggle');
+        closeFormatMenus();
+        if (toggle) toggle.focus();
       });
       formatMenuDocumentBound = true;
     }
@@ -1014,21 +1316,36 @@
     wrap.className = 'hpx-tb-dropdown';
     const menu = document.createElement('div');
     menu.className = 'hpx-tb-dropdown-menu';
-    const toggle = makeButton('快速範本 ▾', '插入常用範本', function () {
-      menu.classList.toggle('hpx-tb-dropdown-menu--open');
+    const toggle = makeButton('快速範本', '插入常用範本', function () {
+      const open = menu.classList.toggle('hpx-tb-dropdown-menu--open');
+      toggle.setAttribute('aria-expanded', String(open));
     }, 'hpx-tb-btn--template');
+    toggle.setAttribute('aria-haspopup', 'menu');
+    toggle.setAttribute('aria-expanded', 'false');
+    menu.setAttribute('role', 'menu');
 
     NS.config.templates.forEach(function (tpl) {
       const item = makeButton(tpl.label, tpl.content, function () {
         insertTemplate(tpl.id);
         menu.classList.remove('hpx-tb-dropdown-menu--open');
+        toggle.setAttribute('aria-expanded', 'false');
       });
       item.classList.add('hpx-tb-dropdown-item');
+      item.setAttribute('role', 'menuitem');
       menu.appendChild(item);
     });
 
     document.addEventListener('click', function (e) {
-      if (!wrap.contains(e.target)) menu.classList.remove('hpx-tb-dropdown-menu--open');
+      if (!wrap.contains(e.target)) {
+        menu.classList.remove('hpx-tb-dropdown-menu--open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    wrap.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') return;
+      menu.classList.remove('hpx-tb-dropdown-menu--open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.focus();
     });
 
     wrap.appendChild(toggle);
@@ -1036,6 +1353,12 @@
     tplGroup.appendChild(wrap);
     toolbarEl.appendChild(tplGroup);
   }
+
+  editorEl.addEventListener('paste', function (event) {
+    handleImagePaste(event).catch(function (error) {
+      showNotice('貼上圖片失敗：' + (error && error.message ? error.message : '剪貼簿資料無法讀取。'), 'error');
+    });
+  });
 
   editorEl.addEventListener('click', function (event) {
     const target = event.target;
@@ -1127,6 +1450,7 @@
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'Enter' || e.key === 's')) {
       e.preventDefault();
+      if (document.querySelector('.hpx-ew-confirm')) return;
       if (!busy) doApply(false);
     }
   });
@@ -1151,7 +1475,7 @@
     }
 
     titleEl.textContent = res.title || 'Note 編輯器';
-    document.title = (res.title || 'Note') + ' — Note 編輯器';
+    document.title = (res.title || 'Note') + ' · 編輯器';
 
     // 進來的內容再清一次（content script 已經清過；這裡不信任任何上游）
     const clean = NS.core.htmlSanitizer.sanitize(res.html || '');

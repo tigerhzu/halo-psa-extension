@@ -46,3 +46,29 @@ AGENTS.md
 Thumbs.db
 .vscode/
 .idea/
+
+# Current local release exclusions
+# Local output and old packaged releases
+/output/
+/release/
+/dist/
+/node_modules/
+
+# Personal exports and local benchmark artifacts
+/.env
+/.env.*
+/*settings*.json
+/tests/ornith-live-benchmark.js
+/tests/ornith-benchmark-results.json
+/tests/verification-*.txt
+
+# Editor and operating-system files
+/.vscode/
+/.idea/
+Thumbs.db
+.DS_Store
+*.log
+
+.codex/
+.memory/
+.release/

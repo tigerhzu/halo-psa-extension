@@ -1,7 +1,7 @@
 /**
  * time-adjuster.js
- * 「Time Taken 快速調整」：在 HaloPSA 原生 Time Taken（時／分／秒）欄位下方
- * 插入一組快速調整工具列。
+ * 「Time Taken 快速調整」：在已確認的 HaloPSA 原生時間欄位下方
+ * 插入一組快速調整工具列；桌面寬度時，工具列本身維持單行。
  *
  * 範圍限制：
  *  - 只操作目前頁面的 DOM，不呼叫任何 HaloPSA API。
@@ -20,6 +20,7 @@
   const core = NS.features.timeAdjusterCore;
 
   const TOOLBAR_CLASS = 'hpx-tta';
+  const EXPANDED_COLUMN_ATTR = 'data-hpx-time-expanded';
   const UNIT_ORDER = ['hours', 'minutes', 'seconds'];
   /** 可能承載 Time Taken 標籤文字的元素；不比對 class，只比對文字。 */
   const LABEL_TAGS = 'label, span, div, td, th, legend, p, strong, b, h1, h2, h3, h4, h5, h6';
@@ -111,7 +112,7 @@
    * → blur / focusout（部分欄位在失焦時才提交）。
    */
   function setFieldValue(input, value) {
-    if (!input) return;
+    if (!input || input.disabled || input.readOnly) return;
     const setter = nativeValueSetter();
     if (setter) setter.call(input, value);
     else input.value = value;
@@ -169,8 +170,18 @@
     });
     if (hinted) return true;
 
-    // 保底：目前值看起來就是兩三位數的時間欄位。
-    return /^\s*\d{0,3}\s*$/.test(input.value || '');
+    // 保底：目前值看起來就是已經填了的一到三位數字。
+    // 注意：不可比對「空字串」——Ticket List 的欄位篩選 input 預設就是空的，
+    // 一旦允許空字串通過，整條篩選列的每一格都會被誤判成時間欄位。
+    return /^\s*\d{1,3}\s*$/.test(input.value || '');
+  }
+
+  /** Halo 計時器會將秒欄設成 readonly；仍須讀取秒數，但不可寫入。 */
+  function isReadOnlySecondsInput(input) {
+    if (!input || input.tagName !== 'INPUT' || !input.readOnly || input.disabled || input.hidden || isOwnUi(input)) return false;
+    const type = (input.getAttribute('type') || 'text').toLowerCase();
+    if (['number', 'text', 'tel'].indexOf(type) === -1) return false;
+    return /(?:^|[^a-z])(?:seconds?|secs?|ss)(?:$|[^a-z])|秒/i.test(attributeHintText(input));
   }
 
   function matchesLabelText(text) {
@@ -209,6 +220,9 @@
    */
   function pickTriplet(candidates) {
     if (candidates.length < cfg.MIN_FIELDS) return null;
+    // 候選欄位一多，就代表容器選得太寬（例如整條 Ticket List 篩選列），
+    // 不要湊數，直接視為找不到，避免把不相關的欄位硬湊成一組。
+    if (candidates.length > cfg.MAX_CANDIDATE_FIELDS) return null;
     const byParent = new Map();
     candidates.forEach(function (input) {
       const parent = input.parentElement;
@@ -261,6 +275,33 @@
     return { hours: inputs[0], minutes: inputs[1], seconds: inputs[2] || null };
   }
 
+  /**
+   * 這個節點是不是落在「清單／搜尋結果」型的資料表格裡（Ticket List、
+   * Ticket Search Result 的 table / grid，含 ARIA grid 模式）。
+   *
+   * 這類頁面的共同 DOM 特徵是：同一個 table / grid 容器內有大量結構相同的列
+   * （每一筆 Ticket 一列），數量遠超過一組 Time Taken 欄位所在的那一列。
+   * 用「頁面裡有沒有這種容器」而不是單一 selector 來判斷，才不會被 Halo
+   * 隨時可能改變的 class 名稱牽著走。
+   */
+  function looksLikeDataGrid(node) {
+    if (!node || typeof node.closest !== 'function') return false;
+    let grid;
+    try {
+      grid = node.closest('table, [role="grid"], [role="table"]');
+    } catch (e) {
+      return false;
+    }
+    if (!grid) return false;
+    let rows;
+    try {
+      rows = grid.querySelectorAll('tr, [role="row"]');
+    } catch (e) {
+      return false;
+    }
+    return rows.length > cfg.MAX_GRID_ROW_SIGNATURE;
+  }
+
   function findGroupFromLabel(labelEl) {
     let node = labelEl;
     let combinedFallback = null;
@@ -273,9 +314,15 @@
         inputs = [];
       }
 
-      const triplet = pickTriplet(inputs.filter(isTimeInput));
+      const triplet = pickTriplet(inputs.filter(function (input) {
+        return isTimeInput(input) || isReadOnlySecondsInput(input);
+      }));
       if (triplet && triplet.length >= cfg.MIN_FIELDS) {
-        return { container: node, fields: assignUnits(triplet), mode: triplet.length >= 3 ? 'triple' : 'pair' };
+        const fields = assignUnits(triplet);
+        // 唯一允許的 readonly 成員是秒欄，而且時、分必須仍可編輯。
+        // 完全唯讀的時間顯示不應出現任何調整工具。
+        const editable = fields.hours && !fields.hours.readOnly && fields.minutes && !fields.minutes.readOnly;
+        if (editable) return { container: node, fields: fields, mode: triplet.length >= 3 ? 'triple' : 'pair' };
       }
 
       // 多格找不到時，記下最靠近的「單一 00:19:40 欄位」當備案，
@@ -305,6 +352,8 @@
 
     Array.prototype.forEach.call(nodes, function (node) {
       if (isOwnUi(node) || !isLabelCandidate(node)) return;
+      // Ticket List / Ticket Search Result 等清單頁：整張表格都不是 Time Taken 候選。
+      if (looksLikeDataGrid(node)) return;
       const group = findGroupFromLabel(node);
       if (!group) return;
       if (seenContainers.has(group.container)) return;
@@ -360,19 +409,11 @@
     setFieldValue(fields.hours, parts.hours);
     setFieldValue(fields.minutes, parts.minutes);
     if (fields.seconds) setFieldValue(fields.seconds, parts.seconds);
-    return parts.totalSeconds;
-  }
-
-  /** 項目之間的細分隔線，讓整條工具列讀起來像 `目前 15 分鐘｜-5 分｜…`。 */
-  function separator() {
-    const node = el('span', 'hpx-tta-sep');
-    node.setAttribute('aria-hidden', 'true');
-    return node;
+    return readTotalSeconds(fields);
   }
 
   /**
-   * 單一橫向長條：所有項目都是 root 的直接子節點，不再包 buttons / manual 兩層。
-   * 巢狀容器會讓它在窄版面被折成多行、看起來像一塊面板，這裡刻意攤平。
+   * 正常面板中完整顯示一行；整個面板真的很窄時自然換行，所有控制項仍可直接使用。
    */
   function buildToolbar(state) {
     const root = el('div', TOOLBAR_CLASS);
@@ -381,21 +422,27 @@
     root.setAttribute('aria-label', 'Time Taken 快速調整');
 
     const summary = el('span', 'hpx-tta-summary');
+    summary.setAttribute('aria-live', 'off');
     root.appendChild(summary);
+    // 計時器會持續同步摘要；只有使用者操作工具列時才更新這個獨立播報區。
+    const announcement = el('span', 'hpx-tta-announcement');
+    announcement.setAttribute('role', 'status');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('aria-atomic', 'true');
+    root.appendChild(announcement);
 
     cfg.PRESETS.forEach(function (preset) {
-      root.appendChild(separator());
       root.appendChild(button(preset.label, 'hpx-tta-btn', function () {
         state.apply(core.addMinutes(state.read(), preset.deltaMinutes));
       }));
     });
 
-    root.appendChild(separator());
-    root.appendChild(button('歸零', 'hpx-tta-btn hpx-tta-btn--reset', function () {
+    const reset = button(state.hasReadOnlySeconds ? '重設' : '歸零', 'hpx-tta-btn hpx-tta-btn--reset', function () {
       state.apply(core.reset());
-    }));
+    });
+    if (state.hasReadOnlySeconds) reset.title = '重設時、分；秒數由計時器控制';
+    root.appendChild(reset);
 
-    root.appendChild(separator());
     const minutesInput = document.createElement('input');
     minutesInput.type = 'number';
     minutesInput.min = '0';
@@ -408,11 +455,14 @@
       const minutes = core.parseMinutesInput(minutesInput.value);
       if (minutes === null) {
         minutesInput.classList.add('is-invalid');
+        minutesInput.setAttribute('aria-invalid', 'true');
         summary.classList.add('is-invalid');
         summary.textContent = '請輸入 0 以上的分鐘數';
+        state.announce(summary.textContent);
         return;
       }
       minutesInput.classList.remove('is-invalid');
+      minutesInput.removeAttribute('aria-invalid');
       summary.classList.remove('is-invalid');
       state.apply(core.fromMinutes(minutes));
     };
@@ -427,13 +477,13 @@
     });
     minutesInput.addEventListener('input', function () {
       minutesInput.classList.remove('is-invalid');
+      minutesInput.removeAttribute('aria-invalid');
     });
 
     root.appendChild(minutesInput);
-    root.appendChild(separator());
     root.appendChild(button('套用', 'hpx-tta-btn hpx-tta-btn--apply', applyMinutes));
 
-    return { root: root, summary: summary, minutesInput: minutesInput };
+    return { root: root, summary: summary, announcement: announcement, minutesInput: minutesInput };
   }
 
   /** 三個欄位共同的最近祖先，也就是「Time Taken 那一列」本身。 */
@@ -449,13 +499,6 @@
     return list[0].parentElement;
   }
 
-  /**
-   * 把工具列掛上去。
-   *
-   * 'beside'（預設）：放進「Time Taken 欄位所在的那一列」的最後面，
-   *   也就是緊接在原生時／分／秒欄位旁邊，而不是整個 Action 區塊的下方。
-   * 'below'：維持舊行為，插在整個 Time Taken 區塊之後獨立成一行。
-   */
   /**
    * 這個容器是不是「剛好只包住時間欄位」的窄框
    * （例如 `<div><input>:<input>:<input></div>` 這種 time widget）。
@@ -505,13 +548,67 @@
     return anchor;
   }
 
+  /**
+   * Halo 會把 Time Taken 放在 details-group 的窄欄裡。快捷列若留在欄內，
+   * 即使整個 Action 很寬也只拿得到三分之一寬度。找到 details-group 時，
+   * 改以時間欄所屬的直接子節點為錨點，讓快捷列成為完整寬度的下一列。
+   */
+  function fullWidthBlockAnchor(row) {
+    if (row && row.closest) {
+      const group = row.closest('.details-group');
+      if (group) {
+        let anchor = row;
+        while (anchor.parentElement && anchor.parentElement !== group) {
+          anchor = anchor.parentElement;
+        }
+        if (anchor.parentElement === group) return anchor;
+      }
+    }
+    return blockAnchor(row);
+  }
+
+  /**
+   * Halo 把 Time Taken 放在 details-group 的三分之一欄裡。只擴展這個已由
+   * 原生時間欄位確認的直接子欄，不改 Bootstrap class 或移動其他欄位。
+   * 以自有標記套用寬度，卸載時只清除自己加上的標記。
+   */
+  function eligibleTimeColumn(fields) {
+    const inputs = fieldList(fields);
+    const first = inputs[0];
+    if (!first || !first.closest) return null;
+    const column = first.closest('.col-md-4.inline');
+    if (!column || !column.parentElement || !column.parentElement.classList.contains('details-group')) return null;
+    if (!inputs.every(function (input) { return column.contains(input); })) return null;
+    // 若同一窄欄還含其他表單欄位，維持原版面並讓工具列換行。
+    const otherFields = Array.prototype.slice.call(column.querySelectorAll('input, select, textarea'));
+    if (otherFields.some(function (input) {
+      return !isOwnUi(input) && input.type !== 'hidden' && inputs.indexOf(input) === -1;
+    })) return null;
+    return column;
+  }
+
+  function expandTimeColumn(column) {
+    if (!column) return null;
+    const previous = column.getAttribute(EXPANDED_COLUMN_ATTR);
+    column.setAttribute(EXPANDED_COLUMN_ATTR, 'true');
+    return {
+      column: column,
+      release: function () {
+        if (column.getAttribute(EXPANDED_COLUMN_ATTR) !== 'true') return;
+        if (previous === null) column.removeAttribute(EXPANDED_COLUMN_ATTR);
+        else column.setAttribute(EXPANDED_COLUMN_ATTR, previous);
+      },
+    };
+  }
+
   function mountToolbar(container, fields, toolbar) {
     const allFields = fieldList(fields);
+    toolbar.classList.remove('hpx-tta--block', 'hpx-tta--inline', 'hpx-tta--native-inline');
 
-    // 預設：放在完整的時：分：秒欄位「正下方」，絕不插進欄位之間。
+    // 快捷列固定在原生時間欄位下方，與時、分、秒及計時器分成兩列。
     if (cfg.INSERT_MODE !== 'beside') {
       const fieldsRow = commonAncestor(allFields);
-      const anchor = fieldsRow ? blockAnchor(fieldsRow) : null;
+      const anchor = fieldsRow ? fullWidthBlockAnchor(fieldsRow) : null;
       if (anchor && anchor.parentElement) {
         toolbar.classList.add('hpx-tta--block');
         anchor.insertAdjacentElement('afterend', toolbar);
@@ -552,14 +649,20 @@
     const listeners = [];
     let attributeObserver = null;
     let ui = null;
+    let expandedColumn = null;
 
     const state = {
+      hasReadOnlySeconds: !!(fields.seconds && fields.seconds.readOnly),
       read: function () {
         return readTotalSeconds(fields);
       },
       apply: function (totalSeconds) {
         writeTotalSeconds(fields, totalSeconds);
         state.refresh();
+        state.announce('Time Taken 已調整為 ' + core.formatSummary(state.read()));
+      },
+      announce: function (message) {
+        if (ui) ui.announcement.textContent = message;
       },
       refresh: function () {
         if (!ui) return;
@@ -593,6 +696,7 @@
       attributeObserver = null;
     }
 
+    expandedColumn = expandTimeColumn(eligibleTimeColumn(fields));
     mountToolbar(container, fields, ui.root);
     container.setAttribute(cfg.MARK_ATTR, 'true');
     state.refresh();
@@ -601,7 +705,19 @@
       container: container,
       fields: fields,
       root: ui.root,
+      get expandedColumn() { return expandedColumn && expandedColumn.column; },
       refresh: state.refresh,
+      reconcileLayout: function () {
+        const eligible = eligibleTimeColumn(fields);
+        const current = expandedColumn && expandedColumn.column;
+        if (eligible === current) return;
+        // Halo 可在原有時間欄中動態加入其他欄位；不重建工具列，以保留輸入中的分鐘數。
+        if (eligible !== current) {
+          if (expandedColumn) expandedColumn.release();
+          expandedColumn = expandTimeColumn(eligible);
+        }
+        mountToolbar(container, fields, ui.root);
+      },
       destroy: function () {
         listeners.forEach(function (entry) {
           entry.input.removeEventListener(entry.type, entry.handler);
@@ -609,6 +725,7 @@
         listeners.length = 0;
         if (attributeObserver) attributeObserver.disconnect();
         if (ui.root.parentNode) ui.root.parentNode.removeChild(ui.root);
+        if (expandedColumn) expandedColumn.release();
         try {
           container.removeAttribute(cfg.MARK_ATTR);
         } catch (e) {
@@ -621,9 +738,11 @@
   // ── 掃描與生命週期 ──────────────────────────────────────────
 
   function isStillMounted(group) {
-    if (!document.contains(group.container)) return false;
+    if (!document.contains(group.container) || !document.contains(group.root)) return false;
     const inputs = fieldList(group.fields);
-    return inputs.length > 0 && inputs.every(function (input) { return document.contains(input); });
+    return inputs.length > 0 && inputs.every(function (input) {
+      return document.contains(input) && (!group.expandedColumn || group.expandedColumn.contains(input));
+    });
   }
 
   /**
@@ -652,7 +771,7 @@
       if (!isStillMounted(group)) {
         group.destroy();
         groups.delete(container);
-      }
+      } else group.reconcileLayout();
     });
 
     findTimeTakenGroups().forEach(function (descriptor) {
@@ -731,7 +850,8 @@
 
     nodes.forEach(function (node) {
       if (isOwnUi(node) || !isLabelCandidate(node)) return;
-      const group = findGroupFromLabel(node);
+      const gridSkipped = looksLikeDataGrid(node);
+      const group = gridSkipped ? null : findGroupFromLabel(node);
       const nearby = [];
       let scope = node;
       for (let depth = 0; scope && depth <= cfg.CONTAINER_LOOKUP_DEPTH && nearby.length === 0; depth += 1) {
@@ -764,6 +884,7 @@
         resolved: !!group,
         mode: group ? group.mode : null,
         alreadyMounted: !!(group && groups.has(group.container)),
+        gridSkipped: gridSkipped,
         nearbyInputs: nearby,
       });
     });
@@ -791,8 +912,10 @@
       commonAncestor: commonAncestor,
       mountToolbar: mountToolbar,
       blockAnchor: blockAnchor,
+      fullWidthBlockAnchor: fullWidthBlockAnchor,
       findGroupFromLabel: findGroupFromLabel,
       findTimeTakenGroups: findTimeTakenGroups,
+      looksLikeDataGrid: looksLikeDataGrid,
       readTotalSeconds: readTotalSeconds,
       writeTotalSeconds: writeTotalSeconds,
       setFieldValue: setFieldValue,

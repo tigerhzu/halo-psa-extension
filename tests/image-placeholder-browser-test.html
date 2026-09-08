@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>HPX image mask browser test</title>
+</head>
+<body>
+  <pre id="result">pending</pre>
+  <script>window.__HPX = { core: {} };</script>
+  <script src="../src/core/image-placeholder.js"></script>
+  <script>
+    (function () {
+      const tools = window.__HPX.core.imagePlaceholder;
+      const input =
+        '<div>前段<img src="https://halo.example/secure/a.png" alt="A" width="320">後段</div>' +
+        '<p><img src="/api/attachment/b.jpg" alt="B"></p>';
+      const masked = tools.maskForAi(input);
+      const checks = [];
+
+      checks.push(masked.count === 2);
+      checks.push(masked.masks.length === 2);
+      checks.push(masked.text.indexOf('HPXIMG-0001') !== -1);
+      checks.push(masked.text.indexOf('HPXIMG-0002') !== -1);
+      checks.push(masked.text.indexOf('halo.example') === -1);
+      checks.push(masked.text.indexOf('/api/attachment') === -1);
+
+      const preview = tools.toDisplayText(masked.text, masked.masks);
+      checks.push(preview.indexOf('〔圖片 1：原圖保留〕') !== -1);
+      checks.push(preview.indexOf('HPXIMG-') === -1);
+
+      const reorderedText =
+        '摘要\n' + masked.masks[1].displayToken + '\n結論\n' + masked.masks[0].displayToken;
+      const restored = tools.restoreAiMasks(tools.plainTextToHtml(reorderedText), masked.masks);
+      const restoredDoc = new DOMParser().parseFromString(restored.html, 'text/html');
+      const restoredImages = Array.from(restoredDoc.querySelectorAll('img'));
+      checks.push(restored.count === 2);
+      checks.push(restored.appended === 0);
+      checks.push(restoredImages.length === 2);
+      checks.push(restoredImages[0].getAttribute('alt') === 'B');
+      checks.push(restoredImages[1].getAttribute('alt') === 'A');
+      checks.push(restoredImages[1].getAttribute('width') === '320');
+
+      const missing = tools.restoreAiMasks('<div>模型刪掉遮罩時也不能遺失圖片</div>', masked.masks);
+      const missingDoc = new DOMParser().parseFromString(missing.html, 'text/html');
+      checks.push(missing.appended === 2);
+      checks.push(missingDoc.querySelectorAll('img').length === 2);
+
+      const duplicated = tools.restoreAiMasks(
+        '<div>' + masked.masks[0].token + ' / ' + masked.masks[0].token + '</div>',
+        [masked.masks[0]]
+      );
+      const duplicatedDoc = new DOMParser().parseFromString(duplicated.html, 'text/html');
+      checks.push(duplicatedDoc.querySelectorAll('img').length === 1);
+      checks.push(duplicatedDoc.body.textContent.indexOf(masked.masks[0].token) === -1);
+
+      const result = {
+        ok: checks.every(Boolean),
+        passed: checks.filter(Boolean).length,
+        total: checks.length,
+        maskedText: masked.text,
+      };
+      document.body.setAttribute('data-ok', String(result.ok));
+      document.getElementById('result').textContent = JSON.stringify(result);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="488" viewBox="0 0 1280 488" role="img" aria-labelledby="title desc">
+<title id="title">Halo Companion — More room for the work that matters.</title><desc id="desc">A focused workspace for HaloPSA writing, tickets and timesheets.</desc>
+<defs>
+ <radialGradient id="glow"><stop stop-color="#80d6b1" stop-opacity=".23"/><stop offset="1" stop-color="#80d6b1" stop-opacity="0"/></radialGradient>
+ <linearGradient id="edge"><stop stop-color="#80d6b1"/><stop offset="1" stop-color="#80d6b1" stop-opacity="0"/></linearGradient>
+ <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#a8b6ce" stroke-opacity=".065"/></pattern>
+ <clipPath id="bounds"><rect width="1280" height="488" rx="24"/></clipPath>
+</defs>
+<style>text{font-family:Inter,Segoe UI,Arial,sans-serif}</style>
+<g clip-path="url(#bounds)">
+ <rect width="1280" height="488" fill="#0b1120"/><rect width="1280" height="488" fill="url(#grid)"/>
+ <ellipse class="glow" cx="995" cy="222" rx="350" ry="330" fill="url(#glow)"/>
+ <path d="M56 0H1224" stroke="url(#edge)" stroke-width="3"/>
+ <circle cx="62" cy="56" r="5" fill="#80d6b1"/><text x="80" y="61" fill="#a7b8cf" font-size="12" letter-spacing="3">TIGER HZU / EVERYDAY TOOLS</text>
+ <text x="56" y="160" fill="#80d6b1" font-size="13" letter-spacing="3">COMPOSE / REVIEW / RESOLVE</text>
+ <text x="52" y="237" fill="#f2f6ff" font-size="70" font-weight="700" letter-spacing="-3">Halo Companion</text>
+ <text x="56" y="284" fill="#aebfd6" font-size="21">More room for the work that matters.</text>
+ <rect x="56" y="338" width="160" height="36" rx="18" fill="#ffffff" fill-opacity=".045" stroke="#ffffff" stroke-opacity=".13"/><text x="136" y="361" text-anchor="middle" fill="#c6d0df" font-size="13" font-weight="500">Vanilla JavaScript</text><rect x="232" y="338" width="160" height="36" rx="18" fill="#ffffff" fill-opacity=".045" stroke="#ffffff" stroke-opacity=".13"/><text x="312" y="361" text-anchor="middle" fill="#c6d0df" font-size="13" font-weight="500">Manifest V3</text><rect x="408" y="338" width="160" height="36" rx="18" fill="#ffffff" fill-opacity=".045" stroke="#ffffff" stroke-opacity=".13"/><text x="488" y="361" text-anchor="middle" fill="#c6d0df" font-size="13" font-weight="500">HaloPSA</text>
+ <circle cx="996" cy="225" r="145" fill="none" stroke="#80d6b1" stroke-opacity=".18"/>
+ <circle class="orbit" cx="996" cy="225" r="176" fill="none" stroke="#80d6b1" stroke-opacity=".28" stroke-dasharray="4 18"/>
+ <path d="M790 225H841M1151 225H1202M996 25V70M996 380V409" stroke="#80d6b1" stroke-opacity=".28"/>
+ <circle class="pulse" cx="851" cy="225" r="5" fill="#80d6b1"/>
+ <circle cx="1141" cy="225" r="5" fill="#80d6b1" fill-opacity=".7"/>
+ <svg x="916" y="145" width="160" height="160" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#173d31"/><path d="M32 35h12v24h34V35h12v60H78V71H44v24H32z" fill="#f5f6f2"/><circle cx="88" cy="22" r="6" fill="#bacdaf"/></svg>
+ <path d="M56 423H1224" stroke="#ffffff" stroke-opacity=".13"/>
+ <text x="56" y="457" fill="#94a8c5" font-size="12" letter-spacing="2">A LITTLE HELP. A BETTER WORKDAY.</text>
+ <text x="1224" y="457" text-anchor="end" fill="#80d6b1" font-size="12" letter-spacing="2">02 / BUILT FOR THE EVERYDAY</text>
+</g></svg>

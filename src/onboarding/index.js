@@ -4,11 +4,14 @@
   const NS = window.__HPX;
   const SETTINGS_KEY = 'hpx_settings';
   const VERSION_FIELD = 'onboardingVersion';
-  const CURRENT_VERSION = 17;
+  const CURRENT_VERSION = 18;
   const STEP_COUNT = 5;
   const LAST_STEP = STEP_COUNT - 1;
   const TEAMS_FIELD = 'ultimateTeams';
   const DEFAULT_CC_FIELD = 'defaultCcRecipients';
+  const AI_SETTINGS = window.HPX_AI_SETTINGS;
+  const PROVIDERS = AI_SETTINGS.PROVIDERS;
+  const DEFAULT_ONBOARDING_TEAMS = ['Op Team A', 'Op Team B', 'Op Team C'];
   const cfg = NS.config.selectors.ULTIMATE_MODE;
   let currentSettings = {};
   let currentStep = 0;
@@ -24,12 +27,21 @@
   }
 
   function createTigerAvatar(className) {
-    const image = el('img', className);
-    image.src = chrome.runtime.getURL('assets/branding/tiger-tiger-avatar.png');
-    image.alt = 'Tiger Tiger';
-    image.decoding = 'async';
-    image.draggable = false;
-    return image;
+    const avatar = el('span', className, 'HC');
+    avatar.setAttribute('aria-hidden', 'true');
+    return avatar;
+  }
+
+  function applyAppearance(node) {
+    const saved = String(currentSettings.accent || '').trim();
+    const accent = /^#[0-9a-f]{6}$/i.test(saved) ? saved : '#0c2d55';
+    const rgb = [1, 3, 5].map(function (offset) {
+      const channel = parseInt(accent.slice(offset, offset + 2), 16) / 255;
+      return channel <= .04045 ? channel / 12.92 : Math.pow((channel + .055) / 1.055, 2.4);
+    });
+    const luminance = rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+    node.style.setProperty('--ob-accent', accent);
+    node.style.setProperty('--ob-accent-ink', luminance > .179 ? '#000000' : '#ffffff');
   }
 
   function openOptionsPage() {
@@ -54,6 +66,12 @@
         }
         const previous = (data && data[SETTINGS_KEY]) || {};
         const merged = Object.assign({}, previous, patch);
+        try {
+          if (Object.prototype.hasOwnProperty.call(patch, 'provider')) AI_SETTINGS.validateExclusive(merged);
+        } catch (error) {
+          reject(error);
+          return;
+        }
         chrome.storage.local.set({ [SETTINGS_KEY]: merged }, function () {
           if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
           else {
@@ -103,13 +121,20 @@
     return teams;
   }
 
+  function isDefaultTeamCatalog(value) {
+    return Array.isArray(value)
+      && value.length === cfg.DEFAULT_TEAM_ITEMS.length
+      && cfg.DEFAULT_TEAM_ITEMS.every(function (team, index) { return value[index] === team; });
+  }
+
   function ensureTeamCatalog(settings) {
     const source = settings || {};
     if (Number(source[cfg.TEAM_CATALOG_VERSION_FIELD] || 0) >= cfg.TEAM_CATALOG_VERSION) {
       return Promise.resolve(source);
     }
+    const existingTeams = Array.isArray(source[TEAMS_FIELD]) ? source[TEAMS_FIELD] : null;
     return mergeSettings({
-      [TEAMS_FIELD]: mergeTeamCatalog(source[TEAMS_FIELD]),
+      [TEAMS_FIELD]: existingTeams ? mergeTeamCatalog(existingTeams) : DEFAULT_ONBOARDING_TEAMS.slice(),
       [cfg.TEAM_CATALOG_VERSION_FIELD]: cfg.TEAM_CATALOG_VERSION,
     });
   }
@@ -117,14 +142,17 @@
   function stepPatch(index) {
     if (index === 0) return { [TEAMS_FIELD]: selectedTeams() };
     if (index === 1) {
-      const provider = overlay.querySelector('[data-api-provider]').value;
-      if (provider === 'gemini') {
+      const selected = overlay.querySelector('[data-api-provider]:checked');
+      const provider = selected ? selected.value : '';
+      if (provider === PROVIDERS.ORNITH) {
         return {
           provider: provider,
-          apiKey: overlay.querySelector('[data-gemini-key]').value.trim(),
-          model: overlay.querySelector('[data-gemini-model]').value.trim() || 'gemini-2.5-flash',
+          ornithBaseUrl: overlay.querySelector('[data-ornith-base-url]').value.trim().replace(/\/+$/, ''),
+          ornithModel: overlay.querySelector('[data-ornith-model]').value.trim() || AI_SETTINGS.ORNITH_MODEL,
+          ornithApiKey: overlay.querySelector('[data-ornith-key]').value.trim(),
         };
       }
+      if (provider !== PROVIDERS.AZURE) return { provider: '' };
       return {
         provider: provider,
         azureEndpoint: overlay.querySelector('[data-azure-endpoint]').value.trim().replace(/\/+$/, ''),
@@ -149,13 +177,14 @@
     document.documentElement.classList.remove('hpx-onboarding-page');
     if (standalonePage) {
       const complete = el('main', 'hpx-onboarding-complete');
-      complete.appendChild(el('h1', '', '首次登入提示已完成'));
-      complete.appendChild(el('p', '', '之後可從 Extension 的「設定」重新開啟此頁面。'));
+      applyAppearance(complete);
+      complete.appendChild(el('span', 'hpx-onboarding-brand', 'Halopsa'));
+      complete.appendChild(el('h1', '', '設定完成'));
       const status = el('p', 'hpx-onboarding-complete-status');
-      const settings = el('button', 'hpx-onboarding-primary', '開啟完整設定');
+      const settings = el('button', 'hpx-onboarding-primary', '開啟設定');
       settings.type = 'button';
       settings.addEventListener('click', openOptionsPage);
-      const home = el('button', 'hpx-onboarding-secondary', '回到 HaloPSA 主頁');
+      const home = el('button', 'hpx-onboarding-secondary', '回到 HaloPSA');
       home.type = 'button';
       home.addEventListener('click', function () {
         home.disabled = true;
@@ -192,21 +221,25 @@
     overlay.querySelectorAll('.hpx-onboarding-dot').forEach(function (dot, dotIndex) {
       dot.classList.toggle('is-active', dotIndex === currentStep);
       dot.classList.toggle('is-done', dotIndex < currentStep);
+      if (dotIndex === currentStep) dot.setAttribute('aria-current', 'step');
+      else dot.removeAttribute('aria-current');
     });
     overlay.querySelector('[data-back]').hidden = currentStep === 0;
-    overlay.querySelector('[data-next]').textContent = currentStep === LAST_STEP ? '完成設定' : '儲存並繼續';
-    overlay.querySelector('[data-skip]').textContent = currentStep === LAST_STEP ? '略過並完成' : '略過這一步';
+    overlay.querySelector('[data-next]').textContent = currentStep === LAST_STEP ? '完成' : currentStep >= 3 ? '繼續' : '儲存並繼續';
+    overlay.querySelector('[data-skip]').textContent = currentStep === LAST_STEP ? '略過並完成' : '略過';
     const provider = overlay.querySelector('[data-api-provider]');
     if (provider) provider.dispatchEvent(new Event('change'));
   }
 
   function teamStep() {
     const section = el('section', 'hpx-onboarding-step');
-    section.appendChild(el('h2', '', '1. 你的團隊？'));
-    section.appendChild(el('p', 'hpx-onboarding-hint', '只保留你選擇的 Team；之後可在設定中自由新增或刪除。'));
-    const chosen = Array.isArray(currentSettings[TEAMS_FIELD])
-      ? currentSettings[TEAMS_FIELD]
-      : cfg.DEFAULT_TEAM_ITEMS;
+    section.appendChild(el('h2', '', '常用 Team'));
+    section.appendChild(el('p', 'hpx-onboarding-hint', '選擇簡單模式顯示的 Team。'));
+    const storedTeams = Array.isArray(currentSettings[TEAMS_FIELD]) ? currentSettings[TEAMS_FIELD] : null;
+    const isFreshOnboarding = !Number(currentSettings[VERSION_FIELD] || 0);
+    const chosen = !storedTeams || (isFreshOnboarding && isDefaultTeamCatalog(storedTeams))
+      ? DEFAULT_ONBOARDING_TEAMS
+      : storedTeams;
     const grid = el('div', 'hpx-onboarding-team-grid');
     cfg.TEAM_PRESETS.forEach(function (preset) {
       const label = el('label', 'hpx-onboarding-choice');
@@ -225,72 +258,96 @@
 
   function apiStep() {
     const section = el('section', 'hpx-onboarding-step');
-    section.appendChild(el('h2', '', '2. 設定 AI API'));
-    section.appendChild(el('p', 'hpx-onboarding-hint', '沒有 API Key 可以先略過，之後再到 Extension 設定補上。金鑰只儲存在本機瀏覽器。'));
-    const provider = el('select');
-    provider.setAttribute('data-api-provider', '1');
-    [['azure-deepseek', 'Azure OpenAI'], ['gemini', 'Google Gemini']].forEach(function (item) {
-      const option = el('option', '', item[1]); option.value = item[0]; provider.appendChild(option);
+    section.appendChild(el('h2', '', 'AI 服務'));
+    section.appendChild(el('p', 'hpx-onboarding-hint', 'API Key 儲存在本機。'));
+    section.appendChild(el('label', '', '選擇服務'));
+    const providerChoices = el('div', 'hpx-onboarding-provider-choices');
+    const azureConfigured = !!String(currentSettings.azureApiKey || '').trim();
+    const ornithConfigured = !!String(currentSettings.ornithApiKey || '').trim();
+    const providerConflict = azureConfigured && ornithConfigured;
+    const currentProvider = providerConflict ? '' : AI_SETTINGS.resolveProvider(currentSettings);
+    const providerInputs = [];
+    [[PROVIDERS.ORNITH, 'Local Ornith'], [PROVIDERS.AZURE, 'Azure OpenAI']].forEach(function (item) {
+      const choice = el('label', 'hpx-onboarding-choice');
+      const input = el('input'); input.type = 'radio'; input.name = 'hpx-onboarding-provider'; input.value = item[0];
+      input.checked = currentProvider === item[0]; input.setAttribute('data-api-provider', '1');
+      input.disabled = providerConflict || (item[0] === PROVIDERS.ORNITH && azureConfigured) || (item[0] === PROVIDERS.AZURE && ornithConfigured);
+      choice.appendChild(input); choice.appendChild(el('span', '', item[1])); providerChoices.appendChild(choice); providerInputs.push(input);
     });
-    provider.value = currentSettings.provider || 'azure-deepseek';
-    section.appendChild(el('label', '', 'AI Provider'));
-    section.appendChild(provider);
+    section.appendChild(providerChoices);
+    const lockHint = el('p', 'hpx-onboarding-hint');
+    if (providerConflict) lockHint.textContent = '設定衝突：請到完整設定先移除其中一組 API 設定。';
+    else if (azureConfigured) lockHint.textContent = 'Azure OpenAI 已設定；請到完整設定先移除 Azure，才能改用 Ornith。';
+    else if (ornithConfigured) lockHint.textContent = 'Ornith 已設定；請到完整設定先移除 Ornith，才能改用 Azure。';
+    else lockHint.textContent = '';
+    section.appendChild(lockHint);
+
+    const ornith = el('div', 'hpx-onboarding-provider'); ornith.setAttribute('data-ornith-fields', '1');
+    [['Base URL', 'data-ornith-base-url', currentSettings.ornithBaseUrl || AI_SETTINGS.ORNITH_BASE_URL, 'text'], ['Model', 'data-ornith-model', currentSettings.ornithModel || AI_SETTINGS.ORNITH_MODEL, 'text'], ['API Key', 'data-ornith-key', currentSettings.ornithApiKey || '', 'password']].forEach(function (field) {
+      ornith.appendChild(el('label', '', field[0]));
+      const input = el('input'); input.type = field[3]; input.value = field[2]; input.autocomplete = 'off'; input.setAttribute(field[1], '1'); input.setAttribute('aria-label', 'Ornith ' + field[0]); ornith.appendChild(input);
+    });
+    section.appendChild(ornith);
 
     const azure = el('div', 'hpx-onboarding-provider'); azure.setAttribute('data-azure-fields', '1');
     [['Endpoint', 'data-azure-endpoint', currentSettings.azureEndpoint || '', 'text'], ['Deployment Name', 'data-azure-deployment', currentSettings.azureDeployment || '', 'text'], ['API Key', 'data-azure-key', currentSettings.azureApiKey || '', 'password']].forEach(function (field) {
       azure.appendChild(el('label', '', field[0]));
-      const input = el('input'); input.type = field[3]; input.value = field[2]; input.autocomplete = 'off'; input.setAttribute(field[1], '1'); azure.appendChild(input);
+      const input = el('input'); input.type = field[3]; input.value = field[2]; input.autocomplete = 'off'; input.setAttribute(field[1], '1'); input.setAttribute('aria-label', 'Azure ' + field[0]); azure.appendChild(input);
     });
     section.appendChild(azure);
-
-    const gemini = el('div', 'hpx-onboarding-provider'); gemini.setAttribute('data-gemini-fields', '1');
-    gemini.appendChild(el('label', '', 'Gemini API Key'));
-    const key = el('input'); key.type = 'password'; key.value = currentSettings.apiKey || ''; key.autocomplete = 'off'; key.setAttribute('data-gemini-key', '1'); gemini.appendChild(key);
-    gemini.appendChild(el('label', '', 'Model'));
-    const model = el('input'); model.type = 'text'; model.value = currentSettings.model || 'gemini-2.5-flash'; model.setAttribute('data-gemini-model', '1'); gemini.appendChild(model);
-    section.appendChild(gemini);
-    provider.addEventListener('change', function () {
-      azure.hidden = provider.value !== 'azure-deepseek';
-      gemini.hidden = provider.value !== 'gemini';
-    });
+    function applyProviderUi() {
+      const selected = providerInputs.find(function (input) { return input.checked; });
+      const provider = selected ? selected.value : '';
+      [[ornith, PROVIDERS.ORNITH], [azure, PROVIDERS.AZURE]].forEach(function (entry) {
+        const enabled = provider === entry[1];
+        entry[0].classList.toggle('is-disabled', !enabled);
+        entry[0].hidden = !enabled;
+        entry[0].querySelectorAll('input').forEach(function (input) { input.disabled = !enabled; });
+      });
+    }
+    providerInputs.forEach(function (input) { input.addEventListener('change', applyProviderUi); });
+    applyProviderUi();
     return section;
   }
 
   function addCcRow(container, recipient) {
     const row = el('div', 'hpx-onboarding-cc-row');
-    const name = el('input'); name.type = 'text'; name.placeholder = '姓名（選填）'; name.value = (recipient && recipient.name) || ''; name.setAttribute('data-cc-name', '1');
-    const email = el('input'); email.type = 'email'; email.placeholder = 'name@example.com'; email.value = (recipient && recipient.email) || ''; email.setAttribute('data-cc-email', '1');
+    const name = el('input'); name.type = 'text'; name.placeholder = '姓名（選填）'; name.value = (recipient && recipient.name) || ''; name.setAttribute('data-cc-name', '1'); name.setAttribute('aria-label', 'CC 收件人姓名');
+    const email = el('input'); email.type = 'email'; email.placeholder = 'name@example.com'; email.value = (recipient && recipient.email) || ''; email.setAttribute('data-cc-email', '1'); email.setAttribute('aria-label', 'CC 收件人電子郵件');
     const remove = el('button', 'hpx-onboarding-remove', '移除'); remove.type = 'button'; remove.addEventListener('click', function () { row.remove(); });
     row.appendChild(name); row.appendChild(email); row.appendChild(remove); container.appendChild(row);
   }
 
   function ccStep() {
     const section = el('section', 'hpx-onboarding-step');
-    section.appendChild(el('h2', '', '3. 永遠 CC 收件人'));
-    section.appendChild(el('p', 'hpx-onboarding-hint', '所有文件自動cc。'));
+    section.appendChild(el('h2', '', '永遠 CC'));
+    section.appendChild(el('p', 'hpx-onboarding-hint', '寄信時自動加入這些收件人。'));
     const rows = el('div', 'hpx-onboarding-cc-rows'); rows.setAttribute('data-cc-rows', '1');
     const recipients = Array.isArray(currentSettings[DEFAULT_CC_FIELD]) ? currentSettings[DEFAULT_CC_FIELD] : [];
     (recipients.length ? recipients : [{}]).forEach(function (recipient) { addCcRow(rows, recipient); });
     section.appendChild(rows);
-    const add = el('button', 'hpx-onboarding-add', '＋ 新增 CC 收件人'); add.type = 'button'; add.addEventListener('click', function () { addCcRow(rows, {}); }); section.appendChild(add);
+    const add = el('button', 'hpx-onboarding-add', '+ 新增收件人'); add.type = 'button'; add.addEventListener('click', function () { addCcRow(rows, {}); }); section.appendChild(add);
     return section;
   }
 
   function guideStep() {
     const section = el('section', 'hpx-onboarding-step hpx-onboarding-guide hpx-onboarding-home-guide');
-    section.appendChild(el('h2', '', '4. HaloPSA 主頁與左下設定列'));
+    section.appendChild(el('h2', '', '快捷列'));
+    section.appendChild(el('p', 'hpx-onboarding-hint', '移到按鈕上查看功能。'));
 
     const shortcutItems = [
-      ['mode', '◉', 'mode', '顯示模式'],
-      ['color', '◆', 'color', '介面顏色'],
-      ['pet', '♟', 'pet', '快捷寵物'],
-      ['settings', '⚙', 'settings', '設定後台'],
+      ['shortcuts', 'L', '快捷連結', '常用工作網站'],
+      ['mode', 'M', '簡單模式', '整理工作介面'],
+      ['color', 'A', '主題色', '調整介面色彩'],
+      ['pet', 'P', '寵物', '選擇工作夥伴'],
+      ['settings', 'S', '設定', '管理所有偏好'],
     ];
     const guidePurposes = {
-      mode: '切換簡單模式／預設模式。',
+      shortcuts: '開啟常用連結。',
+      mode: '切換簡單模式與完整 HaloPSA 介面。',
       color: '更換 Extension 介面配色。',
-      pet: '叫出快捷寵物與 Quick Links。',
-      settings: '開啟完整設定後台。',
+      pet: '選擇或關閉陪伴工作的小夥伴。',
+      settings: '開啟設定後台。',
     };
 
     const demo = el('div', 'hpx-onboarding-guide-demo hpx-onboarding-quickbar-demo');
@@ -301,14 +358,7 @@
     const purpose = el('div', 'hpx-onboarding-guide-purpose');
     purpose.setAttribute('aria-live', 'polite');
     purpose.setAttribute('aria-hidden', 'true');
-    sidebar.appendChild(purpose);
     const quickbar = el('div', 'hpx-onboarding-guide-quickbar');
-    const guidePrompt = el('span', 'hpx-onboarding-guide-prompt');
-    guidePrompt.setAttribute('aria-hidden', 'true');
-    guidePrompt.appendChild(el('span', 'hpx-onboarding-guide-arrow-label hpx-onboarding-note-edit-label', '設定列'));
-    guidePrompt.appendChild(el('span', 'hpx-onboarding-guide-arrow hpx-onboarding-note-edit-arrow', '↓'));
-    quickbar.appendChild(guidePrompt);
-
     shortcutItems.forEach(function (item) {
       const button = el('button', 'hpx-onboarding-guide-quick-btn');
       button.type = 'button';
@@ -321,15 +371,16 @@
         purpose.textContent = guidePurposes[item[0]];
         purpose.classList.add('is-visible');
         purpose.setAttribute('aria-hidden', 'false');
-        const sidebarRect = sidebar.getBoundingClientRect();
+        const sidebarRect = demo.getBoundingClientRect();
         const buttonRect = button.getBoundingClientRect();
         const gap = 6;
         const preferredTop = buttonRect.bottom - sidebarRect.top + gap;
-        const maxTop = Math.max(8, sidebar.clientHeight - purpose.offsetHeight - 8);
+        const maxTop = Math.max(8, demo.clientHeight - purpose.offsetHeight - 8);
         const top = preferredTop <= maxTop
           ? preferredTop
           : Math.max(8, buttonRect.top - sidebarRect.top - purpose.offsetHeight - gap);
         purpose.style.top = Math.round(top) + 'px';
+        purpose.style.left = Math.round(Math.max(8, Math.min(buttonRect.left - sidebarRect.left, demo.clientWidth - purpose.offsetWidth - 8))) + 'px';
         purpose.classList.toggle('is-above', top < preferredTop);
       };
       const hidePurpose = function () {
@@ -343,7 +394,6 @@
       button.addEventListener('blur', hidePurpose);
       quickbar.appendChild(button);
     });
-    sidebar.appendChild(quickbar);
     demo.appendChild(sidebar);
 
     const homeContent = el('main', 'hpx-onboarding-guide-home-page');
@@ -353,13 +403,13 @@
     const newTicket = el('button', 'hpx-onboarding-guide-home-ticket', '＋ New Ticket'); newTicket.type = 'button';
     homeHeader.appendChild(newTicket);
     homeContent.appendChild(homeHeader);
-    homeContent.appendChild(el('h3', 'hpx-onboarding-guide-home-greeting', 'Good afternoon Tiger'));
+    homeContent.appendChild(el('h3', 'hpx-onboarding-guide-home-greeting', '工單概覽'));
     const profile = el('div', 'hpx-onboarding-guide-home-profile');
     const homeAvatar = el('span', 'hpx-onboarding-guide-home-avatar');
     homeAvatar.appendChild(createTigerAvatar('hpx-onboarding-guide-home-avatar-image'));
     profile.appendChild(homeAvatar);
     const profileText = el('div', '');
-    profileText.appendChild(el('strong', '', 'Tiger Tiger'));
+    profileText.appendChild(el('strong', '', '服務工程師'));
     profileText.appendChild(el('small', '', 'Op. Engineer　● Available'));
     profile.appendChild(profileText);
     homeContent.appendChild(profile);
@@ -368,12 +418,12 @@
     homeContent.appendChild(period);
     const stats = el('div', 'hpx-onboarding-guide-home-stats');
     [
-      ['過去 30 天開單量最高客戶', '60', '#4b6da8', 'bar'],
-      ['本年度每週案件總量', '109', '#1687d9', 'line'],
-      ['服務品質－每週回應時間平均', '27.98', '#4b6da8', 'line'],
-      ['案件總量', '223', '#f5a033', 'bar'],
-      ['案件總量不包含等客戶及廠商', '198', '#2e91e6', 'bar'],
-      ['服務品質－本年度每週結案時間平均', '3.07', '#4b6da8', 'line'],
+      ['本月工單', '60', '#0c2d55', 'bar'],
+      ['每週案件', '109', '#7ba4e8', 'line'],
+      ['平均回應時間', '27.98', '#a3aac9', 'line'],
+      ['案件總量', '223', '#9a94d3', 'bar'],
+      ['處理中案件', '198', '#7ba4e8', 'bar'],
+      ['平均結案時間', '3.07', '#0c2d55', 'line'],
     ].forEach(function (item) {
       const card = el('article', 'hpx-onboarding-guide-home-stat');
       card.appendChild(el('strong', '', item[0]));
@@ -400,13 +450,16 @@
     });
     homeContent.appendChild(stats);
     demo.appendChild(homeContent);
+    demo.appendChild(purpose);
+    demo.appendChild(quickbar);
     section.appendChild(demo);
     return section;
   }
 
   function editorStep() {
     const section = el('section', 'hpx-onboarding-step hpx-onboarding-guide');
-    section.appendChild(el('h2', '', '5. HaloPSA 編輯頁使用說明'));
+    section.appendChild(el('h2', '', '試用編輯器'));
+    section.appendChild(el('p', 'hpx-onboarding-guide-instruction', '以下為示範內容，不會修改工單或呼叫 AI。'));
 
     const demo = el('div', 'hpx-onboarding-guide-demo hpx-onboarding-editor-demo');
     const content = el('main', 'hpx-onboarding-guide-note-page hpx-onboarding-edit-page');
@@ -418,7 +471,7 @@
     editAvatar.appendChild(createTigerAvatar('hpx-onboarding-edit-avatar-image'));
     editIdentity.appendChild(editAvatar);
     const identityText = el('div', '');
-    identityText.appendChild(el('strong', '', 'Tiger Tiger'));
+    identityText.appendChild(el('strong', '', '示範工單'));
     identityText.appendChild(el('small', '', 'Activity Note'));
     editIdentity.appendChild(identityText);
     editHeader.appendChild(editIdentity);
@@ -464,7 +517,7 @@
       const button = el('button', 'hpx-onboarding-edit-adjustment-btn', item[0]);
       button.type = 'button'; button.setAttribute('data-time-adjust', item[1]);
       button.addEventListener('click', function () {
-        adjustedMinutes += Number(item[1]);
+        adjustedMinutes = Math.max(0, adjustedMinutes + Number(item[1]));
         timeAdjustValue.textContent = '目前 ' + (adjustedMinutes > 0 ? '+' : '') + adjustedMinutes + ' 分鐘';
         updateTimeTaken();
       });
@@ -487,14 +540,14 @@
     const noteWrap = el('div', 'hpx-onboarding-note-wrap hpx-onboarding-edit-note-wrap');
     const noteCard = el('article', 'hpx-onboarding-note-card hpx-onboarding-edit-card');
     const testEditor = el('div', 'hpx-onboarding-note-editor');
-    const editorToolbar = el('div', 'hpx-onboarding-note-toolbar', '⛶　 A⋮　 ≡　 1.　 •　 ❝　 🔗　 ▧　 ▦　 ─　 A/　 ↶　 ↷　 …　 Ω　 <>');
+    const editorToolbar = el('div', 'hpx-onboarding-note-toolbar', 'B　 I　 U　 |　 標題　 清單　 引用　 |　 連結　 表格　 |　 復原　 重做');
     const aiStrip = el('div', 'hpx-onboarding-note-ai-strip');
     const noteStatus = el('span', 'hpx-onboarding-sr-status', '');
     noteStatus.setAttribute('aria-live', 'polite');
     const noteActions = [
-      ['edit', '編輯', '點擊後開啟編輯頁示範。'],
-      ['customer', '客戶版', '整理成較有禮貌、格式清楚的客戶用內容。'],
-      ['ticket', '工單版', '整理處理內容、目前結果與下一步。'],
+      ['edit', '展開編輯', '在獨立工作區整理內容，再套用回原本的編輯器。'],
+      ['customer', '回覆客戶', '整理成較有禮貌、格式清楚的客戶用內容。'],
+      ['ticket', '工單分析', '整理處理內容、目前結果與下一步。'],
       ['en', '翻譯成英文', '將選取的文字翻譯成英文。'],
       ['zh', '翻譯成中文', '將選取的文字翻譯成中文。'],
       ['template', '快速範本 ▾', '插入常用 Note 格式。'],
@@ -507,12 +560,6 @@
       button.type = 'button';
       button.setAttribute('data-note-action', item[0]);
       button.title = item[2];
-      if (item[0] === 'edit') {
-        const prompt = el('span', 'hpx-onboarding-note-edit-prompt');
-        prompt.appendChild(el('span', 'hpx-onboarding-note-edit-label', '開啟編輯頁示範'));
-        prompt.appendChild(el('span', 'hpx-onboarding-note-edit-arrow', '↓'));
-        button.appendChild(prompt);
-      }
       button.appendChild(el('span', 'hpx-onboarding-note-tooltip', item[2]));
       if (item[0] === 'template') {
         const testTemplateWrap = el('div', 'hpx-onboarding-note-template-wrap');
@@ -533,10 +580,10 @@
       }
       actionButtons[item[0]] = button;
     });
-    aiStrip.insertBefore(el('span', 'hpx-onboarding-note-ai-label', 'AI'), actionButtons.customer);
+    aiStrip.insertBefore(el('span', 'hpx-onboarding-note-ai-label', '寫作助手'), actionButtons.customer);
     testEditor.appendChild(editorToolbar);
     testEditor.appendChild(aiStrip);
-    const testBody = el('div', 'hpx-onboarding-note-body', '在這裡輸入或貼上工單處理內容…');
+    const testBody = el('div', 'hpx-onboarding-note-body', '已確認機房網路正常。重新啟動交換器後連線恢復，已請客戶持續觀察。');
     testBody.setAttribute('contenteditable', 'true');
     testBody.setAttribute('aria-label', '編輯頁內容');
     testEditor.appendChild(testBody);
@@ -561,6 +608,7 @@
     editFooter.appendChild(discardEditButton);
     editFooter.appendChild(previewEditButton);
     content.appendChild(editFooter);
+    content.appendChild(noteStatus);
     demo.appendChild(content);
 
     const modalBackdrop = el('div', 'hpx-onboarding-note-modal-backdrop');
@@ -570,14 +618,14 @@
     noteModal.setAttribute('aria-modal', 'true');
     noteModal.setAttribute('aria-labelledby', 'hpx-onboarding-note-modal-title');
     const modalTitlebar = el('div', 'hpx-onboarding-note-modal-titlebar');
-    modalTitlebar.appendChild(el('strong', '', 'HaloPSA — 編輯頁示範'));
+    modalTitlebar.appendChild(el('strong', '', 'Halopsa · 示範工作區'));
     const modalClose = el('button', 'hpx-onboarding-note-modal-close', '×');
     modalClose.type = 'button'; modalClose.title = '關閉編輯頁面'; modalClose.setAttribute('aria-label', '關閉編輯頁面');
     modalTitlebar.appendChild(modalClose); noteModal.appendChild(modalTitlebar);
     const modalHead = el('div', 'hpx-onboarding-note-modal-head');
     const modalHeading = el('h3', '', 'Ticket 641844'); modalHeading.id = 'hpx-onboarding-note-modal-title';
     modalHead.appendChild(modalHeading);
-    modalHead.appendChild(el('p', '', '這是編輯頁的互動示範；套用後仍需回到 HaloPSA 按下儲存。'));
+    modalHead.appendChild(el('p', '', '套用後仍需在 HaloPSA 儲存。'));
     noteModal.appendChild(modalHead);
 
     const formatToolbar = el('div', 'hpx-onboarding-note-modal-toolbar');
@@ -589,14 +637,14 @@
     noteModal.appendChild(formatToolbar);
 
     const modalAi = el('div', 'hpx-onboarding-note-modal-ai');
-    modalAi.appendChild(el('span', 'hpx-onboarding-note-modal-ai-label', '試著點看看：AI 功能'));
+    modalAi.appendChild(el('span', 'hpx-onboarding-note-modal-ai-label', '寫作助手 · 示範輸出'));
     const modalEditor = el('div', 'hpx-onboarding-note-modal-editor');
     modalEditor.setAttribute('contenteditable', 'true'); modalEditor.setAttribute('spellcheck', 'false');
     modalEditor.setAttribute('aria-label', 'Note 編輯頁面內容');
     modalEditor.innerHTML = '<p>已確認機房網路正常。</p><p>重新啟動交換器後連線恢復。</p><p>已請客戶持續觀察，如再次發生請回覆工單。</p>';
-    const modalNotice = el('div', 'hpx-onboarding-note-modal-notice', '可直接輸入文字，或使用上方按鈕試看看。');
+    const modalNotice = el('div', 'hpx-onboarding-note-modal-notice', '');
     const modalPresetLabels = {
-      customer: '客戶版', ticket: '工單版', en: '翻譯成英文', zh: '翻譯成中文',
+      customer: '回覆客戶', ticket: '工單分析', en: '翻譯成英文', zh: '翻譯成中文',
       followup: '等待客戶回覆', done: '處理完成', onsite: '現場／遠端檢查',
     };
     const modalPresets = {
@@ -646,8 +694,11 @@
       modalBackdrop.classList.remove('is-open');
       modalBackdrop.setAttribute('aria-hidden', 'true');
       setTemplateMenuOpen(false);
+      actionButtons.edit.focus();
     }
     function openEditor() {
+      modalEditor.innerHTML = testBody.innerHTML;
+      modalNotice.textContent = '已帶入草稿。';
       modalBackdrop.classList.add('is-open');
       modalBackdrop.setAttribute('aria-hidden', 'false');
       modalClose.focus();
@@ -680,7 +731,7 @@
       noteStatus.textContent = '示範已按下 Save；正式使用時會保存這筆 Activity Note。';
     });
     discardEditButton.addEventListener('click', function () {
-      testBody.textContent = '在這裡輸入或貼上工單處理內容…';
+      testBody.textContent = '';
       noteStatus.textContent = '示範已按下 Discard，內容已清除。';
     });
 
@@ -723,21 +774,32 @@
     if (overlay) return;
     standalonePage = !!(options && options.page);
     overlay = el('div', 'hpx-onboarding-overlay');
-    overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true'); overlay.setAttribute('aria-labelledby', 'hpx-onboarding-title');
+    applyAppearance(overlay);
+    overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true'); overlay.setAttribute('aria-label', '首次登入提示');
     const modal = el('div', 'hpx-onboarding-modal');
     const closeButton = el('button', 'hpx-onboarding-close', '×'); closeButton.type = 'button'; closeButton.title = '略過首次登入提示'; closeButton.addEventListener('click', finish);
-    const title = el('h1', '', '首次登入提示'); title.id = 'hpx-onboarding-title';
-    modal.appendChild(closeButton); modal.appendChild(title);
-    modal.appendChild(el('p', 'hpx-onboarding-intro', '用五個簡短步驟完成基本設定、左下設定列與編輯頁導覽；每一步都可以略過。'));
-    const dots = el('div', 'hpx-onboarding-progress');
-    ['團隊', 'API', '永遠 CC', '設定列', '編輯頁'].forEach(function (label) { const dot = el('span', 'hpx-onboarding-dot', label); dots.appendChild(dot); });
-    modal.appendChild(dots); modal.appendChild(teamStep()); modal.appendChild(apiStep()); modal.appendChild(ccStep()); modal.appendChild(guideStep()); modal.appendChild(editorStep());
-    modal.appendChild(el('p', 'hpx-onboarding-status'));
+    closeButton.setAttribute('aria-label', '結束導覽');
+    modal.appendChild(closeButton);
+    const aside = el('aside', 'hpx-onboarding-aside');
+    aside.appendChild(el('span', 'hpx-onboarding-brand', 'Halopsa'));
+    aside.appendChild(el('h1', '', '快速設定'));
+    const dots = el('nav', 'hpx-onboarding-progress');
+    dots.setAttribute('aria-label', '開始使用的步驟');
+    ['常用 Team', 'AI 服務', '永遠 CC', '快捷列', '編輯器'].forEach(function (label, index) {
+      const dot = el('span', 'hpx-onboarding-dot');
+      dot.appendChild(el('span', '', label));
+      dots.appendChild(dot);
+    });
+    aside.appendChild(dots);
+    modal.appendChild(aside);
+    const main = el('div', 'hpx-onboarding-main');
+    main.appendChild(teamStep()); main.appendChild(apiStep()); main.appendChild(ccStep()); main.appendChild(guideStep()); main.appendChild(editorStep());
+    const status = el('p', 'hpx-onboarding-status'); status.setAttribute('role', 'status'); main.appendChild(status);
     const actions = el('div', 'hpx-onboarding-actions');
     const back = el('button', '', '上一步'); back.type = 'button'; back.setAttribute('data-back', '1'); back.addEventListener('click', function () { showStep(currentStep - 1); });
-    const skip = el('button', '', '略過這一步'); skip.type = 'button'; skip.setAttribute('data-skip', '1'); skip.addEventListener('click', function () { if (currentStep === LAST_STEP) finish(); else showStep(currentStep + 1); });
+    const skip = el('button', '', '略過'); skip.type = 'button'; skip.setAttribute('data-skip', '1'); skip.addEventListener('click', function () { if (currentStep === LAST_STEP) finish(); else showStep(currentStep + 1); });
     const next = el('button', 'hpx-onboarding-primary', '儲存並繼續'); next.type = 'button'; next.setAttribute('data-next', '1'); next.addEventListener('click', function () { if (currentStep === LAST_STEP) { finish(); return; } mergeSettings(stepPatch(currentStep)).then(function () { showStep(currentStep + 1); }).catch(showError); });
-    actions.appendChild(back); actions.appendChild(skip); actions.appendChild(next); modal.appendChild(actions);
+    actions.appendChild(back); actions.appendChild(skip); actions.appendChild(next); main.appendChild(actions); modal.appendChild(main);
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     document.documentElement.classList.add('hpx-onboarding-open');

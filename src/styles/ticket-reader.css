@@ -1,0 +1,12 @@
+/* Standalone reader entry. Scoped to the extension's own button. */
+.history-options.buttons-container > .hpx-ticket-reader-button,
+.hpx-ticket-reader-button { display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 7px !important; width: auto !important; min-width: 100px !important; height: 34px !important; padding: 0 12px !important; margin-left: 7px !important; border: 1px solid var(--hpx-control-border,#8493a8) !important; border-radius: 999px !important; color: var(--hpx-control-ink,#24344b) !important; background: var(--hpx-control-bg,#e8edf5) !important; box-shadow: var(--hpx-control-shadow) !important; font: 600 12px/1 "Segoe UI", "Microsoft JhengHei", sans-serif !important; cursor: pointer !important; transition: background 120ms ease, border-color 120ms ease !important; }
+.hpx-ticket-reader-button:hover { color: var(--hpx-control-ink,#24344b) !important; border-color: #52617a !important; background: var(--hpx-control-hover,#d8e2f0) !important; }
+.hpx-ticket-reader-button:active { background: #dce9fc !important; }
+.hpx-ticket-reader-button:focus-visible { outline: 2px solid #0c2d55 !important; outline-offset: 3px !important; }
+.hpx-ticket-reader-button__icon { display: inline-grid; place-items: center; width: 15px; height: 18px; color: currentColor; background: transparent; font-size: 17px; font-weight: 500; }
+@media (max-width: 900px) {
+ .history-options.buttons-container > .hpx-ticket-reader-button, .hpx-ticket-reader-button { min-width: 34px !important; width: 34px !important; padding: 0 !important; }
+ .hpx-ticket-reader-button__label { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) { .hpx-ticket-reader-button { transition: none !important; } }

@@ -1,142 +1,120 @@
-# HaloPSA Writing Helper
+<div align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/hero-static.svg">
+    <img src="docs/assets/hero.svg" alt="Halo Companion — 更順手的 HaloPSA 工作台" width="100%">
+  </picture>
 
-<p align="center">
-  <img src="assets/branding/halopsa-logo.png" alt="HaloPSA Writing Helper logo" width="180" />
-</p>
+  <h1>Halo Companion</h1>
+  <p><strong>把撰寫、閱讀與工時操作，收進一個熟悉的工作台。</strong></p>
+  <p>HaloPSA Assistant · 原生頁面整合 · AI 草稿預覽 · 本機偏好</p>
 
-Chrome Manifest V3 擴充功能，協助 HaloPSA 使用者撰寫 Activity Note、整理工單、調整 Timesheet 與自訂工作介面。
+  <a href="https://github.com/tigerhzu/halo-psa-extension/releases/latest"><img alt="下載最新版本" src="https://img.shields.io/github/v/release/tigerhzu/halo-psa-extension?style=flat-square&label=Download&color=6454d8"></a>
+  <img alt="Manifest V3" src="https://img.shields.io/badge/Chrome_Extension-Manifest_V3-6978ff?style=flat-square">
+  <img alt="Vanilla JavaScript" src="https://img.shields.io/badge/Vanilla-JavaScript-f2ce54?style=flat-square">
+  <img alt="繁體中文" src="https://img.shields.io/badge/Language-繁體中文-52b7b0?style=flat-square">
 
-## 安裝
+  <p><a href="#安裝與更新">開始使用</a> · <a href="docs/ARCHITECTURE.md">架構與資料流</a> · <a href="docs/TOOLKIT.md">三工具架構全景</a> · <a href="docs/DEVELOPMENT.md">開發指南</a> · <a href="docs/CHANGELOG.md">更新紀錄</a></p>
+</div>
 
-1. 從 [GitHub Releases](https://github.com/tigerhzu/halo-psa-extension/releases/latest) 下載最新的 `halo-psa-extension-*.zip` 並解壓縮。
-2. 開啟 Chrome 的 `chrome://extensions`。
-3. 開啟右上角的「開發人員模式」。
-4. 選擇「載入未封裝項目」，指定剛解壓縮的資料夾。
-5. 重新整理 HaloPSA 頁面後即可使用。
+## 在 Halo 裡完成工作
 
-> 此擴充功能只會在 HaloPSA 網域載入。AI 服務提供者與自訂設定會保存在瀏覽器本機的 extension storage。
+Halo Companion 是 Chrome／Edge 的 Manifest V3 擴充功能。它在 HaloPSA 原生頁面上加入工具列、獨立撰寫視窗、工單閱讀器與工時快捷控制，讓常用操作更容易找到。專案也包含個人主題、快捷連結、寵物和可逆的簡單模式。
 
-首次登入預設外觀為 Cute，使用純黑 Accent（`#000000`），簡單模式預設關閉；之後使用者在設定面板選擇的主題、顏色與模式會保存在 `chrome.storage.local`，不會被重新登入覆蓋。
-
-## 首次登入提示
-
-首次在 HaloPSA 載入 Extension 時，會在獨立的 Extension 分頁開啟「首次登入提示」，不會把精靈疊在 HaloPSA 頁面上。內容包含五個步驟：
-
-1. 選擇簡單模式要保留的 Team；Op Team A、B、C、Other Support、Project Manager、SecOp Team A、Technical Solutions Division、RD、Thailand Team 與 Sales&Admin 都可以個別選擇，只會顯示勾選的 Team。
-2. 選擇 Azure OpenAI 或 Google Gemini，並視需要填入 API 資訊。
-3. 設定「永遠 CC 收件人」，所有文件自動 cc。
-4. 認識 HaloPSA 主頁左下角的 `mode`、`color`、`pet` 與 `settings` 四個獨立設定列功能。
-5. 以 HaloPSA「編輯頁」示意操作，包含 Activity Note、Time Taken、時間調整、AI 按鈕與 Job Code；點擊「編輯」可開啟互動示範。
-
-五個步驟都可略過。完成或關閉後，可由 HaloPSA 浮動設定面板的 `設定` 進入完整設定頁，再開啟「首次登入提示」；設定只保存在 `chrome.storage.local`。若瀏覽器暫時無法開啟獨立分頁，Extension 會回退成內嵌精靈，並先隱藏摯友工具列避免遮擋。
-
-## v0.9.3 重點功能
-
-- 新增左下角固定控制列：`mode`、`color`、`pet` 與 `settings` 可在任何 HaloPSA 頁面快速操作。
-- 寵物設定改為獨立選單；點選寵物後立即套用、保存並關閉選單。寵物會跟隨頁面顯示，Quick Links 面板會依寵物左右側與視窗邊界自動定位。
-- Quick Links 改為卡片式管理介面：可新增、編輯、刪除與上下拖曳排序，順序會立即保存；編輯欄位會自動維持在視窗可見範圍內。
-- Quick Links 介面移除多餘說明文字與前方箭頭圖示，保留簡潔的快捷按鈕與 URL 資訊。
-- Cute 模式在獨立 Note 編輯頁會正確沿用 Cute 介面，不會退回預設 AI 按鈕。
-- 主題選單顯示「果凍」與「預設」；主題、Accent 顏色、寵物與簡單模式均可即時套用並保存。
-- 簡單模式保留使用者選定的 Team，切換到 Tickets、Timesheets 或其他 Team 後仍維持同一份選擇。
-- 完全移除「整理格式」功能，避免在工具列、編輯器與預覽介面留下已停用的按鈕。
-- 完整設定頁提供一鍵匯出／匯入，可選擇是否包含 API Key；不含 API Key 的設定檔適合安全分享或備份。
-- 首次登入提示、Team 白名單、自訂 Accent、永遠 CC 與既有 AI／Timesheet 功能持續保留。
-- 首次登入提示將左下四個設定列功能與 HaloPSA 編輯頁分成第 4、5 頁；編輯頁示意包含時間調整、AI 工具、快速範本與 Job Code。
-
-- 簡單模式的 More 選單會保留 `Final Check with Customer/Sales`。
-- 完成 Final Check 後，HaloPSA 原生的 `Resolve Ticket`／`Resolved Ticket` 按鈕仍可使用。
-- Op Team A、Team B、Team C 與 Timesheets Sidebar 使用各自 Team logo；Op Team A 維持原本的 `team-a.webp`。
-- Project Manager、RD、SecOp Team A、Other Support、Technical Solutions Division、Sales&Admin 與 Thailand Team 快捷入口使用各自 Team logo；尚未提供素材的 Team 會顯示文字徽章。
-- New Ticket 使用 Halo 原生編輯工具列；Extension 自己的 AI／範本工具列只在 New Ticket 隱藏，一般 Ticket 與 Activity Note 不受影響。
-- Ticket 詳情頁右上角的上一筆、開新視窗、分享、列印與其他 utility actions 會在簡單模式隱藏；主要 Ticket status actions 仍保留。
-- Color 區提供原生調色盤；可選任意自訂 Accent 顏色，設定會保存並即時套用到 Extension UI。
-
-## 簡單模式介紹（Simple Mode）
-
-> 設定頁顯示的「簡單模式」就是本擴充功能的專注工作介面，不需要另外安裝。
-
-簡單模式會在不改寫 HaloPSA API、不刪除原始 DOM 的前提下，隱藏不常用的原生 UI。設定會保存在 `chrome.storage.local`，切換後立即套用；重新整理 HaloPSA 後也會保留使用者選擇。
-
-### 開啟與關閉
-
-1. 開啟 Extension 的設定頁，或點選 HaloPSA 右下角寵物開啟浮動設定面板。
-2. 將「簡單模式」切換為 ON，即時套用專注介面。
-3. 切換為 OFF，所有由 Extension 隱藏的 HaloPSA 元件會完整恢復；不需要重新整理頁面。
-
-### 保留的日常功能
-
-- 左側保留 Timesheets 與設定清單中的 Team：預設包含 Op Team A、Op Team B、Op Team C、Other Support、Project Manager、SecOp Team A、Technical Solutions Division、RD、Thailand Team、Sales&Admin；Team 底下的 Unassigned、工程師、Ticket 數量與展開／收合均使用 HaloPSA 原生功能。
-- Timesheets 頁會依簡單模式目前保留的 Team 清單建立返回捷徑，順序與設定相同；點擊後沿用原生 Team 導覽。
-- Ticket 上方保留 Re-Assign、First Contact、Pending、In Progress、On Hold、Postponed、Awaiting Customer、Vendor Processing 與 More。
-- More 選單保留 Email User、Activity Note、Final Check with Customer/Sales。完成 Final Check 後，保留 Resolve Ticket／Resolved Ticket。
-- Ticket Information 僅顯示 Date Created、Created By、Ticket Type、Status、Team、Assigned Agent、Additional Agents、Time Recorded、Impact、Category。
-- End-User Details 僅顯示 User、Top Level、Client、Site、Email Address、Phone Number、Site Phone Number。
-- 簡單模式會在確認頁首簽章後隱藏右上角 Halo 原生工具按鈕，保留 New Ticket；找不到可靠 DOM 簽章時會跳過該區塊並記錄 warning。
-
-### 安全性與相容性
-
-- 簡單模式只會加入可逆的 CSS class，不會刪除 HaloPSA 節點，也不會自行呼叫 Ticket Status API。
-- HaloPSA 是 SPA；切換 Ticket、Team、Timesheets 或返回頁面後，模式會重新套用。
-- Activity Note 獨立視窗、Quick Link、Cute 主題、AI 與寵物等既有 Extension 功能會維持可用。
-- 若某個 HaloPSA 元件因版本更新而找不到，該區塊會略過，不會中斷其他 Extension 功能；將簡單模式關閉即可隨時回到原始介面。
-
-## v0.9.0 重點功能
-
-- 客戶版 AI：固定為「您好〔姓名〕，／正文／謝謝。」格式；姓名只會在原文明確可辨識時帶入。
-- 工單版 AI：每一項都整理成條列，並依語意為短標籤上色；技術值、錯誤碼、IP 與網址保持原色。
-- Activity Note 獨立編輯器：可選取圖片後直接拖曳右下角調整大小，也保留手動輸入寬度功能。
-- 快速範本：修正 Cute 主題下無法點選的問題，並支援可靠插入至 HaloPSA 編輯器。
-- Timesheet：移除自動時間對齊；手動調整時間與重疊時段互不阻擋，並加強寫回 HaloPSA 的可靠性。
-- 寵物：內建 Claude Crab，並支援將符合格式的自訂寵物放到 `pet/<pet-id>/` 後自動辨識。
-- 設定面板：可新增、編輯與刪除自訂 URL 捷徑按鈕；後續版本已將管理介面移至浮動寵物的 Quick Links 面板。
-
-## 工單顏色規則
-
-工單板只會替 `【標籤】` 上色，不會把整句或技術資料染色：
-
-| 顏色 | 標籤用途 |
+| 工作情境 | Companion 提供的協助 |
 | --- | --- |
-| 紅色 | 異常、失敗、阻斷 |
-| 橘色 | 待確認、注意、風險 |
-| 藍色 | 資訊、設定、處理動作 |
-| 綠色 | 確認結果、已完成 |
-| 紫色 | 使用者回報、負責單位 |
+| 撰寫回覆 | 回覆客戶、工單分析、First Contact、中英翻譯；原文與可編輯 AI 草稿並排，確認後套用。 |
+| 重複輸入 | 範本插入游標位置，聯絡人群組、預設 CC 與地址去重。 |
+| 長篇筆記 | 獨立編輯視窗、格式工具、圖片與表格處理；寫回前檢查來源編輯器與內容衝突。 |
+| 閱讀工單 | 完整活動歷程的唯讀快照，支援搜尋、類型篩選、排序、收合、縮放及列印。 |
+| 調整工時 | Time Taken 快速加減、重設與分鐘輸入；Timesheet 可明確套用新的時間範圍。 |
+| 整理工作台 | Team 顯示與排序、簡單模式、主題色、快捷入口及寵物開關。 |
+| 換一台電腦 | JSON 設定匯出／匯入，可選含金鑰或不含金鑰。 |
 
-## 自訂寵物
+**操作邊界：**AI、範本和獨立編輯視窗套用到 Halo 草稿；工單的儲存或送出仍由使用者執行。Time Taken 修改原生輸入欄位。Timesheet 的「套用」則會呼叫 Halo 原生更新流程，可能直接保存該筆工時，使用前請確認時間範圍。
 
-將寵物放入下列結構後，重新載入擴充功能即可在設定面板選擇：
+## 安裝與更新
 
-```text
-pet/
-  my-pet/
-    pet.json
-    spritesheet.webp
+1. 前往 [最新 Release](https://github.com/tigerhzu/halo-psa-extension/releases/latest)，下載 `halo-psa-extension-1.1.2.zip` 並解壓縮。
+2. 在 Chrome 開啟 `chrome://extensions`，或在 Edge 開啟 `edge://extensions`，啟用「開發人員模式」。
+3. 選擇「載入未封裝項目」，指定含有 `manifest.json` 的資料夾。
+4. 重新整理 Halo 頁面，點擊擴充功能圖示開啟設定中心。初始導覽中的每個步驟都可以略過。
+
+Manifest 的最低 Chromium 版本為 **122**。頁面整合範圍為 Halo 的 `halopsa.com`、`haloitsm.com`、`halocrm.com` 與 `haloservicedesk.com` 子網域。使用自訂 Halo 網域時，需要在本機調整 manifest 的頁面匹配範圍。
+
+更新既有安裝時，先匯出設定備份，再以新版檔案更新原本的安裝資料夾；在擴充功能管理頁按「重新載入」，最後重新整理 Halo。保留同一安裝資料夾及擴充功能 ID，有助沿用該安裝的本機設定。
+
+### AI 設定
+
+- **Azure OpenAI：**填入 Azure Endpoint、Deployment Name 與 API Key。
+- **自架 Ornith：**公開版本使用不可連線的示例網域。只有要啟用自架 AI 時，先在解壓後的擴充功能資料夾執行下列命令，再重新載入擴充功能，並在設定頁填入回傳的 Base URL、模型與 API Key。
+
+```powershell
+.\scripts\Configure-Ornith.ps1 -Origin 'https://ai.example.com'
 ```
 
-請參考 [pet/README.md](pet/README.md) 的格式說明。內建 Claude Crab 會作為新安裝時的預設寵物。
+請將示例換成自己的 HTTPS 主機；參數使用預設 443 埠，且不包含 `/v1` 路徑。腳本只把 manifest 中的 Ornith 權限替換為該單一主機，不存取瀏覽器設定或金鑰。詳細限制見 [自架 AI 設定](docs/DEVELOPMENT.md#自架-ornith)。
+
+Azure 與 Ornith 金鑰互斥；一次使用一個服務。未設定有效服務金鑰時，AI 功能顯示清楚標示的示意內容，可先體驗預覽流程。
+
+## 架構一覽
+
+```mermaid
+flowchart TB
+  User["使用者"] --> Halo["Halo 原生頁面與草稿"]
+  subgraph Extension["Halo Companion · Manifest V3"]
+    Content["隔離環境 Content Scripts\nwindow.__HPX"]
+    UI["工具列・AI 預覽・閱讀器\n設定與獨立編輯視窗"]
+    Bridge["MAIN world 橋接\n原生編輯器 / Timesheet"]
+    Worker["Background Service Worker\nAI 路由・訊息轉送・視窗 session"]
+    Local[("storage.local\n偏好・金鑰・收件人")]
+    Session[("storage.session\n暫時編輯內容")]
+    Content <--> UI
+    Content <--> Bridge
+    Content <--> Worker
+    UI <--> Local
+    Worker <--> Local
+    Worker <--> Session
+  end
+  Halo <--> Content
+  Bridge <--> Halo
+  Worker --> Provider["已選定的 AI 服務\nAzure OpenAI / 自架 Ornith"]
+```
+
+專案使用 **Vanilla JavaScript、HTML、CSS 與 Chrome Extension APIs**，執行時不需要前端框架或打包器。一般 content script 透過 `window.__HPX` 共用介面，manifest 中的載入順序就是模組依賴順序；背景服務則以 `importScripts()` 載入 AI 設定、prompt 與輸出驗證模組。
+
+原生編輯器橋接辨識頁面上的 Froala、CKEditor、TinyMCE 或可用的原生控制項，Timesheet 橋接則使用 Halo 頁面上的更新入口。這些整合依賴 Halo 實際 DOM 與元件行為，需搭配 SPA 偵測與實機回歸。更多細節見 [完整架構](docs/ARCHITECTURE.md)。
+
+## 資料存放與套用流程
+
+設定、主題、快捷連結、收件人與 API Key 保存在該擴充功能的 `chrome.storage.local`。獨立編輯工作階段使用 `chrome.storage.session`，不把暫時的工單內容寫進本機設定備份。
+
+AI 呼叫從背景服務送至已選定的服務，內容包含使用者要求處理的文字；圖片先轉成遮罩，再於套用時還原。截斷、空白或不符輸出規則的結果會被拒絕。通過驗證的草稿仍需使用者確認才寫回。
+
+設定中心提供完整備份與不含 API Key 的備份。不含金鑰的匯入會保留現有本機金鑰，並在 provider 衝突時阻擋寫入。**不含 API Key 仍可能包含收件人、網址等個人設定**，公開分享前請先檢查檔案內容。
 
 ## 開發與驗證
 
-本專案不依賴 bundler。提交或發佈前請執行：
-
-```powershell
-# JavaScript 語法
-rg --files -g '*.js' | ForEach-Object { node --check $_ }
-
-# 自動測試
-Get-ChildItem tests -Filter '*.test.js' | ForEach-Object { node $_.FullName }
-
-# 產出可發佈 ZIP（工作區乾淨時）
-.\tools\package.ps1
+```text
+node scripts/verify-manifest.js
+node --test tests/*.test.js
+node tests/preview-server.js
 ```
 
-## 安全性
+預覽服務只監聽 `http://127.0.0.1:4173`，使用獨立的示範瀏覽器 API，不會寫入正式 Halo 或呼叫真實 AI。測試與預覽檔不放入安裝 ZIP。
 
-- 不提交 API Key、Token、HAR、瀏覽器 session 或私人評測資料。
-- AI Key 只存於本機 extension storage，請勿將設定匯出到公開儲存庫。
-- ZIP 僅包含 extension runtime 所需的 `manifest.json`、`src/`、`assets/` 與 `pet/`。
+程式路徑、瀏覽器回歸頁、測試限制與發佈步驟分別記錄於 [開發指南](docs/DEVELOPMENT.md) 和 [發佈指南](docs/RELEASE.md)。
 
-## 授權與回報
+## Tiger 工具系列
 
-請透過 GitHub Issues 回報 HaloPSA 版面變更、功能問題或改善建議。
+<table>
+  <tr><th>工具</th><th>專注的工作</th></tr>
+  <tr><td><a href="https://github.com/tigerhzu/freedom-wiki-assistant">Wiki Studio</a></td><td>知識文件與 Wiki 操作輔助</td></tr>
+  <tr><td><img src="docs/assets/logo.svg" width="24" alt="Halo Companion logo"> <strong>Halo Companion</strong></td><td>工單、撰寫與工時工作台</td></tr>
+  <tr><td><a href="https://github.com/tigerhzu/clarity-clipboard">Clarity Clipboard</a></td><td>桌面剪貼簿整理與重複使用</td></tr>
+</table>
+
+此專案為獨立輔助工具。HaloPSA、Azure OpenAI 與相關產品名稱屬於各自的權利人。
+
+## 設計素材
+
+[Logo SVG](docs/assets/logo.svg) · [Logo PNG](docs/assets/logo.png) · [動態封面](docs/assets/hero.svg) · [靜態封面](docs/assets/hero-static.svg) · [架構圖 SVG](docs/assets/architecture.svg)。原始圖形與配色資料一起收錄在 Release 的品牌素材包；首頁動畫尊重減少動態效果偏好。

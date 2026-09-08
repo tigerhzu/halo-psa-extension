@@ -1,5 +1,34 @@
 /* modal.css — 預覽視窗樣式。所有 class 以 hpx- 前綴。 */
 
+.hpx-modal__metrics {
+  margin: 12px 18px 0;
+  padding: 12px 14px;
+  border: 1px solid #cdd2ef;
+  border-radius: 12px;
+  background: #f0f0ff;
+  color: #25344b;
+  font-size: 12px;
+  line-height: 1.7;
+  flex-shrink: 0;
+}
+.hpx-modal__metrics-values { margin-top: 4px; overflow-wrap: anywhere; }
+.hpx-modal__metrics-help { color: #536078; margin-top: 4px; }
+.hpx-loader:not(.hpx-loader--done)::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  bottom: 3px;
+  width: 28%;
+  height: 3px;
+  background: #5279cc;
+  border-radius: 8px;
+  animation: hpx-ai-wait 1.4s ease-in-out infinite alternate;
+}
+@keyframes hpx-ai-wait { to { transform: translateX(170%); } }
+@media (prefers-reduced-motion: reduce) {
+  .hpx-loader:not(.hpx-loader--done)::after { animation: none; }
+}
+
 .hpx-modal-overlay {
   position: fixed;
   inset: 0;
@@ -151,3 +180,23 @@
     flex-direction: column;
   }
 }
+
+/* Review is a deliberate step between generation and replacing a draft. */
+.hpx-modal-overlay { background:#29385666; font-family:var(--hpx-font,"Segoe UI",sans-serif); padding:16px; box-sizing:border-box; }
+.hpx-modal { width:min(1060px,94vw); max-height:90dvh; border:1px solid #e4e8f0; border-radius:26px; background:#f4f6fb; color:#1d2433; box-shadow:0 24px 80px #29385640; }
+.hpx-modal__header { padding:18px 24px; border-color:#e4e8f0; background:#fff; }
+.hpx-modal__title { font-size:19px; font-weight:650; letter-spacing:-.4px; }
+.hpx-modal__close { width:34px; height:34px; border-radius:999px; color:var(--hpx-control-ink,#24344b); background:var(--hpx-control-bg,#e8edf5); border:1px solid var(--hpx-control-border,#8493a8); }
+.hpx-modal__note { padding:12px 24px; color:#52617a; background:#f0f4fc; border-color:#dfe7f4; line-height:1.6; }
+.hpx-modal__body { padding:24px; gap:20px; }
+.hpx-modal__col-label { color:#6e7788; font-size:11px; margin-bottom:10px; letter-spacing:.3px; }
+.hpx-modal__textarea { min-height:340px; border-color:var(--hpx-control-border,#8493a8); border-radius:16px; padding:18px; font:14px/1.85 var(--hpx-font,"Segoe UI",sans-serif); color:#1d2433; }
+.hpx-modal__textarea--readonly { background:#f4f6fb; color:#69758a; }
+.hpx-modal__textarea:focus { border-color:#0c2d55; box-shadow:0 0 0 3px #0c2d5512; }
+.hpx-modal__footer { padding:16px 24px; border-color:#e4e8f0; background:#fff; }
+.hpx-btn { min-height:38px; padding:9px 16px; border-radius:999px; font:600 13px/1.4 var(--hpx-font,"Segoe UI",sans-serif); }
+.hpx-btn--primary,.hpx-btn--primary:hover { background:var(--hpx-accent,#0c2d55); color:var(--hpx-accent-ink,#fff); border-color:var(--hpx-control-border,#8493a8); }
+.hpx-btn--secondary { background:var(--hpx-control-bg,#e8edf5); border-color:var(--hpx-control-border,#8493a8); color:var(--hpx-control-ink,#24344b); }
+.hpx-btn--secondary:hover,.hpx-modal__close:hover { background:var(--hpx-control-hover,#d8e2f0); border-color:#52617a; color:var(--hpx-control-ink,#24344b); }
+.hpx-btn:focus-visible,.hpx-modal__close:focus-visible { outline:2px solid #0c2d55; outline-offset:3px; }
+@media(max-width:640px) { .hpx-modal__body{padding:16px;} .hpx-modal__textarea{min-height:180px;} .hpx-modal__header{padding:16px;} .hpx-modal__title{font-size:18px;} }

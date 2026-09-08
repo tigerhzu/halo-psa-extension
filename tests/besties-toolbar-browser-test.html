@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>Recipient shortcuts regression</title>
+  <link rel="stylesheet" href="../src/styles/workbench.css">
+  <link rel="stylesheet" href="../src/styles/toolbar.css">
+  <style>
+    body { margin: 40px; background: #f4f7fb; color: #1d2433; font: 14px/1.5 "Segoe UI", sans-serif; }
+    .composer { max-width: 980px; padding: 24px; border-radius: 18px; background: #fff; }
+    .cc-row { height: 44px; border-bottom: 1px solid #dfe4ec; }
+  </style>
+</head>
+<body>
+  <div id="composer" class="composer">
+    <div><div><div><div class="cc-row"><input name="emailcc" type="hidden"></div></div></div></div>
+  </div>
+  <pre id="result">Running…</pre>
+  <script>
+    localStorage.setItem('hpx_preview_ios_settings', JSON.stringify({
+      contactGroups: [
+        { name: '布爾喬亞神皮使徒', members: [{ name: 'A', email: 'a@example.com' }] },
+        { name: 'Team C', members: [{ name: 'C', email: 'c@example.com' }] }
+      ]
+    }));
+  </script>
+  <script src="preview-runtime.js"></script>
+  <script src="../src/core/namespace.js"></script>
+  <script src="../src/config/besties-config.js"></script>
+  <script src="../src/features/besties.js"></script>
+  <script src="../src/ui/besties-toolbar.js"></script>
+  <script>
+    (async function () {
+      const composer = document.getElementById('composer');
+      window.__HPX.ui.bestiesToolbar.mount(composer);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const bar = composer.querySelector('.hpx-besties-toolbar');
+      const style = getComputedStyle(bar);
+      const buttons = bar.querySelectorAll(':scope > .hpx-tb-dropdown > .hpx-tb-btn');
+      const result = {
+        ok: !!bar && buttons.length === 2 && !bar.textContent.includes('聯絡人') &&
+          style.borderTopWidth === '0px' && style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.boxShadow === 'none',
+        buttons: Array.from(buttons, button => button.textContent),
+        outerFrame: { border: style.borderTopWidth, background: style.backgroundColor, shadow: style.boxShadow }
+      };
+      document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+      document.title = (result.ok ? 'PASS' : 'FAIL') + ' · Recipient shortcuts regression';
+    })();
+  </script>
+</body>
+</html>

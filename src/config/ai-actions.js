@@ -14,13 +14,13 @@
 
   NS.config.aiActions = {
     improve_tone: {
-      label: '客戶版',
-      title: '客戶版（禮貌回覆）',
+      label: '回覆客戶',
+      title: '回覆客戶（禮貌回覆）',
       loading: '正在轉換成客戶溝通模式…',
     },
     professional: {
-      label: '工單版',
-      title: '工單版（處理紀錄）',
+      label: '工單分析',
+      title: '工單分析（處理紀錄）',
       loading: '正在整理工單內容…',
     },
     translate_en: {
@@ -36,6 +36,11 @@
       action: 'translate',
       targetLang: 'zh',
       loading: '正在翻譯內容…',
+    },
+    first_contact: {
+      label: 'First Contact',
+      title: 'First Contact（首次回覆）',
+      loading: '正在準備首次回覆…',
     },
   };
 })();

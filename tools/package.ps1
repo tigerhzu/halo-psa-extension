@@ -3,7 +3,7 @@
   Build and validate a Chrome extension release ZIP from the current Git HEAD.
 
 .DESCRIPTION
-  The archive intentionally includes runtime files only: manifest.json, src/, assets/, and pet/.
+  The archive intentionally includes runtime files only: manifest.json, src/, assets/, pet/, docs/, README.md, and scripts/Configure-Ornith.ps1.
   It also verifies every manifest resource, including wildcard resource paths.
 
 .EXAMPLE
@@ -35,7 +35,7 @@ try {
   if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
   if (Test-Path $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
 
-  git archive --format=zip --output=$zipPath HEAD
+  git archive --format=zip --output=$zipPath HEAD manifest.json src assets pet scripts/Configure-Ornith.ps1 README.md docs
   if ($LASTEXITCODE -ne 0) { throw 'git archive failed.' }
 
   Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -50,6 +50,9 @@ try {
 
   $unexpected = @($entries | Where-Object {
     $_ -ne 'manifest.json' -and
+    $_ -ne 'scripts/Configure-Ornith.ps1' -and
+    $_ -ne 'README.md' -and
+    -not $_.StartsWith('docs/') -and
     -not $_.StartsWith('src/') -and
     -not $_.StartsWith('assets/') -and
     -not $_.StartsWith('pet/')

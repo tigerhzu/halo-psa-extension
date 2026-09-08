@@ -1,7 +1,7 @@
 /**
  * settings-panel.js
  * 浮動設定面板（寵物 + 跟隨定位面板）：快捷按鈕快速切換。
- * 模式、外觀與 PET 控制固定在左側導覽欄底部；點寵物 → 面板在寵物左右側自動定位。
+ * 模式、外觀與 PET 控制固定在主畫面左下角橫向工具列；點寵物 → 面板在寵物左右側自動定位。
  * 拖曳寵物可移動；所有外觀變更立即套用並保存。
  */
 (function () {
@@ -13,14 +13,17 @@
 
   const DEFAULTS = {
     theme: 'cute-ios',
-    accent: '#000000',
+    accent: '#0c2d55',
     opacity: 100,
     pet: 'claude-crab',
     petPosition: { right: 16, bottom: 16 },
+    petHidden: false,
+    sidebarCollapsed: false,
     shortcutLinks: [],
     ultimateMode: false,
   };
   const ACCENT_LIST = [
+    { name: 'Blue', hex: '#0c2d55' },
     { name: 'Orange', hex: '#ff7a1a' },
     { name: 'Amber', hex: '#f5b82e' },
     { name: 'Red', hex: '#ef4444' },
@@ -42,6 +45,7 @@
 
   let panelEl = null;
   let petEl = null;
+  let petHidden = false;
   let activePetId = 'claude-crab';
   let petIdleTimer = null;
   let petActionTimer = null;
@@ -86,6 +90,8 @@
       if (settings.theme !== 'cute-ios' && settings.theme !== 'default') settings.theme = DEFAULTS.theme;
       settings.accent = normalizeAccent(settings.accent);
       settings.pet = petDefinition(settings.pet).id;
+      settings.petHidden = settings.petHidden === true;
+      settings.sidebarCollapsed = settings.sidebarCollapsed === true;
       settings[SHORTCUTS_FIELD] = normalizeShortcutLinks(settings[SHORTCUTS_FIELD]);
       settings.ultimateMode = settings.ultimateMode === true;
       cb(settings);
@@ -270,7 +276,39 @@
     else petEl.appendChild(visual);
     petEl.setAttribute('data-pet', activePetId);
     petEl.setAttribute('aria-label', '開啟 Quick Links；目前寵物：' + definition.name + '；可拖曳移動');
-    if (definition.atlas) startAtlasAnimation('idle');
+    if (definition.atlas && !petHidden) startAtlasAnimation('idle');
+  }
+
+  /**
+   * Pet 的顯示狀態由這裡統一套用到 DOM，避免只改 JS 設定卻留下可聚焦、
+   * 仍在執行 idle timer 的「隱形 Pet」。側邊控制列不隨 Pet 隱藏，作為恢復入口。
+   */
+  function applyPetVisibility(hidden) {
+    petHidden = hidden === true;
+    if (!petEl) return;
+
+    petEl.toggleAttribute('hidden', petHidden);
+    petEl.setAttribute('data-hpx-pet-hidden', petHidden ? 'true' : 'false');
+    petEl.setAttribute('aria-hidden', petHidden ? 'true' : 'false');
+    petEl.tabIndex = petHidden ? -1 : 0;
+
+    if (petHidden) {
+      stopPetIdleAction();
+      petEl.classList.remove('hpx-sp-pet-active');
+      petEl.setAttribute('aria-expanded', 'false');
+    } else {
+      schedulePetIdleAction(1200);
+    }
+    refreshSidebarControls();
+  }
+
+  function setPetVisibility(hidden, persist) {
+    const next = hidden === true;
+    petHidden = next;
+    if (sidebarSettings) sidebarSettings.petHidden = next;
+    applyPetVisibility(next);
+    if (next && panelEl) SettingsPanel.close();
+    if (persist) persistSettings({ petHidden: next });
   }
 
   function stopPetIdleAction() {
@@ -295,12 +333,12 @@
   function schedulePetIdleAction(delay) {
     if (petIdleTimer) clearTimeout(petIdleTimer);
     petIdleTimer = null;
-    if (!petEl || !petEl.isConnected || document.hidden) return;
+    if (petHidden || !petEl || !petEl.isConnected || document.hidden) return;
     if (isAtlasPet(activePetId) && !petSpritePlayback) startAtlasAnimation('idle');
     const wait = typeof delay === 'number' ? delay : 2800 + Math.round(Math.random() * 3200);
     petIdleTimer = setTimeout(function () {
-      if (!petEl || !petEl.isConnected || document.hidden || petEl.classList.contains('hpx-sp-pet-dragging')) {
-        schedulePetIdleAction(1600);
+      if (petHidden || !petEl || !petEl.isConnected || document.hidden || petEl.classList.contains('hpx-sp-pet-dragging')) {
+        if (!petHidden) schedulePetIdleAction(1600);
         return;
       }
 
@@ -372,14 +410,14 @@
   function buildThemeSection(draft) {
     const section = el('div', 'hpx-sp-section');
     const lbl = el('div', 'hpx-sp-label');
-    lbl.textContent = 'Theme';
+    lbl.textContent = '介面配色';
     section.appendChild(lbl);
 
     const row = el('div', 'hpx-sp-theme-row');
 
     const themes = [
-      { id: 'cute-ios', name: '果凍', bg: 'linear-gradient(135deg,#dbeafe,#ede9fe)' },
-      { id: 'default',  name: '預設', bg: '#e5e7eb' },
+      { id: 'cute-ios', name: '輕透', bg: '#edf2fb' },
+      { id: 'default',  name: '原生配色', bg: '#e6ebe6' },
     ];
 
     themes.forEach(function (t) {
@@ -410,7 +448,7 @@
   function buildColorSection(draft) {
     const section = el('div', 'hpx-sp-section');
     const lbl = el('div', 'hpx-sp-label');
-    lbl.textContent = 'Color';
+    lbl.textContent = '重點色';
     section.appendChild(lbl);
 
     const row = el('div', 'hpx-sp-color-row');
@@ -478,7 +516,7 @@
   function buildPetSection(draft) {
     const section = el('div', 'hpx-sp-section');
     const label = el('div', 'hpx-sp-label');
-    label.textContent = 'Pet';
+    label.textContent = '工作夥伴';
     section.appendChild(label);
 
     const row = el('div', 'hpx-sp-pet-choice-row');
@@ -513,12 +551,52 @@
     return section;
   }
 
+  function buildPetVisibilitySection(draft) {
+    const section = el('div', 'hpx-sp-section hpx-sp-pet-visibility');
+    const copy = el('div', 'hpx-sp-pet-visibility-copy');
+    const title = el('div', 'hpx-sp-pet-visibility-title', 'Pet 顯示');
+    const description = el(
+      'div',
+      'hpx-sp-pet-visibility-description',
+      '不想看到浮動 Pet 時可以隱藏，之後可從側邊 pet 選單恢復。'
+    );
+    const toggle = el('button', 'hpx-sp-pet-visibility-toggle');
+    toggle.type = 'button';
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-label', '顯示浮動 Pet');
+
+    function refresh() {
+      const hidden = draft.petHidden === true;
+      toggle.classList.toggle('hpx-sp-on', !hidden);
+      toggle.setAttribute('aria-checked', hidden ? 'false' : 'true');
+      toggle.textContent = hidden ? '顯示 Pet' : '隱藏 Pet';
+    }
+
+    toggle.addEventListener('click', function () {
+      draft.petHidden = draft.petHidden !== true;
+      setPetVisibility(draft.petHidden, true);
+      refreshSidebarControls();
+      if (draft.petHidden) {
+        closeSidebarPopover();
+        unbindOutsideClick();
+      }
+    });
+
+    copy.appendChild(title);
+    copy.appendChild(description);
+    section.appendChild(copy);
+    section.appendChild(toggle);
+    refresh();
+    return section;
+  }
+
   function buildShortcutSection(draft) {
     const section = el('div', 'hpx-sp-section hpx-sp-shortcuts');
     const launcher = el('div', 'hpx-sp-shortcut-launcher');
     const editor = el('div', 'hpx-sp-shortcut-editor');
     let draggingIndex = -1;
     let suppressCardOpen = false;
+    const pendingNewLinks = new Set();
 
     draft[SHORTCUTS_FIELD] = Array.isArray(draft[SHORTCUTS_FIELD])
       ? draft[SHORTCUTS_FIELD].map(function (item) {
@@ -538,9 +616,9 @@
       const links = draft[SHORTCUTS_FIELD];
 
       links.forEach(function (link, index) {
-        let editing = !link.name.trim() || !normalizeShortcutUrl(link.url);
+        let editing = pendingNewLinks.has(link);
+        const original = { name: link.name, url: link.url };
         const shortcutWrap = el('div', 'hpx-sp-shortcut-launcher-item hpx-sp-shortcut-card');
-        shortcutWrap.draggable = true;
         shortcutWrap.setAttribute('data-shortcut-index', String(index));
         shortcutWrap.setAttribute('aria-label', '拖曳以重新排序 ' + (link.name.trim() || '未命名'));
         shortcutWrap.addEventListener('click', function (event) {
@@ -608,16 +686,8 @@
         edit.textContent = '✎';
         edit.title = '編輯 Link';
         edit.setAttribute('aria-label', '編輯 Link');
-        edit.hidden = editing;
-        edit.addEventListener('click', function () {
-          editing = !editing;
-          row.hidden = !editing;
-          edit.setAttribute('aria-pressed', editing ? 'true' : 'false');
-          if (editing) nameInput.focus();
-        });
 
         const row = el('div', 'hpx-sp-shortcut-row');
-        row.hidden = !editing;
         const nameInput = document.createElement('input');
         nameInput.type = 'text';
         nameInput.maxLength = 32;
@@ -625,10 +695,7 @@
         nameInput.value = link.name;
         nameInput.setAttribute('aria-label', '快捷按鈕名稱');
         nameInput.addEventListener('input', function () {
-          link.name = nameInput.value;
-          quickButton.textContent = link.name.trim() || '未命名';
           syncEditorState();
-          persistShortcutLinks();
         });
         nameInput.addEventListener('focus', function () {
           keepShortcutEditorVisible(nameInput);
@@ -640,22 +707,11 @@
         urlInput.value = link.url;
         urlInput.setAttribute('aria-label', '快捷按鈕 URL');
         urlInput.addEventListener('input', function () {
-          link.url = urlInput.value;
-          quickButton.title = link.url ? '開啟 ' + (link.name.trim() || '快速連結') : '請設定 URL';
-          quickButton.disabled = !normalizeShortcutUrl(link.url);
           syncEditorState();
-          persistShortcutLinks();
         });
         urlInput.addEventListener('focus', function () {
           keepShortcutEditorVisible(urlInput);
         });
-
-        function syncEditorState() {
-          const complete = !!link.name.trim() && !!normalizeShortcutUrl(link.url);
-          // 編輯中的輸入列必須保持開啟，否則輸入第一個字後就會被誤判為完成並收起。
-          edit.hidden = !complete;
-          edit.setAttribute('aria-pressed', editing ? 'true' : 'false');
-        }
 
         const remove = el('button', 'hpx-sp-shortcut-remove');
         remove.type = 'button';
@@ -663,10 +719,96 @@
         remove.title = '刪除快速連結';
         remove.setAttribute('aria-label', '刪除快速連結');
         remove.addEventListener('click', function () {
+          pendingNewLinks.delete(link);
           links.splice(index, 1);
           render();
           persistShortcutLinks();
         });
+
+        const editorActions = el('div', 'hpx-sp-shortcut-edit-actions');
+        const confirm = el('button', 'hpx-sp-shortcut-confirm', '確認');
+        confirm.type = 'button';
+        const cancel = el('button', 'hpx-sp-shortcut-cancel', '取消');
+        cancel.type = 'button';
+        const error = el('div', 'hpx-sp-shortcut-error');
+        error.setAttribute('role', 'status');
+
+        function setEditing(next) {
+          editing = next === true;
+          row.hidden = !editing;
+          edit.hidden = editing;
+          remove.hidden = editing;
+          shortcutWrap.draggable = !editing;
+          quickButton.disabled = editing || !normalizeShortcutUrl(link.url);
+          edit.setAttribute('aria-pressed', editing ? 'true' : 'false');
+          edit.setAttribute('aria-expanded', editing ? 'true' : 'false');
+          if (!editing) error.textContent = '';
+        }
+
+        function syncEditorState() {
+          const nameReady = !!nameInput.value.trim();
+          const urlReady = !!normalizeShortcutUrl(urlInput.value);
+          confirm.disabled = !nameReady || !urlReady;
+          nameInput.setAttribute('aria-invalid', nameReady ? 'false' : 'true');
+          urlInput.setAttribute('aria-invalid', urlReady ? 'false' : 'true');
+          error.textContent = '';
+        }
+
+        edit.addEventListener('click', function () {
+          setEditing(true);
+          syncEditorState();
+          nameInput.focus();
+          keepShortcutEditorVisible(nameInput);
+        });
+
+        confirm.addEventListener('click', function () {
+          const name = nameInput.value.trim().slice(0, 32);
+          const url = normalizeShortcutUrl(urlInput.value);
+          if (!name || !url) {
+            syncEditorState();
+            error.textContent = '請輸入名稱與有效網址。';
+            (!name ? nameInput : urlInput).focus();
+            return;
+          }
+
+          link.name = name;
+          link.url = url;
+          pendingNewLinks.delete(link);
+          persistShortcutLinks().then(function (saved) {
+            if (saved) {
+              render();
+              return;
+            }
+            link.name = original.name;
+            link.url = original.url;
+            error.textContent = '尚有其他未完成的快捷連結。';
+          });
+        });
+
+        cancel.addEventListener('click', function () {
+          if (pendingNewLinks.has(link)) {
+            pendingNewLinks.delete(link);
+            links.splice(index, 1);
+            render();
+            return;
+          }
+          nameInput.value = original.name;
+          urlInput.value = original.url;
+          setEditing(false);
+          syncEditorState();
+        });
+
+        function handleEditorKeydown(event) {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            cancel.click();
+          } else if (event.key === 'Enter' && !confirm.disabled) {
+            event.preventDefault();
+            confirm.click();
+          }
+        }
+        nameInput.addEventListener('keydown', handleEditorKeydown);
+        urlInput.addEventListener('keydown', handleEditorKeydown);
 
         actions.appendChild(edit);
         actions.appendChild(remove);
@@ -675,17 +817,25 @@
         shortcutWrap.appendChild(cardMain);
         row.appendChild(nameInput);
         row.appendChild(urlInput);
+        editorActions.appendChild(confirm);
+        editorActions.appendChild(cancel);
+        row.appendChild(editorActions);
+        row.appendChild(error);
         shortcutWrap.appendChild(row);
         launcher.appendChild(shortcutWrap);
+        setEditing(editing);
+        syncEditorState();
       });
 
       const addRow = el('div', 'hpx-sp-shortcut-add-row');
       const add = el('button', 'hpx-sp-shortcut-add');
       add.type = 'button';
       add.textContent = '+ 新增快速連結';
-      add.disabled = links.length >= MAX_SHORTCUTS;
+      add.disabled = links.length >= MAX_SHORTCUTS || pendingNewLinks.size > 0;
       add.addEventListener('click', function () {
-        links.push({ name: '', url: '' });
+        const link = { name: '', url: '' };
+        pendingNewLinks.add(link);
+        links.push(link);
         render();
         const inputs = launcher.querySelectorAll('.hpx-sp-shortcut-row input');
         const newNameInput = inputs[inputs.length - 2];
@@ -749,15 +899,28 @@
     draft.pet = petDefinition(draft.pet).id;
 
     const panel = el('div', 'hpx-sp');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', '快捷連結');
 
-    // Header：只保留關閉按鈕，避免重複顯示產品名稱。
+    // Header：Quick Links 之外提供 Pet 顯示控制；隱藏後仍可由側邊 pet 選單恢復。
     const header = el('div', 'hpx-sp-header');
+    header.appendChild(el('strong', 'hpx-sp-title', '快捷連結'));
+    const headerActions = el('div', 'hpx-sp-header-actions');
+    const hidePetBtn = el('button', 'hpx-sp-hide-pet', '隱藏 Pet');
+    hidePetBtn.type = 'button';
+    hidePetBtn.setAttribute('aria-label', '隱藏浮動 Pet');
+    hidePetBtn.title = '隱藏浮動 Pet（可從側邊 pet 選單恢復）';
+    hidePetBtn.addEventListener('click', function () {
+      setPetVisibility(true, true);
+    });
     const closeBtn = el('button', 'hpx-sp-close');
     closeBtn.type = 'button';
     closeBtn.innerHTML = '&times;';
     closeBtn.setAttribute('aria-label', '關閉');
     closeBtn.addEventListener('click', function () { SettingsPanel.close(); });
-    header.appendChild(closeBtn);
+    headerActions.appendChild(hidePetBtn);
+    headerActions.appendChild(closeBtn);
+    header.appendChild(headerActions);
     panel.appendChild(header);
 
     // Body
@@ -768,24 +931,19 @@
     return panel;
   }
 
-  // ── 左側導覽欄控制區 ────────────────────────────────────────
+  // ── 主畫面左下角橫向控制列 ────────────────────────────────────
 
-  function findSidebarHost() {
-    const selectors = [
-      '#app-nav-menu .app-nav-menu-sidebar',
-      '#app-nav-menu > .app-nav-menu-sidebar',
-      '.hpx-theme-iconbar',
-      '#app-nav-menu',
-    ];
-    for (let index = 0; index < selectors.length; index += 1) {
-      try {
-        const node = document.querySelector(selectors[index]);
-        if (node) return node;
-      } catch (e) {
-        // Ignore malformed or unavailable host selectors.
-      }
+  function applySidebarCollapsed() {
+    if (!sidebarControlsEl || !sidebarSettings) return;
+    const collapsed = sidebarSettings.sidebarCollapsed === true;
+    sidebarControlsEl.classList.toggle('hpx-sidebar-controls--collapsed', collapsed);
+    sidebarControlsEl.setAttribute('data-collapsed', collapsed ? 'true' : 'false');
+    const collapseButton = sidebarControlsEl.querySelector('[data-hpx-sidebar-control="collapse"]');
+    if (collapseButton) {
+      collapseButton.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      collapseButton.setAttribute('aria-label', collapsed ? '展開設定列' : '收束設定列');
+      collapseButton.title = collapsed ? '展開設定列' : '收束設定列';
     }
-    return null;
   }
 
   function refreshSidebarControls() {
@@ -793,53 +951,67 @@
     const modeButton = sidebarControlsEl.querySelector('[data-hpx-sidebar-control="mode"]');
     const modeState = sidebarControlsEl.querySelector('[data-hpx-sidebar-state="mode"]');
     const colorState = sidebarControlsEl.querySelector('[data-hpx-sidebar-state="color"]');
+    const petButton = sidebarControlsEl.querySelector('[data-hpx-sidebar-control="pet"]');
     const petState = sidebarControlsEl.querySelector('[data-hpx-sidebar-state="pet"]');
+    const hidden = sidebarSettings.petHidden === true;
+    petHidden = hidden;
     if (modeButton) {
       modeButton.classList.toggle('hpx-sidebar-control--active', sidebarSettings.ultimateMode === true);
       modeButton.setAttribute('aria-pressed', sidebarSettings.ultimateMode ? 'true' : 'false');
+      modeButton.setAttribute('aria-label', '簡單模式，' + (sidebarSettings.ultimateMode ? '已開啟' : '已關閉'));
+      modeButton.title = sidebarSettings.ultimateMode ? '關閉簡單模式' : '開啟簡單模式';
     }
     if (modeState) modeState.textContent = sidebarSettings.ultimateMode ? 'ON' : 'OFF';
     if (colorState) {
       colorState.textContent = '';
       colorState.style.setProperty('--hpx-sidebar-color', normalizeAccent(sidebarSettings.accent));
     }
-    if (petState) petState.textContent = petDefinition(sidebarSettings.pet).name;
+    const colorButton = sidebarControlsEl.querySelector('[data-hpx-sidebar-control="color"]');
+    if (colorButton) {
+      const color = normalizeAccent(sidebarSettings.accent).toUpperCase();
+      colorButton.setAttribute('aria-label', '主題色：' + color);
+      colorButton.title = '主題色：' + color;
+    }
+    if (petButton) {
+      petButton.setAttribute('data-pet-hidden', hidden ? 'true' : 'false');
+      const petName = petDefinition(sidebarSettings.pet).name;
+      petButton.setAttribute('aria-label', '寵物：' + petName + (hidden ? '（目前已隱藏）' : ''));
+      petButton.title = hidden ? '寵物目前已隱藏，點此調整' : '選擇寵物或調整顯示';
+    }
+    if (petState) petState.textContent = hidden ? '隱藏' : petDefinition(sidebarSettings.pet).name;
+    applySidebarCollapsed();
   }
 
   function positionSidebarPopover() {
     if (!sidebarPopoverEl || !sidebarControlsEl) return;
-    const anchor = sidebarControlsEl.getBoundingClientRect();
+    const kind = sidebarPopoverEl.getAttribute('data-kind');
+    const anchorButton = kind
+      ? sidebarControlsEl.querySelector('[data-hpx-sidebar-control="' + kind + '"]')
+      : null;
+    const anchor = (anchorButton || sidebarControlsEl).getBoundingClientRect();
     const width = sidebarPopoverEl.offsetWidth || 320;
     const height = sidebarPopoverEl.offsetHeight || 240;
     const viewportWidth = Math.max(0, window.innerWidth);
     const viewportHeight = Math.max(0, window.innerHeight);
     const margin = 8;
     const gap = 8;
-    let left = anchor.right + gap;
-    if (left + width > viewportWidth - margin) left = anchor.left - width - gap;
+    let left = anchor.left;
     const maxLeft = Math.max(margin, viewportWidth - width - margin);
     const maxTop = Math.max(margin, viewportHeight - height - margin);
-    const top = clamp(anchor.bottom - height, margin, maxTop);
+    let top = anchor.top - height - gap;
+    if (top < margin) top = anchor.bottom + gap;
     sidebarPopoverEl.style.left = Math.round(clamp(left, margin, maxLeft)) + 'px';
-    sidebarPopoverEl.style.top = Math.round(top) + 'px';
+    sidebarPopoverEl.style.top = Math.round(clamp(top, margin, maxTop)) + 'px';
   }
 
   function positionSidebarControls() {
     if (!sidebarControlsEl || !sidebarControlsEl.parentNode) return;
-    const host = findSidebarHost();
-    const rect = host && host.getBoundingClientRect ? host.getBoundingClientRect() : null;
-    const viewportWidth = Math.max(0, window.innerWidth);
-    const hostWidth = rect && rect.width > 12 ? rect.width : 72;
-    const width = Math.round(clamp(hostWidth - 8, 60, 88));
-    const leftBase = rect && Number.isFinite(rect.left) ? rect.left : 0;
-    const left = clamp(leftBase + Math.max(2, (hostWidth - width) / 2), 2, Math.max(2, viewportWidth - width - 2));
-    sidebarControlsEl.style.width = width + 'px';
-    sidebarControlsEl.style.left = Math.round(left) + 'px';
-    // Halo 的側欄可能是 absolute/flex 容器，getBoundingClientRect().bottom
-    // 不一定代表視窗底部；控制區需求是貼齊畫面底端，因此固定使用 viewport bottom。
+    const collapsed = sidebarSettings && sidebarSettings.sidebarCollapsed === true;
+    sidebarControlsEl.style.width = collapsed ? '44px' : 'auto';
+    // Detached utility dock stays clear of the viewport edge and native navigation.
+    sidebarControlsEl.style.left = '16px';
     sidebarControlsEl.style.top = 'auto';
-    sidebarControlsEl.style.bottom = '0px';
-    sidebarControlsEl.setAttribute('data-host-width', String(Math.round(hostWidth)));
+    sidebarControlsEl.style.bottom = '16px';
     positionSidebarPopover();
   }
 
@@ -856,6 +1028,18 @@
     if (sidebarObserver || typeof MutationObserver !== 'function' || !document.body) return;
     sidebarObserver = new MutationObserver(function () { scheduleSidebarPosition(); });
     sidebarObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function toggleSidebarCollapse() {
+    if (!sidebarSettings) return;
+    sidebarSettings.sidebarCollapsed = sidebarSettings.sidebarCollapsed !== true;
+    applySidebarCollapsed();
+    if (sidebarSettings.sidebarCollapsed) {
+      closeSidebarPopover();
+      unbindOutsideClick();
+    }
+    persistSettings({ sidebarCollapsed: sidebarSettings.sidebarCollapsed });
+    scheduleSidebarPosition();
   }
 
   function toggleSidebarUltimateMode() {
@@ -898,15 +1082,19 @@
 
     sidebarControlsEl = el('div', 'hpx-sidebar-controls');
     sidebarControlsEl.setAttribute('role', 'toolbar');
-    sidebarControlsEl.setAttribute('aria-label', 'Writing Helper 控制');
-    sidebarControlsEl.appendChild(makeSidebarControl('mode', 'mode', toggleSidebarUltimateMode));
-    sidebarControlsEl.appendChild(makeSidebarControl('color', 'color', function () {
+    sidebarControlsEl.setAttribute('aria-label', 'Halopsa 工作台控制');
+    sidebarControlsEl.appendChild(makeSidebarControl('收合', 'collapse', toggleSidebarCollapse));
+    sidebarControlsEl.appendChild(makeSidebarControl('快捷連結', 'links', function () {
+      openSidebarPopover('links');
+    }));
+    sidebarControlsEl.appendChild(makeSidebarControl('簡單模式', 'mode', toggleSidebarUltimateMode));
+    sidebarControlsEl.appendChild(makeSidebarControl('主題色', 'color', function () {
       openSidebarPopover('color');
     }));
-    sidebarControlsEl.appendChild(makeSidebarControl('pet', 'pet', function () {
+    sidebarControlsEl.appendChild(makeSidebarControl('寵物', 'pet', function () {
       openSidebarPopover('pet');
     }));
-    sidebarControlsEl.appendChild(makeSidebarControl('settings', 'settings', function () {
+    sidebarControlsEl.appendChild(makeSidebarControl('設定', 'settings', function () {
       closeSidebarPopover();
       if (panelEl) SettingsPanel.close();
       openOptionsPage();
@@ -918,6 +1106,9 @@
   }
 
   function closeSidebarPopover() {
+    if (sidebarControlsEl) sidebarControlsEl.querySelectorAll('[aria-expanded="true"]').forEach(function (button) {
+      if (button.getAttribute('data-hpx-sidebar-control') !== 'collapse') button.setAttribute('aria-expanded', 'false');
+    });
     if (sidebarPopoverEl && sidebarPopoverEl.parentNode) sidebarPopoverEl.parentNode.removeChild(sidebarPopoverEl);
     sidebarPopoverEl = null;
   }
@@ -934,7 +1125,7 @@
     const draft = Object.assign({}, sidebarSettings || DEFAULTS);
     sidebarSettings = draft;
     const popover = el('div', 'hpx-sidebar-popover');
-    const title = kind === 'pet' ? 'pet' : 'color';
+    const title = kind === 'pet' ? '寵物' : kind === 'links' ? '快捷連結' : '外觀與主題色';
     popover.setAttribute('role', 'dialog');
     popover.setAttribute('aria-label', title);
     popover.setAttribute('data-kind', kind);
@@ -952,8 +1143,11 @@
     popover.appendChild(header);
 
     const body = el('div', 'hpx-sidebar-popover-body');
-    if (kind === 'pet') {
+    if (kind === 'links') {
+      body.appendChild(buildShortcutSection(draft));
+    } else if (kind === 'pet') {
       body.appendChild(buildPetSection(draft));
+      body.appendChild(buildPetVisibilitySection(draft));
     } else {
       body.appendChild(buildThemeSection(draft));
       body.appendChild(buildColorSection(draft));
@@ -961,6 +1155,17 @@
     popover.appendChild(body);
     sidebarPopoverEl = popover;
     document.body.appendChild(popover);
+    const trigger = sidebarControlsEl && sidebarControlsEl.querySelector('[data-hpx-sidebar-control="' + kind + '"]');
+    if (trigger) trigger.setAttribute('aria-expanded', 'true');
+    popover.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closeSidebarPopover();
+        unbindOutsideClick();
+        if (trigger) trigger.focus();
+      }
+    });
     positionSidebarControls();
     bindOutsideClick();
     const raf = window.requestAnimationFrame || function (callback) { return setTimeout(callback, 0); };
@@ -968,6 +1173,7 @@
       if (sidebarPopoverEl === popover) {
         positionSidebarPopover();
         popover.classList.add('hpx-sidebar-popover--open');
+        close.focus({ preventScroll: true });
       }
     });
   }
@@ -1060,7 +1266,7 @@
   }
 
   function repositionFloatingUi() {
-    if (petEl && petEl.isConnected) applyPetPosition(petEl, currentPetPosition(petEl));
+    if (petEl && petEl.isConnected && !petHidden) applyPetPosition(petEl, currentPetPosition(petEl));
     if (panelEl) positionPanelAroundPet(panelEl);
     scheduleSidebarPosition();
   }
@@ -1082,7 +1288,7 @@
    * 面板過寬或 viewport 太窄時仍會夾在 viewport 內，避免被裁切。
    */
   function positionPanelAroundPet(panel) {
-    if (!panel || !petEl || !petEl.isConnected) return;
+    if (!panel || petHidden || !petEl || !petEl.isConnected) return;
 
     const petRect = petEl.getBoundingClientRect();
     const viewport = overlayViewport();
@@ -1125,7 +1331,6 @@
     const pet = el('button', 'hpx-sp-pet');
     pet.type = 'button';
     pet.style.setProperty('border', '0', 'important');
-    pet.style.setProperty('outline', '0', 'important');
     pet.style.setProperty('box-shadow', 'none', 'important');
     pet.setAttribute('aria-label', '開啟 Quick Links；可拖曳移動');
     pet.setAttribute('aria-expanded', 'false');
@@ -1237,7 +1442,9 @@
 
     applyPetPosition(pet, settings.petPosition);
     if (img.tagName === 'IMG') {
-      img.addEventListener('load', function () { applyPetPosition(pet, currentPetPosition(pet)); });
+      img.addEventListener('load', function () {
+        if (!petHidden) applyPetPosition(pet, currentPetPosition(pet));
+      });
     }
     return pet;
   }
@@ -1250,7 +1457,9 @@
       refreshPetDefinitions().then(function () {
         loadSettings(function (settings) {
           if (petEl && petEl.isConnected) return;
+          petHidden = settings.petHidden === true;
           petEl = buildPet(settings);
+          applyPetVisibility(petHidden);
           document.body.appendChild(petEl);
           applyPetPosition(petEl, settings.petPosition);
           setPetAppearance(settings.pet);
@@ -1269,6 +1478,7 @@
     },
 
     open: function () {
+      if (petHidden) return;
       unbindOutsideClick();
       closeSidebarPopover();
       if (panelEl && panelEl.parentNode) {
@@ -1277,6 +1487,7 @@
       }
       refreshPetDefinitions().then(function () {
         loadSettings(function (s) {
+          if (petHidden || s.petHidden === true) return;
           const panel = buildPanel(s);
           panelEl = panel;
           document.body.appendChild(panel);

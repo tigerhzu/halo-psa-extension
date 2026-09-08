@@ -108,11 +108,6 @@
   function renderInto(bar, windowEl, groups) {
     bar.textContent = '';
 
-    const label = document.createElement('span');
-    label.className = 'hpx-tb-group-label';
-    label.textContent = '聯絡人';
-    bar.appendChild(label);
-
     if (!groups.length) {
       const empty = makeButton('尚無名單，點此管理…', '開啟設定頁新增名單', function () {
         NS.features.besties.openManager();

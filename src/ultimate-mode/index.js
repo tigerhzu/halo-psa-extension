@@ -8,6 +8,38 @@
   let started = false;
   let lastReport = null;
   let syncGeneration = 0;
+  let detailRetryTimer = null;
+  let detailRetryUrl = '';
+  let detailRetryCount = 0;
+  const DETAIL_RETRY_LIMIT = 8;
+
+  function clearDetailRetry(resetCounter) {
+    if (detailRetryTimer) clearTimeout(detailRetryTimer);
+    detailRetryTimer = null;
+    if (resetCounter) {
+      detailRetryUrl = '';
+      detailRetryCount = 0;
+    }
+  }
+
+  /**
+   * New Ticket 儲存後的 details DOM 會分批抵達；除了 observer 外再做有限次
+   * readiness retry，避免第一輪只看見殘留／半成品區塊後便永久停止精簡。
+   */
+  function scheduleDetailRetry() {
+    const url = window.location.href;
+    if (detailRetryUrl !== url) {
+      clearDetailRetry(true);
+      detailRetryUrl = url;
+    }
+    if (detailRetryTimer || detailRetryCount >= DETAIL_RETRY_LIMIT) return;
+    detailRetryCount += 1;
+    const delay = Math.min(1000, 120 * Math.pow(2, detailRetryCount - 1));
+    detailRetryTimer = setTimeout(function () {
+      detailRetryTimer = null;
+      if (enabled && window.location.href === url) scan();
+    }, delay);
+  }
 
   function normalizeTeams(value) {
     const source = Array.isArray(value) ? value : cfg.DEFAULT_TEAM_ITEMS;
@@ -94,14 +126,23 @@
     }
   }
 
+  /**
+   * Halo 的 New Ticket 儲存流程有時會先把工單詳情掛進目前頁面，網址卻仍
+   * 停在 `/`。因此不能用 pathname 判斷是否為工單；詳情標題列才是可靠的
+   * 畫面訊號。
+   */
+  function isTicketDetailsMounted() {
+    return !!document.querySelector(
+      '.details_page_title, .details-group-header'
+    );
+  }
+
   function scan() {
     if (!enabled) return { enabled: false };
     const startedAt = window.performance && window.performance.now ? window.performance.now() : Date.now();
     document.documentElement.setAttribute('data-hpx-ultimate-mode', 'on');
     document.documentElement.removeAttribute('data-hpx-ultimate-bootstrap');
-    const ticketDetailsMounted = /^\/tickets(?:\/|$)/i.test(window.location.pathname) && !!document.querySelector(
-      '.details_page_title .actionmenubtn, .details-group-header'
-    );
+    const ticketDetailsMounted = isTicketDetailsMounted();
     const report = {
       enabled: true,
       url: window.location.href,
@@ -118,6 +159,11 @@
       ['ticket-actions', 'ticket-more-actions', 'ticket-utilities', 'ticket-info', 'user-info'].forEach(shared.restoreSection);
       report.ticketDetails = 'not-mounted';
     }
+    const detailSectionsReady = ticketDetailsMounted &&
+      report.ticketInfo && report.ticketInfo.found &&
+      report.userInfo && report.userInfo.found;
+    if (ticketDetailsMounted && !detailSectionsReady) scheduleDetailRetry();
+    else clearDetailRetry(true);
     const endedAt = window.performance && window.performance.now ? window.performance.now() : Date.now();
     report.durationMs = Math.round((endedAt - startedAt) * 10) / 10;
     lastReport = report;
@@ -137,6 +183,7 @@
     }
     enabled = next;
     if (!enabled) {
+      clearDetailRetry(true);
       NS.ultimate.observer.stop();
       NS.ultimate.teamShortcuts.restore();
       shared.restoreAll();
@@ -160,7 +207,7 @@
     applyTeamSettings(snapshot);
     setEnabled(snapshot[cfg.SETTING_FIELD] === true, { rescan: rebuildShortcuts === true });
     if (enabled && wasEnabled && rebuildShortcuts) {
-      // 設定頁寫入後先同步 Timesheets 快捷列，再讓 observer 做完整 SPA reconcile，
+      // 設定頁寫入後先同步全站 Team 快捷列，再讓 observer 做完整 SPA reconcile，
       // 避免使用者看到舊 Team 清單停留一個 observer debounce 週期。
       NS.ultimate.teamShortcuts.restore();
       safeApply('Team Shortcuts', NS.ultimate.teamShortcuts);
@@ -232,5 +279,6 @@
     lastReport: function () { return lastReport; },
     getTeams: function () { return cfg.SIDEBAR.TEAM_ITEMS.slice(); },
     _normalizeTeams: normalizeTeams,
+    _isTicketDetailsMounted: isTicketDetailsMounted,
   };
 })();

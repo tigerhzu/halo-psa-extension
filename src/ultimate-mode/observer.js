@@ -37,10 +37,17 @@
 
   function schedule(immediate) {
     if (timer) clearTimeout(timer);
-    if (immediate) mutationBurstAt = 0;
-    else if (!mutationBurstAt) mutationBurstAt = Date.now();
-    const elapsed = mutationBurstAt ? Date.now() - mutationBurstAt : 0;
-    const delay = immediate || elapsed >= cfg.MAX_MUTATION_WAIT_MS ? 0 : cfg.SCAN_DEBOUNCE_MS;
+    if (immediate) {
+      // MutationObserver callback 與 SPA 導覽事件都在下一次 paint 之前執行；
+      // urgent 節點必須「同步」reconcile，否則 setTimeout(0) 的 macrotask
+      // 會落在 paint 之後，讓 Halo 原生 Sidebar 閃出一幀（FOUC）。
+      timer = null;
+      run();
+      return;
+    }
+    if (!mutationBurstAt) mutationBurstAt = Date.now();
+    const elapsed = Date.now() - mutationBurstAt;
+    const delay = elapsed >= cfg.MAX_MUTATION_WAIT_MS ? 0 : cfg.SCAN_DEBOUNCE_MS;
     timer = setTimeout(run, delay);
   }
 
