@@ -19,7 +19,12 @@ test('Ornith configuration changes only the exact manifest host and refuses unsa
   const original = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
   try {
     fs.writeFileSync(manifestPath, JSON.stringify(original));
-    const invoke = origin => cp.spawnSync(shell, ['-NoProfile', '-NonInteractive', '-File', script, '-Origin', origin, '-ExtensionPath', temporaryRoot], { encoding: 'utf8', timeout: 15000 });
+    const invoke = origin => {
+      // Fresh hosted Windows runners may take longer to initialize PowerShell.
+      const result = cp.spawnSync(shell, ['-NoProfile', '-NonInteractive', '-File', script, '-Origin', origin, '-ExtensionPath', temporaryRoot], { encoding: 'utf8', timeout: 60000 });
+      assert.equal(result.error, undefined, [result.error && result.error.message, result.stderr].filter(Boolean).join('\n'));
+      return result;
+    };
     const success = invoke('https://ai.example.com');
     assert.equal(success.status, 0, success.stderr);
     const configured = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
