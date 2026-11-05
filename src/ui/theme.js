@@ -19,7 +19,7 @@
 
   const STORAGE_KEY = 'hpx_settings';
   const DEFAULT_THEME = 'cute-ios';
-  const DEFAULT_ACCENT = '#0c2d55'; // 預設深藍色；保留既有使用者自訂色
+  const DEFAULT_ACCENT = '#15487e'; // 預設側欄藍色；保留既有使用者自訂色
   const DEFAULT_OPACITY = 100; // 百分比 40~100
   const VALID = ['default', 'cute-ios'];
 

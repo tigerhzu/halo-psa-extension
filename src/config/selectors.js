@@ -259,6 +259,9 @@
       MAX_LABEL_TEXT_LENGTH: 100,
 
       OWN_UI_ROOT_SELECTORS: [
+        '.hpx-quick-status-trigger',
+        '.hpx-quick-status-panel',
+        '.hpx-quick-status-progress',
         '.hpx-toolbar',
         '.hpx-sp',
         '.hpx-sp-pet',

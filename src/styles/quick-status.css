@@ -1,0 +1,69 @@
+.hpx-quick-status-trigger {
+  display: inline-flex !important;
+  align-items: center;
+  margin: 3px 6px;
+  padding: 8px 13px;
+  border: 1px solid #6556c8;
+  border-radius: 7px;
+  background: #6556c8;
+  color: #fff;
+  font: 600 13px/1.4 system-ui, sans-serif;
+  cursor: pointer;
+}
+.hpx-quick-status-panel {
+  position: fixed;
+  z-index: 100000;
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 16px));
+  padding: 18px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #dedbe9;
+  border-radius: 12px;
+  background: #fff;
+  color: #292639;
+  box-shadow: 0 12px 36px #201c3633;
+  font: 14px/1.5 system-ui, sans-serif;
+  text-align: left;
+}
+.hpx-quick-status-panel strong { font-size: 16px; }
+.hpx-quick-status-panel p { margin: 10px 0; font-size: 12px; color: #625e71; }
+.hpx-quick-status-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; margin: 10px 0; min-width: 0; }
+.hpx-quick-status-list button {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: normal;
+  padding: 9px 12px;
+  border: 1px solid #e5e2ef;
+  border-radius: 7px;
+  background: #f8f7fc;
+  color: #292639;
+  font: inherit;
+  cursor: pointer;
+}
+.hpx-quick-status-list button small { display: block; margin-top: 3px; font: 11px/1.4 system-ui; color: #625e71; }
+.hpx-quick-status-trigger:disabled { opacity: .65; cursor: wait; }
+.hpx-quick-status-progress { position: fixed; z-index: 100001; top: 12px; left: 50%; transform: translateX(-50%); width: min(600px, calc(100vw - 24px)); box-sizing: border-box; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #b7aadd; border-radius: 10px; background: #f8f6ff; color: #292639; box-shadow: 0 4px 20px #201c3633; font: 13px/1.5 system-ui; }
+.hpx-quick-status-progress span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.hpx-quick-status-progress button { flex: 0 0 auto; border: 1px solid #b7aadd; border-radius: 6px; padding: 6px 10px; background: white; color: #44377c; cursor: pointer; }
+.hpx-quick-status-progress[data-error="true"] { border-color: #c76853; background: #fff7f3; }
+.hpx-quick-status-list button:hover:not(:disabled) { background: #eeebfb; border-color: #a89be0; }
+.hpx-quick-status-list button:disabled { opacity: .5; cursor: not-allowed; }
+.hpx-quick-status-close { float: right; border: 0; background: transparent; color: #625e71; font-size: 23px; cursor: pointer; }
+.hpx-quick-status-panel summary { cursor: pointer; font-size: 12px; color: #6556a0; }
+.hpx-quick-status-trigger:focus-visible, .hpx-quick-status-panel button:focus-visible, .hpx-quick-status-panel summary:focus-visible {
+  outline: 2px solid #6556c8;
+  outline-offset: 2px;
+}
+.hpx-halo-api-panel label { display: block; margin: 12px 0 5px; font-size: 12px; font-weight: 600; }
+.hpx-halo-api-panel :is(select, textarea) { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid #8493a8; border-radius: 8px; background: white; color: #24344b; font: inherit; font-size: 13px; }
+.hpx-halo-api-panel textarea { resize: vertical; }
+.hpx-halo-api-panel { width: min(390px, calc(100vw - 16px)); }
+.hpx-halo-api-panel .hpx-quick-status-list { margin-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hpx-halo-api-panel .hpx-quick-status-list button:last-child { grid-column: 1 / -1; }
+.hpx-halo-api-panel .hpx-quick-status-list button:first-child:not(:disabled) { background: #6556c8; color: #fff; }
+.hpx-halo-api-panel [hidden] { display: none !important; }

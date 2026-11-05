@@ -54,6 +54,7 @@
 
     // Ticket 閱讀視窗：在 Progress 上提供完整活動歷程的唯讀、可縮放視窗。
     NS.features.ticketReader.start();
+    NS.features.quickStatus.start();
 
     // Category 放大選擇器：觸發並放大 Halo 原生控制項，不接管分類資料或選取流程。
     NS.ui.categoryPicker.start();

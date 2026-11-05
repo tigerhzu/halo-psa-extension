@@ -9,6 +9,20 @@
 
   const PROFESSIONAL_LINE = /^- 【(?:使用者回報|異常|資訊|設定|處理動作|確認結果|已完成|待確認|注意|負責單位)】\s*\S/;
 
+  // Normalize presentation only; never infer labels or discard non-list content.
+  function normalize(action, output) {
+    const original = String(output || '');
+    if (action !== 'professional') return original;
+    let value = original.trim().replace(/\r\n?/g, '\n');
+    const wrapper = value.match(/^```(?:text|plaintext|markdown|md)?\s*\n([\s\S]*?)\n```$/i);
+    if (wrapper) value = wrapper[1];
+    return value.split('\n').map(function (line) {
+      const candidate = line.trim()
+        .replace(/^(?:[-*•]\s*|\d+[.)、]\s*)?(?:\*\*)?(【[^】]+】)(?:\*\*)?\s*/, '- $1');
+      return PROFESSIONAL_LINE.test(candidate) ? candidate : line;
+    }).join('\n');
+  }
+
   function cleanMatch(value) {
     return String(value || '').replace(/[),.;，。；）】]+$/, '');
   }
@@ -35,10 +49,11 @@
         found.add(cleanMatch(normalized));
       });
     });
-    const accountPattern = /(?:帳號|account(?:\s+id)?|user(?:name)?)\s*(?:為|是)?\s*(?:[:：=]\s*)?([A-Za-z0-9_.@\\/-]+)/gi;
+    // English prose such as "test account connected" is not a labeled account.
+    const accountPattern = /(?:帳號\s*(?:為|是)?\s*[:：=]?\s*|\b(?:account|user)\s*[:：=]\s*|\b(?:account\s+id|user\s*name)\b\s*[:：=]?\s*)([A-Za-z0-9_.@\\/-]+)/gi;
     let account;
     while ((account = accountPattern.exec(source))) found.add(cleanMatch(account[1]));
-    const labeledValue = /(?:版本|version|\bID)\s*[:：=]?\s*([A-Za-z0-9_.-]+)/gi;
+    const labeledValue = /(?:版本\s*[:：=]?\s*|\bversion\b\s*[:：=]?\s*|\bID\b\s*[:：=]?\s*)([A-Za-z0-9_.-]+)/gi;
     let labeled;
     while ((labeled = labeledValue.exec(source))) found.add(cleanMatch(labeled[1]));
     const command = /(?:指令|command)\s*[:：=]\s*([^\r\n]+)/gi;
@@ -110,9 +125,15 @@
     return '';
   }
 
-  function validate(action, input, output) {
+  function validate(action, input, output, imageTokens) {
+    output = normalize(action, output);
+    // Only caller-registered image masks are recoverable from local image HTML.
+    // A similarly named ticket ID in ordinary text remains protected.
+    const recoverable = new Set((Array.isArray(imageTokens) ? imageTokens : []).filter(function (token) {
+      return typeof token === 'string' && /^HPXIMG-\d{4,}$/.test(token);
+    }));
     const missingCount = protectedValues(input).filter(function (value) {
-      return !String(output || '').includes(value);
+      return !recoverable.has(value) && !String(output || '').includes(value);
     }).length;
     if (missingCount) {
       return {
@@ -125,13 +146,37 @@
     return { ok: !error, missingCount: 0, error: error };
   }
 
-  function assertValid(action, input, output) {
-    const result = validate(action, input, output);
+  function assertValid(action, input, output, imageTokens) {
+    const result = validate(action, input, output, imageTokens);
     if (!result.ok) throw new Error(result.error);
     return result;
   }
 
+  // A semantic-label mismatch is a presentation warning, not evidence of lost
+  // content. Keep the draft intact for explicit user review; do not invent labels.
+  function prepareForPreview(action, input, output, imageTokens) {
+    const text = normalize(action, output);
+    if (!text.trim()) throw new Error('AI 回傳內容為空，結果未套用');
+    const imageWarning = (Array.isArray(imageTokens) ? imageTokens : []).some(function (token) {
+      return typeof token === 'string' && /^HPXIMG-\d{4,}$/.test(token) &&
+        String(input || '').includes(token) && !text.includes(token);
+    }) ? 'AI 未保留部分圖片位置；原圖仍保存在本機，套用時會將缺少位置的圖片附在文末，請確認圖片位置。' : '';
+    const result = validate(action, input, text, imageTokens);
+    if (result.ok) return { text: text, warning: imageWarning };
+    if (action === 'professional' && result.error === 'AI 回傳的工單條列格式不合法，結果未套用') {
+      // Still reject missing technical values and broken Markdown structures.
+      assertValid('preview', input, text, imageTokens);
+      return {
+        text: text,
+        warning: 'AI 未完全依照工單標籤格式輸出，已保留完整草稿供確認；部分內容可能不會套用語意顏色。請比對原文、編輯後再套用。' + (imageWarning ? '\n' + imageWarning : ''),
+      };
+    }
+    throw new Error(result.error);
+  }
+
   return {
+    normalize: normalize,
+    prepareForPreview: prepareForPreview,
     protectedValues: protectedValues,
     validate: validate,
     assertValid: assertValid,

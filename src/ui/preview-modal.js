@@ -59,13 +59,20 @@
           }
           const details = m.stub ? '示意模式，未呼叫 AI，不提供模型效能數據。' :
             'API 耗時：' + number(m.elapsedMs == null ? null : m.elapsedMs / 1000, 1, ' 秒') +
-            '；有效輸出速度：' + number(m.effectiveOutputTokensPerSecond, 1, ' tokens/s') +
+            '；全程平均速度：' + number(m.effectiveOutputTokensPerSecond, 1, ' tokens/s') +
             '；輸出 tokens：' + number(m.completionTokens, 0, '') +
             '；推理 tokens：' + number(m.reasoningTokens, 0, '');
           card.appendChild(el('div', 'hpx-modal__metrics-values',
             '本次處理：' + number(m.totalElapsedMs / 1000, 1, ' 秒') + '；' + details));
+          if (!m.stub && typeof m.requestMaxTokens === 'number') {
+            card.appendChild(el('div', 'hpx-modal__metrics-values',
+              '等待回應標頭：' + number(m.responseHeadersMs / 1000, 1, ' 秒') +
+              '；讀取完整回應：' + number(m.responseBodyMs / 1000, 1, ' 秒') +
+              '；輸出上限：' + number(m.requestMaxTokens, 0, ' tokens') +
+              '；請求模式：' + (m.requestedThinkingMode === 'disabled' ? '關閉 Thinking' : '服務預設')));
+          }
           if (!m.stub) card.appendChild(el('div', 'hpx-modal__metrics-help',
-            '速度以 API 全程耗時計算，包含等待與傳輸。推理 tokens 未回報時，使用回報的輸出 tokens 計算。'));
+            '全程平均包含等待與傳輸，不代表模型生成速度。回應標頭時間不是首字延遲；推理用量未回報時，無法確認服務是否採用關閉 Thinking。'));
           modal.appendChild(card);
         }
 

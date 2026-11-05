@@ -8,11 +8,103 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..');
 
+test('both providers return normalized professional output for preview', async function () {
+  for (const provider of ['ornith', 'azure-deepseek']) {
+    const worker = createWorker({
+      provider: provider,
+      ornithBaseUrl: 'https://ornith.example.invalid/v1',
+      ornithModel: 'test-model',
+      ornithApiKey: provider === 'ornith' ? 'local-secret' : '',
+      azureEndpoint: 'https://test.openai.azure.com',
+      azureDeployment: 'test',
+      azureApiKey: provider === 'azure-deepseek' ? 'azure-secret' : '',
+    }, { choices: [{ message: { content: '• **【確認結果】** 測試帳號連線正常。' }, finish_reason: 'stop' }] });
+    const result = await worker.context.handleAiRequest({
+      action: 'professional', text: 'The test account connected normally.',
+    });
+    assert.equal(result.text, '- 【確認結果】測試帳號連線正常。');
+    assert.equal(worker.calls.length, 1);
+    assert.equal(result.warning, '');
+  }
+});
+
+test('both providers pass noncanonical drafts to preview with a warning', async function () {
+  for (const provider of ['ornith', 'azure-deepseek']) {
+    const worker = createWorker({
+      provider: provider,
+      ornithBaseUrl: 'https://ornith.example.invalid/v1',
+      ornithModel: 'test-model',
+      ornithApiKey: provider === 'ornith' ? 'local-secret' : '',
+      azureEndpoint: 'https://test.openai.azure.com', azureDeployment: 'test',
+      azureApiKey: provider === 'azure-deepseek' ? 'azure-secret' : '',
+    }, { choices: [{ message: { content: '處理紀錄\n測試帳號連線正常。' }, finish_reason: 'stop' }] });
+    const result = await worker.context.handleAiRequest({ action: 'professional', text: '測試帳號連線正常。' });
+    assert.equal(result.text, '處理紀錄\n測試帳號連線正常。');
+    assert.match(result.warning, /比對原文/);
+    assert.equal(worker.calls.length, 1);
+  }
+});
+
 function eventTarget() {
   return { addListener: function () {} };
 }
 
-function createWorker(settings, responseBody, responseOptions, hostPermissions) {
+test('both providers pass locally recoverable image warnings to preview without sending image metadata', async function () {
+  for (const provider of ['ornith', 'azure-deepseek']) {
+    const worker = createWorker({ provider, ornithBaseUrl: 'https://ornith.example.invalid/v1',
+      ornithModel: 'test-model', ornithApiKey: provider === 'ornith' ? 'local-secret' : '',
+      azureEndpoint: 'https://test.openai.azure.com', azureDeployment: 'test',
+      azureApiKey: provider === 'azure-deepseek' ? 'azure-secret' : '' });
+    const result = await worker.context.handleAiRequest({ action: 'professional', text: 'SharePoint\nHPXIMG-0001', imageTokens: ['HPXIMG-0001'] });
+    assert.match(result.warning, /圖片.*文末/);
+    assert.equal(worker.calls.length, 1);
+    assert.equal(JSON.parse(worker.calls[0].options.body).imageTokens, undefined);
+  }
+});
+
+test('Azure thinking opt-in is persisted and sent for both drafts and connection tests', async function () {
+  const worker = createWorker({ provider: 'azure-deepseek', azureEndpoint: 'https://test.openai.azure.com',
+    azureDeployment: 'custom-deployment', azureApiKey: 'azure-secret', azureThinkingMode: 'disabled' });
+  await worker.context.handleAiRequest({ action: 'professional', text: 'test' });
+  await worker.context.handleAiPing();
+  assert.equal(worker.calls.length, 2);
+  for (const call of worker.calls) assert.deepEqual(JSON.parse(call.options.body).thinking, { type: 'disabled' });
+});
+
+test('Azure rejects unsupported thinking control without silently retrying', async function () {
+  const worker = createWorker({ provider: 'azure-deepseek', azureEndpoint: 'https://test.openai.azure.com',
+    azureDeployment: 'custom-deployment', azureApiKey: 'azure-secret', azureThinkingMode: 'disabled' },
+    { error: { message: 'Unknown parameter thinking' } }, { ok: false, status: 400 });
+  await assert.rejects(worker.context.handleAiPing(), /不接受關閉 Thinking.*服務預設/);
+  assert.equal(worker.calls.length, 1);
+});
+
+test('unknown thinking settings preserve the compatible Azure request body', async function () {
+  const worker = createWorker({ provider: 'azure-deepseek', azureEndpoint: 'https://test.openai.azure.com',
+    azureDeployment: 'custom-deployment', azureApiKey: 'azure-secret', azureThinkingMode: 'invalid' });
+  await worker.context.handleAiPing();
+  assert.equal(JSON.parse(worker.calls[0].options.body).thinking, undefined);
+});
+
+test('network failures identify the provider and Tailscale recovery without retrying', async function () {
+  for (const provider of ['ornith', 'azure-deepseek']) {
+    const worker = createWorker({
+      provider: provider,
+      ornithBaseUrl: 'https://test.ts.net/v1', ornithModel: 'test-model',
+      ornithApiKey: provider === 'ornith' ? 'local-secret' : '',
+      azureEndpoint: 'https://test.openai.azure.com', azureDeployment: 'test',
+      azureApiKey: provider === 'azure-deepseek' ? 'azure-secret' : '',
+    }, undefined, { error: new TypeError('Failed to fetch') }, ['https://test.ts.net/*', 'https://*.openai.azure.com/*']);
+    await assert.rejects(worker.context.handleAiRequest({ action: 'professional', text: 'test' }), function (error) {
+      assert.match(error.message, provider === 'ornith' ? /Ornith.*test.ts.net.*Tailscale.*MagicDNS/ : /Azure OpenAI.*test.openai.azure.com.*DNS/);
+      assert.doesNotMatch(error.message, /local-secret|azure-secret|Failed to fetch/);
+      return true;
+    });
+    assert.equal(worker.calls.length, 1);
+  }
+});
+
+function createWorker(settings, responseBody, responseOptions, hostPermissions, runtime) {
   const calls = [];
   const performanceLogs = [];
   const localStore = { hpx_settings: Object.assign({}, settings) };
@@ -27,11 +119,13 @@ function createWorker(settings, responseBody, responseOptions, hostPermissions) 
     },
     crypto: { randomUUID: function () { return '00000000-0000-4000-8000-000000000000'; } },
     AbortController: AbortController,
-    setTimeout: setTimeout,
-    clearTimeout: clearTimeout,
+    setTimeout: runtime && runtime.setTimeout || setTimeout,
+    clearTimeout: runtime && runtime.clearTimeout || clearTimeout,
     fetch: async function (url, options) {
       calls.push({ url: String(url), options: options });
+      if (runtime && runtime.fetch) return runtime.fetch(url, options);
        const reply = responseOptions || {};
+       if (reply.error) throw reply.error;
        return {
          ok: reply.ok !== undefined ? reply.ok : true,
          status: reply.status || 200,
@@ -381,4 +475,102 @@ test('request returns per-request metrics and missing usage stays unavailable', 
   const metrics = worker.context.usageMetrics({ usage: { completion_tokens: 120, completion_tokens_details: { reasoning_tokens: 20 } } }, 2000, 'test');
   assert.equal(metrics.effectiveOutputTokensPerSecond, 50);
   assert.equal(metrics.reasoningTokens, 20);
+});
+
+
+test('configured Azure API version is used for connection tests and drafts', async function () {
+  const worker = createWorker({ provider: 'azure-deepseek', azureEndpoint: 'https://test.openai.azure.com', azureDeployment: 'custom', azureApiKey: 'test', azureApiVersion: 'custom-version' });
+  await worker.context.handleAiPing();
+  await worker.context.handleAiRequest({ action: 'professional', text: 'test' });
+  assert.equal(worker.calls.length, 2);
+  for (const call of worker.calls) assert.equal(new URL(call.url).searchParams.get('api-version'), 'custom-version');
+});
+
+test('Azure short non-thinking drafts reserve less output without changing the prompt or source', async function () {
+  const settings = { provider: 'azure-deepseek', azureEndpoint: 'https://test.openai.azure.com',
+    azureDeployment: 'custom', azureApiKey: 'test', azureThinkingMode: 'disabled' };
+  const worker = createWorker(settings);
+  const source = '0.跟窗口確認需求\n1.建立好F42群組\n2.加入F00、F37群組';
+  // Use a fixture retaining all technical values so preview validation is exercised.
+  const complete = createWorker(settings, { choices: [{ finish_reason: 'stop', message: {
+    content: '- 【處理動作】跟窗口確認需求\n- 【設定】建立 F42 群組\n- 【設定】加入 F00、F37 群組',
+  } }] });
+  const result = await complete.context.handleAiRequest({ action: 'professional', text: source });
+  const body = JSON.parse(complete.calls[0].options.body);
+  assert.equal(body.max_tokens, 768);
+  assert.deepEqual(body.thinking, { type: 'disabled' });
+  const prompts = require('../src/ai/prompt-templates.js');
+  assert.equal(body.messages[0].content, prompts.buildPrompt('professional', source));
+  assert.equal(result.metrics.requestMaxTokens, 768);
+  assert.equal(result.metrics.requestedThinkingMode, 'disabled');
+  assert.ok(result.metrics.responseHeadersMs >= 0);
+  assert.ok(result.metrics.responseBodyMs >= 0);
+  assert.equal(complete.calls.length, 1);
+  await worker.context.handleAiPing();
+  assert.equal(JSON.parse(worker.calls[0].options.body).max_tokens, 32);
+});
+
+test('Azure output allowance grows for longer source and leaves reasoning defaults unchanged', function () {
+  const { HPX_AI_SETTINGS: settings } = require('../src/ai/provider-settings.js');
+  const disabled = { azureThinkingMode: 'disabled' };
+  for (const action of ['professional', 'improve_tone', 'first_contact', 'translate']) {
+    assert.equal(settings.azureOutputBudget(disabled, { action, text: '短文' }), 768);
+    assert.ok(settings.azureOutputBudget(disabled, { action, text: '測'.repeat(500) }) > 768);
+    assert.equal(settings.azureOutputBudget(disabled, { action, text: '測'.repeat(3000) }), 4096);
+    assert.equal(settings.azureOutputBudget({}, { action, text: '短文' }), 4096);
+  }
+  assert.equal(settings.azureOutputBudget(disabled), 4096);
+  assert.equal(settings.azureOutputBudget(disabled, { action: 'professional' }), 4096);
+});
+
+test('Azure rejects a truncated adaptive-budget response without retrying or applying it', async function () {
+  const worker = createWorker({ provider: 'azure-deepseek', azureEndpoint: 'https://test.openai.azure.com',
+    azureDeployment: 'custom', azureApiKey: 'test', azureThinkingMode: 'disabled' },
+  { choices: [{ finish_reason: 'length', message: { content: '- 【資訊】partial' } }] });
+  await assert.rejects(worker.context.handleAiRequest({ action: 'professional', text: 'test' }), /截斷結果未套用/);
+  assert.equal(worker.calls.length, 1);
+});
+
+for (const phase of ['headers', 'body']) {
+  test('Azure aborts a stalled ' + phase + ' response and clears the deadline without retrying', async function () {
+    let expire;
+    let duration;
+    let cleared = false;
+    let signal;
+    const hanging = activeSignal => new Promise((resolve, reject) => {
+      activeSignal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+    });
+    const worker = createWorker({ provider: 'azure-deepseek', azureEndpoint: 'https://test.openai.azure.com',
+      azureDeployment: 'custom', azureApiKey: 'test', azureThinkingMode: 'disabled' },
+    undefined, undefined, undefined, {
+      setTimeout: (callback, ms) => { expire = callback; duration = ms; return 123; },
+      clearTimeout: id => { assert.equal(id, 123); cleared = true; },
+      fetch: async (url, options) => {
+        signal = options.signal;
+        if (phase === 'headers') return hanging(signal);
+        return { ok: true, status: 200, json: () => hanging(signal) };
+      },
+    });
+    const pending = worker.context.handleAiRequest({ action: 'professional', text: 'test' });
+    // Allow settings/fetch/body promises to attach their abort listener.
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(duration, 120000);
+    expire();
+    await assert.rejects(pending, /Azure OpenAI.*120 秒.*已中止.*未自動重送/);
+    assert.equal(signal.aborted, true);
+    assert.equal(cleared, true);
+    assert.equal(worker.calls.length, 1);
+  });
+}
+
+test('Azure clears its deadline on a successful response', async function () {
+  let cleared = false;
+  const worker = createWorker({ provider: 'azure-deepseek', azureEndpoint: 'https://test.openai.azure.com',
+    azureDeployment: 'custom', azureApiKey: 'test' }, undefined, undefined, undefined,
+  { setTimeout: () => 123, clearTimeout: id => { assert.equal(id, 123); cleared = true; } });
+  const result = await worker.context.handleAiPing();
+  assert.equal(result.ok, true);
+  assert.ok(result.metrics.elapsedMs >= 0);
+  assert.equal(cleared, true);
+  assert.equal(worker.calls[0].options.signal.aborted, false);
 });

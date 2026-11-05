@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Halo API 本機預覽</title>
+<link rel="stylesheet" href="/src/styles/quick-status.css"><style>body{font:14px system-ui;background:#f4f3f8;margin:32px;color:#292639}.details_page_title{background:white;padding:16px;border-radius:12px;margin:12px 0}h1{font-size:20px}.actionmenubtn{padding:10px}.demo-controls{margin:24px 0}</style>
+<script src="/tests/preview-runtime.js"></script></head><body>
+<h1 class="profile-full-name">[ID:000123]</h1><p>本機模擬 API，所有送出都只改變示範資料，不會連線至 Halo。</p>
+<div class="details_page_title"><div class="buttons-container"><button class="actionmenubtn" title="In Progress">In Progress</button></div></div>
+<div class="demo-controls"><button id="switch">切換至其他工單</button><button id="draft">新增原生草稿</button></div><p id="notice" role="status"></p>
+<script>
+history.replaceState({}, '', '?id=123');
+window.__HPX={features:{},ui:{toast:{show(text){document.querySelector('#notice').textContent=text;}}}};
+chrome.runtime.sendMessage({type:'HPX_HALO_API',operation:'config.save',payload:{enabled:true}});
+document.querySelector('#switch').onclick=()=>{history.pushState({},'','?id=124');document.querySelector('h1').textContent='[ID:000124]';};
+document.querySelector('#draft').onclick=()=>{const form=document.createElement('form');form.className='action-form';form.textContent='尚未儲存的原生草稿';document.body.appendChild(form);};
+</script><script src="/src/features/quick-status-chain.js"></script><script src="/src/features/halo-api-panel.js"></script><script src="/src/features/quick-status.js"></script><script>__HPX.features.quickStatus.start();</script>
+</body></html>

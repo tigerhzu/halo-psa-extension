@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#0c2d55;--hpx-opacity:1">
+<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#15487e;--hpx-opacity:1">
 <head>
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="color-scheme" content="light" />
 <title>設定 · Halopsa</title><link rel="stylesheet" href="../styles/workbench.css" /><link rel="stylesheet" href="options.css" /><link rel="stylesheet" href="paper.css" /><link rel="stylesheet" href="halo-paper.css" />
@@ -13,6 +13,7 @@
 <a href="#workspace" class="nav-item is-active" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg></span><span>外觀與 Team</span></a>
 <a href="#writing" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2.5"/><circle cx="15" cy="17" r="2.5"/></svg></span><span>AI 服務</span></a>
 <a href="#contacts" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span>收件人</span></a>
+<a href="#halo" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4H4v16h16V4h-4M8 3h8v4H8zM8 12h8M8 16h5"/></svg></span><span>Halo API 與案件</span></a>
 <a href="#backup" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m-4-4 4 4 4-4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg></span><span>資料備份</span></a>
 </nav>
 </aside>
@@ -29,13 +30,13 @@
 <div class="card-heading"><h2 id="appearanceTitle">外觀</h2></div>
 <label for="theme">介面主題</label><select id="theme"><option value="cute-ios">玻璃</option><option value="default">原生配色</option></select>
 <fieldset class="accent-fieldset"><legend>主題色</legend><div class="swatches" id="accentRow">
-<button class="swatch" data-accent="#0c2d55" style="--sw:#0c2d55" title="藍色" aria-label="藍色" aria-pressed="false" type="button"></button>
+<button class="swatch" data-accent="#15487e" style="--sw:#15487e" title="藍色" aria-label="藍色" aria-pressed="false" type="button"></button>
 <button class="swatch" data-accent="#5856d6" style="--sw:#5856d6" title="紫色" aria-label="紫色" aria-pressed="false" type="button"></button>
 <button class="swatch" data-accent="#ff2d55" style="--sw:#ff2d55" title="玫瑰" aria-label="玫瑰" aria-pressed="false" type="button"></button>
 <button class="swatch" data-accent="#ff9500" style="--sw:#ff9500" title="橙色" aria-label="橙色" aria-pressed="false" type="button"></button>
 <button class="swatch" data-accent="#34c759" style="--sw:#34c759" title="綠色" aria-label="綠色" aria-pressed="false" type="button"></button>
 <button class="swatch" data-accent="#64748b" style="--sw:#64748b" title="石墨" aria-label="石墨" aria-pressed="false" type="button"></button>
-</div><label class="custom-color" id="customColorWrap" for="accentCustom"><input id="accentCustom" type="color" value="#0c2d55" aria-label="自訂主題色" /><span>自訂</span><code id="accentValue">#0C2D55</code></label></fieldset>
+</div><label class="custom-color" id="customColorWrap" for="accentCustom"><input id="accentCustom" type="color" value="#15487e" aria-label="自訂主題色" /><span>自訂</span><code id="accentValue">#15487E</code></label></fieldset>
 <div class="theme-preview" aria-label="主題色即時預覽"><span class="preview-status">處理中</span><span class="preview-button">撰寫回覆</span></div>
 <p id="themeStatus" class="status" role="status" aria-live="polite"></p></section>
 <section class="card mode-card" aria-labelledby="modeTitle"><div class="card-heading"><h2 id="modeTitle">導覽</h2></div>
@@ -61,11 +62,50 @@
 <div id="azureSection" class="provider-section is-disabled">
 <h3>Azure OpenAI</h3><label for="azureEndpoint">Azure Endpoint</label><input id="azureEndpoint" data-provider-input type="text" inputmode="url" placeholder="https://your-resource.openai.azure.com" autocomplete="off" spellcheck="false" />
 <label for="azureDeployment">Deployment Name</label><input id="azureDeployment" data-provider-input type="text" placeholder="例如：gpt-4.1 或自訂部署名稱" autocomplete="off" spellcheck="false" />
+<label for="azureApiVersion">API Version</label><input id="azureApiVersion" data-provider-input type="text" placeholder="2024-12-01-preview" autocomplete="off" spellcheck="false" />
 <label for="azureApiKey">API Key</label><div class="key-row"><input id="azureApiKey" data-provider-input type="password" placeholder="貼上 Azure OpenAI API Key" autocomplete="off" spellcheck="false" /><button id="toggleAzureKey" data-provider-input type="button" aria-controls="azureApiKey" aria-pressed="false">顯示</button></div>
+<label for="azureThinkingMode">Thinking 模式</label><select id="azureThinkingMode" data-provider-input aria-describedby="azureThinkingHelp"><option value="default">服務預設</option><option value="disabled">關閉 Thinking（DeepSeek）</option></select>
+<p id="azureThinkingHelp">關閉 Thinking 使用 DeepSeek 參數，需模型與部署支援，並非所有 Azure 模型通用。不支援時請改回服務預設；連線成功不代表服務已採用關閉 Thinking。</p>
 <button id="removeAzure" class="provider-remove" type="button" disabled>移除 Azure 設定</button></div>
 <div class="connection-actions"><button id="test" class="primary" type="button">測試連線</button></div><p id="status" class="status" role="status" aria-live="polite"></p>
 </section>
 </div></section>
+<section id="halo" class="settings-page" aria-labelledby="haloTitle" hidden>
+<div class="writing-layout">
+<section class="card"><div class="card-heading"><h2 id="haloTitle">Halo API 連線</h2></div>
+<p class="card-description">設定完成後，工單的「快速改狀態」會直接呼叫 API 儲存。此處設定需按下儲存才會生效。</p>
+<form id="haloConfigForm"><fieldset id="haloConfigFields" disabled class="halo-fields">
+<label for="haloEnabled"><input id="haloEnabled" type="checkbox" /> 啟用 API 直接操作</label>
+<label for="haloBaseUrl">Resource Server URL</label><input id="haloBaseUrl" type="text" required placeholder="https://company.halopsa.com/api" autocomplete="off" />
+<label for="haloWebOrigin">Halo 網頁網址</label><input id="haloWebOrigin" type="text" placeholder="留空時使用上方網址的站台" autocomplete="off" />
+<label for="haloAuthMode">驗證方式</label><select id="haloAuthMode"><option value="haloapikey">Halo 原生 API Key（X-Halo-Api-Key）</option><option value="bearer">Bearer（Authorization: Bearer）</option><option value="oauth">Client ID ＋ Client Secret</option><option value="apikey">公司閘道 API Key（X-API-Key，依提供方指定）</option></select>
+<p class="hint">Halo 原生金鑰使用 X-Halo-Api-Key，與公司閘道的 X-API-Key 不同。請依憑證提供方確認 API 位址與方式；短效 Access Token 過期後需更新。</p>
+<div id="haloKeyFields"><label for="haloApiKey">API Key / Access Token</label><div class="key-row"><input id="haloApiKey" type="password" autocomplete="off" spellcheck="false" /><button id="haloToggleKey" type="button" aria-controls="haloApiKey" aria-pressed="false">顯示</button></div></div>
+<div id="haloOauthFields" hidden><label for="haloAuthUrl">Authorisation Server URL</label><input id="haloAuthUrl" type="text" placeholder="https://company.halopsa.com/auth" autocomplete="off" />
+<label for="haloTenant">Tenant（若 Halo 有提供）</label><input id="haloTenant" type="text" autocomplete="off" />
+<label for="haloClientId">Client ID</label><input id="haloClientId" type="text" autocomplete="off" />
+<label for="haloClientSecret">Client Secret</label><input id="haloClientSecret" type="password" autocomplete="off" spellcheck="false" /></div>
+<label for="haloCloseStatusId">結案狀態</label><select id="haloCloseStatusId"><option value="">尚未設定（先儲存，再測試連線取得清單）</option></select>
+<label for="haloCloseActionId">結案 Action ID</label><input id="haloCloseActionId" type="number" min="1" step="1" placeholder="Halo 結案動作的 ID" />
+<p class="hint">請使用租戶實際的結案動作與狀態 ID。結案會執行這個 Action，Halo 中的通知與工作流程依該動作設定執行。</p>
+<div class="actions"><button type="submit" class="primary">儲存連線設定</button><button id="haloTest" type="button">測試連線／載入狀態</button><button id="haloClear" type="button" class="btn-danger">移除連線與金鑰</button></div>
+</fieldset></form>
+<p id="haloConnectionStatus" class="status" role="status" aria-live="polite"></p>
+<p class="hint">Halo 憑證只存於此瀏覽器的擴充功能本機儲存區，與 AI 金鑰分開；一般與完整設定備份都不包含此連線，換電腦需重新設定。</p>
+</section>
+<section class="card"><div class="card-heading"><h2>透過 API 開案件</h2></div><p class="card-description">填入 Halo 中的實際 ID 與案件內容，按下「建立案件」會立即送出。</p>
+<form id="haloCreateForm"><fieldset id="haloCreateFields" class="halo-fields" disabled>
+<label for="haloSummary">案件標題</label><input id="haloSummary" type="text" maxlength="255" required />
+<label for="haloDetails">案件內容</label><textarea id="haloDetails" rows="5" maxlength="50000" required></textarea>
+<div class="halo-id-grid">
+<div><label for="haloClient">客戶 ID</label><input id="haloClient" type="number" min="1" step="1" required /></div>
+<div><label for="haloSite">站點 ID</label><input id="haloSite" type="number" min="1" step="1" required /></div>
+<div><label for="haloUser">聯絡人 ID</label><input id="haloUser" type="number" min="1" step="1" required /></div>
+<div><label for="haloTicketType">工單類型 ID</label><input id="haloTicketType" type="number" min="1" step="1" required /></div>
+<div><label for="haloPriority">優先級 ID（選填）</label><input id="haloPriority" type="number" min="1" step="1" /></div>
+</div><div class="actions"><button type="submit" class="primary">建立案件</button></div>
+</fieldset></form><p id="haloCreateStatus" class="status" role="status" aria-live="polite"></p><a id="haloCreatedLink" hidden target="_blank" rel="noopener noreferrer">開啟新案件 ↗</a>
+</section></div></section>
 <section id="contacts" class="settings-page" aria-labelledby="contactsTitle" hidden><h2 id="contactsTitle" class="sr-only">收件人設定</h2>
 <section class="card" aria-labelledby="defaultCcTitle"><div class="card-heading"><h2 id="defaultCcTitle">永遠 CC</h2></div><p class="card-description">寄信時自動加入。</p><div class="contact-columns" aria-hidden="true"><span>姓名（選填）</span><span>Email</span></div><div id="defaultCcRecipients" class="setting-list"></div><div class="actions"><button id="addDefaultCc" type="button">新增收件人</button><span id="defaultCcStatus" class="status" role="status" aria-live="polite"></span></div></section>
 <section class="card" aria-labelledby="groupsTitle"><div class="card-heading"><h2 id="groupsTitle">CC 群組</h2></div><div id="groups"></div><div class="actions"><button id="addGroup" type="button">新增群組</button><span id="groupsStatus" class="status" role="status" aria-live="polite"></span></div></section>
@@ -77,5 +117,5 @@
 <div class="import-row"><div><h3>還原備份</h3><p>匯入會取代設定；備份未含金鑰時，保留現有金鑰。</p></div><button id="importSettings" type="button">選擇備份檔</button><input id="importSettingsFile" type="file" accept="application/json,.json" hidden /></div><p id="backupStatus" class="status" role="status" aria-live="polite"></p>
 </section></section>
 </main></div>
-<script src="../ai/provider-settings.js"></script><script src="options.js"></script>
+<script src="../ai/provider-settings.js"></script><script src="options.js"></script><script src="halo-api-options.js"></script>
 </body></html>

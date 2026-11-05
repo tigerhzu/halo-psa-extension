@@ -123,7 +123,7 @@
       // 正規化規則與 theme.js loadAll 相同：非 'default' 一律視為 cute-ios。
       if (settings.theme !== 'default') {
         document.documentElement.setAttribute('data-hpx-theme', 'cute-ios');
-        const accent = /^#[0-9a-f]{6}$/i.test(String(settings.accent || '')) ? String(settings.accent).toLowerCase() : '#0c2d55';
+        const accent = /^#[0-9a-f]{6}$/i.test(String(settings.accent || '')) ? String(settings.accent).toLowerCase() : '#15487e';
         document.documentElement.style.setProperty('--hpx-accent', accent);
       }
       if (settings[FIELD] === true) {

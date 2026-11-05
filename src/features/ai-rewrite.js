@@ -46,6 +46,7 @@
       const req = {
         action: def.action || actionKey, // translate_* → 'translate'
         text: text,
+        imageTokens: imageMask.masks.map(function (mask) { return mask.token; }),
         targetLang: def.targetLang,
       };
 
@@ -66,6 +67,7 @@
           } else {
             note = 'AI（' + (result.model || '') + '）產生，可在右側微調後再套用。';
           }
+          if (result.warning) note += '\n⚠ ' + result.warning;
           if (imageMask.count > 0) {
             note += ' 已遮罩 ' + imageMask.count + ' 張圖片；圖片內容不會送給 AI，套用時會自動還原。';
           }

@@ -67,6 +67,7 @@
               if (response.ok) {
                 finish(resolve, {
                   text: response.text,
+                  warning: response.warning || '',
                   stub: !!response.stub,
                   provider: response.provider || '',
                   deployment: response.deployment || '',

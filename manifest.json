@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Halopsa",
-  "version": "1.1.2",
+  "version": "1.1.7",
   "minimum_chrome_version": "122",
   "description": "Halo Companion：整合 AI 草稿預覽、範本、工單閱讀、原生工時調整與個人化工作台的 HaloPSA 輔助工具。",
   "icons": {
@@ -11,6 +11,9 @@
   },
   "permissions": [
     "storage"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
   ],
   "host_permissions": [
     "https://*.openai.azure.com/*",
@@ -97,6 +100,9 @@
         "src/features/ai-rewrite.js",
         "src/features/note-window.js",
         "src/features/ticket-reader.js",
+        "src/features/quick-status-chain.js",
+        "src/features/halo-api-panel.js",
+        "src/features/quick-status.js",
         "src/features/templates.js",
         "src/features/besties.js",
         "src/features/timesheet-align.js",
@@ -130,6 +136,7 @@
         "src/styles/timesheet-align.css",
         "src/styles/time-adjuster.css",
         "src/styles/ticket-reader.css",
+        "src/styles/quick-status.css",
         "src/styles/workbench-surfaces.css"
       ]
     }

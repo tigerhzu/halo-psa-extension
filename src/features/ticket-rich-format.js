@@ -15,6 +15,7 @@
   const LABEL_COLORS = Object.freeze({
     異常: 'red',
     待確認: 'orange',
+    待辦: 'orange',
     注意: 'orange',
     資訊: 'blue',
     設定: 'blue',
@@ -64,7 +65,39 @@
   function toHtml(text) {
     const value = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
     if (!value) return '';
-    return value.split('\n').map(lineToHtml).join('');
+    const lines = value.split('\n');
+    const entries = lines.filter(function (line) { return line.trim(); }).map(function (line) {
+      const match = line.match(LABELED_LINE);
+      return { line: line, label: match ? match[1] : '' };
+    });
+    // Keep event order and every line, including unfamiliar labels. Only add
+    // section boundaries; never move a failed intermediate result to the end.
+    if (entries.length < 5) return lines.map(lineToHtml).join('');
+    const firstAction = entries.findIndex(function (entry) { return entry.label === '處理動作'; });
+    if (firstAction < 0) return lines.map(lineToHtml).join('');
+    let lastAction = firstAction;
+    entries.forEach(function (entry, index) { if (entry.label === '處理動作') lastAction = index; });
+    const resultStart = entries.findIndex(function (entry, index) {
+      return index > lastAction && /^(確認結果|已完成)$/.test(entry.label);
+    });
+    let followupStart = entries.length;
+    while (followupStart > (resultStart < 0 ? lastAction + 1 : resultStart) &&
+      /^(待確認|待辦|注意|負責單位)$/.test(entries[followupStart - 1].label)) followupStart--;
+    const sections = [
+      { title: '問題與現象', start: 0, end: firstAction },
+      { title: '處理過程', start: firstAction, end: resultStart < 0 ? followupStart : resultStart },
+      { title: '確認結果與狀態', start: resultStart < 0 ? followupStart : resultStart, end: followupStart },
+      { title: '後續追蹤', start: followupStart, end: entries.length },
+    ];
+    return sections.filter(function (section) { return section.end > section.start; }).map(function (section) {
+      const rows = entries.slice(section.start, section.end);
+      let html = '<div><strong>' + section.title + '</strong></div>';
+      rows.forEach(function (entry, index) {
+        if (index > 0 && index % 5 === 0) html += '<div><br></div>';
+        html += lineToHtml(entry.line);
+      });
+      return html;
+    }).join('<div><br></div>');
   }
 
   return {

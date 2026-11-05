@@ -34,7 +34,7 @@
 
   function applyAppearance(node) {
     const saved = String(currentSettings.accent || '').trim();
-    const accent = /^#[0-9a-f]{6}$/i.test(saved) ? saved : '#0c2d55';
+    const accent = /^#[0-9a-f]{6}$/i.test(saved) ? saved : '#15487e';
     const rgb = [1, 3, 5].map(function (offset) {
       const channel = parseInt(accent.slice(offset, offset + 2), 16) / 255;
       return channel <= .04045 ? channel / 12.92 : Math.pow((channel + .055) / 1.055, 2.4);

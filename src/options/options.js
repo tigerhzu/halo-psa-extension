@@ -40,9 +40,11 @@ const DEFAULTS = {
   ornithApiKey: '',
   azureEndpoint: '',
   azureDeployment: '',
+  azureThinkingMode: 'default',
+  azureApiVersion: '2024-12-01-preview',
   azureApiKey: '',
   theme: 'cute-ios',
-  accent: '#0c2d55',
+  accent: '#15487e',
   opacity: 100,
   ultimateMode: false,
 };
@@ -72,6 +74,8 @@ const els = {
   removeOrnith: $('removeOrnith'),
   azureEndpoint: $('azureEndpoint'),
   azureDeployment: $('azureDeployment'),
+  azureThinkingMode: $('azureThinkingMode'),
+  azureApiVersion: $('azureApiVersion'),
   azureApiKey: $('azureApiKey'),
   toggleAzureKey: $('toggleAzureKey'),
   azureSection: $('azureSection'),
@@ -124,7 +128,7 @@ function setSaveIndicator(text, state) {
 }
 
 function setupNavigation() {
-  const pageKeys = new Set(['workspace', 'writing', 'contacts', 'backup']);
+  const pageKeys = new Set(['workspace', 'writing', 'halo', 'contacts', 'backup']);
   function showPage(focusContent) {
     const hash = window.location.hash.slice(1);
     if (hash === 'main') return;
@@ -279,6 +283,7 @@ function normalizeImportedSettings(payload) {
   settings.ornithApiKey = String(settings.ornithApiKey || '').trim();
   settings.azureEndpoint = String(settings.azureEndpoint || '').trim().replace(/\/+$/, '');
   settings.azureDeployment = String(settings.azureDeployment || '').trim();
+  settings.azureThinkingMode = settings.azureThinkingMode === 'disabled' ? 'disabled' : 'default';
   settings.azureApiKey = String(settings.azureApiKey || '').trim();
   settings.provider = AI_SETTINGS.resolveProvider(settings);
   AI_SETTINGS.validateExclusive(settings);
@@ -679,6 +684,8 @@ function collectSettings() {
     ornithApiKey: els.ornithApiKey.value.trim(),
     azureEndpoint: els.azureEndpoint.value.trim().replace(/\/+$/, ''),
     azureDeployment: els.azureDeployment.value.trim(),
+    azureApiVersion: els.azureApiVersion.value.trim() || DEFAULTS.azureApiVersion,
+    azureThinkingMode: els.azureThinkingMode.value === 'disabled' ? 'disabled' : 'default',
     azureApiKey: els.azureApiKey.value.trim(),
     theme: els.theme.value,
     accent: activeAccent(),
@@ -853,6 +860,8 @@ function load() {
       els.ornithApiKey.value = s.ornithApiKey || DEFAULTS.ornithApiKey;
       els.azureEndpoint.value = s.azureEndpoint || DEFAULTS.azureEndpoint;
       els.azureDeployment.value = s.azureDeployment || DEFAULTS.azureDeployment;
+      els.azureApiVersion.value = s.azureApiVersion || DEFAULTS.azureApiVersion;
+      els.azureThinkingMode.value = s.azureThinkingMode === 'disabled' ? 'disabled' : 'default';
       els.azureApiKey.value = s.azureApiKey || DEFAULTS.azureApiKey;
       applyProviderState(Object.assign({}, s, { provider: provider }));
 
@@ -892,7 +901,7 @@ els.providerInputs.forEach(function (input) {
   });
 });
 
-[els.ornithBaseUrl, els.ornithModel, els.ornithApiKey, els.azureEndpoint, els.azureDeployment, els.azureApiKey].forEach(function (input) {
+[els.ornithBaseUrl, els.ornithModel, els.ornithApiKey, els.azureEndpoint, els.azureDeployment, els.azureApiKey, els.azureApiVersion].forEach(function (input) {
   input.addEventListener('input', onSettingsFieldChanged);
 });
 els.toggleOrnithKey.addEventListener('click', function () {
@@ -901,6 +910,7 @@ els.toggleOrnithKey.addEventListener('click', function () {
   els.toggleOrnithKey.textContent = isPwd ? '隱藏' : '顯示';
   els.toggleOrnithKey.setAttribute('aria-pressed', String(isPwd));
 });
+els.azureThinkingMode.addEventListener('change', onSettingsFieldChanged);
 
 els.toggleAzureKey.addEventListener('click', function () {
   const isPwd = els.azureApiKey.type === 'password';
@@ -921,6 +931,8 @@ function removeProviderSettings(provider) {
   } else {
     els.azureEndpoint.value = '';
     els.azureDeployment.value = '';
+    els.azureThinkingMode.value = DEFAULTS.azureThinkingMode;
+    els.azureApiVersion.value = DEFAULTS.azureApiVersion;
     els.azureApiKey.value = '';
   }
 
@@ -1133,7 +1145,9 @@ els.test.addEventListener('click', function () {
         const detail = res.provider === PROVIDERS.AZURE
           ? 'Azure OpenAI（' + (res.deployment || '') + '）'
           : 'Local Ornith（' + (res.model || '') + '）';
-        setStatus(els.status, '連線成功 ✓ ' + detail + ' 可正常呼叫。', 'ok');
+        const elapsed = res.metrics && typeof res.metrics.elapsedMs === 'number'
+          ? '；測試耗時 ' + (res.metrics.elapsedMs / 1000).toFixed(1) + ' 秒' : '';
+        setStatus(els.status, '連線成功 ✓ ' + detail + elapsed + '。連線成功不代表服務已採用關閉 Thinking。', 'ok');
       } else {
         setStatus(els.status, '連線失敗：' + (res.error || '未知錯誤'), 'err');
       }

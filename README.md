@@ -30,11 +30,13 @@ Halo Companion 是 Chrome／Edge 的 Manifest V3 擴充功能。它在 HaloPSA �
 | 整理工作台 | Team 顯示與排序、簡單模式、主題色、快捷入口及寵物開關。 |
 | 換一台電腦 | JSON 設定匯出／匯入，可選含金鑰或不含金鑰。 |
 
-**操作邊界：** AI、範本和獨立編輯視窗套用到 Halo 草稿；工單的儲存或送出仍由使用者執行。Time Taken 修改原生輸入欄位。Timesheet 的「套用」則會呼叫 Halo 原生更新流程，可能直接保存該筆工時，使用前請確認時間範圍。
+**操作邊界：** AI、範本和獨立編輯視窗套用到 Halo 草稿；工單的儲存或送出仍由使用者執行。啟用後台 **Halo API 與案件** 後，可直接開案、改狀態與結案；按下操作按鈕即送出至 Halo，詳見 [Halo 寫入 API 設定](docs/HALO-WRITE-API.md)。Time Taken 修改原生輸入欄位。Timesheet 的「套用」則會呼叫 Halo 原生更新流程，可能直接保存該筆工時，使用前請確認時間範圍。
 
 ## 安裝與更新
 
-1. 前往 [最新 Release](https://github.com/tigerhzu/halo-psa-extension/releases/latest)，下載 `halo-psa-extension-1.1.2.zip` 並解壓縮。
+圖解操作請見[使用者指南](docs/使用者指南.html)。
+
+1. 前往 [最新 Release](https://github.com/tigerhzu/halo-psa-extension/releases/latest)，下載 `halo-psa-extension-1.1.7.zip` 並解壓縮。
 2. 在 Chrome 開啟 `chrome://extensions`，或在 Edge 開啟 `edge://extensions`，啟用「開發人員模式」。
 3. 選擇「載入未封裝項目」，指定含有 `manifest.json` 的資料夾。
 4. 重新整理 Halo 頁面，點擊擴充功能圖示開啟設定中心。初始導覽中的每個步驟都可以略過。
@@ -90,7 +92,7 @@ flowchart TB
 
 AI 呼叫從背景服務送至已選定的服務，內容包含使用者要求處理的文字；圖片先轉成遮罩，再於套用時還原。截斷、空白或不符輸出規則的結果會被拒絕。通過驗證的草稿仍需使用者確認才寫回。
 
-設定中心提供完整備份與不含 API Key 的備份。不含金鑰的匯入會保留現有本機金鑰，並在 provider 衝突時阻擋寫入。**不含 API Key 仍可能包含收件人、網址等個人設定**，公開分享前請先檢查檔案內容。
+設定中心提供含 AI API Key 的完整備份與不含 API Key 的備份。Halo 寫入 API 的連線與憑證獨立儲存，兩種備份都不包含，換電腦需重新設定。不含金鑰的匯入會保留現有本機 AI 金鑰，並在 provider 衝突時阻擋寫入。**不含 API Key 仍可能包含收件人、網址等個人設定**，公開分享前請先檢查檔案內容。
 
 ## 開發與驗證
 

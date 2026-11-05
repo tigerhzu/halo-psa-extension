@@ -651,7 +651,7 @@
     setBusy(true, opts.loading);
     let result;
     try {
-      result = await opts.process(scope.text);
+      result = await opts.process(scope.text, scope);
     } catch (error) {
       setBusy(false);
       showNotice('處理失敗：' + (error && error.message ? error.message : String(error)), 'error');
@@ -710,9 +710,10 @@
         key === 'professional' && NS.features.ticketRichFormat
           ? NS.features.ticketRichFormat.toHtml
           : null,
-      process: function (text) {
+      process: function (text, scope) {
         return NS.ai.adapter
-          .request({ action: def.action || key, text: text, targetLang: def.targetLang })
+          .request({ action: def.action || key, text: text, targetLang: def.targetLang,
+            imageTokens: (scope.imageMasks || []).map(function (mask) { return mask.token; }) })
           .then(function (res) {
             let note;
             if (res.stub) {
@@ -724,6 +725,7 @@
             } else {
               note = 'AI（' + (res.model || '') + '）產生。';
             }
+            if (res.warning) note += '\n⚠ ' + res.warning;
             return { text: res.text, note: note, metrics: res.metrics };
           });
       },

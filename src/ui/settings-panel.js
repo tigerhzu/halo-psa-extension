@@ -13,7 +13,7 @@
 
   const DEFAULTS = {
     theme: 'cute-ios',
-    accent: '#0c2d55',
+    accent: '#15487e',
     opacity: 100,
     pet: 'claude-crab',
     petPosition: { right: 16, bottom: 16 },
@@ -23,7 +23,7 @@
     ultimateMode: false,
   };
   const ACCENT_LIST = [
-    { name: 'Blue', hex: '#0c2d55' },
+    { name: 'Blue', hex: '#15487e' },
     { name: 'Orange', hex: '#ff7a1a' },
     { name: 'Amber', hex: '#f5b82e' },
     { name: 'Red', hex: '#ef4444' },

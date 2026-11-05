@@ -1,13 +1,13 @@
 # 發佈指南
 
-目前擴充功能版本為 **1.1.2**。GitHub Release 與安裝 ZIP 應對應公開來源的同一個 commit；本次品牌與文件整理不另外提升版本號。
+目前擴充功能版本為 **1.1.7**。從對應的乾淨 Git commit 執行 `python scripts/build-release.py`，產生安裝 ZIP 與 SHA-256 校驗檔。
 
 ## 發佈內容
 
 | 項目 | 提供方式 |
 | --- | --- |
 | 可讀原始碼、測試與文件 | GitHub 儲存庫及對應 tag 的 Source code 下載 |
-| 可直接載入的擴充功能 | `halo-psa-extension-1.1.2.zip` |
+| 可直接載入的擴充功能 | `halo-psa-extension-1.1.7.zip` |
 | 品牌 logo、主視覺與設計資料 | `docs/assets/`，以及 Release 的品牌資產（若提供） |
 | 安裝包雜湊 | Release 的 SHA-256 校驗檔（若提供） |
 
@@ -18,7 +18,7 @@
 - `manifest.json`
 - `src/`、`assets/`、`pet/`
 - `scripts/Configure-Ornith.ps1`
-- `README.md` 與 `docs/`，確保本機文件及圖像引用可讀
+- 安裝說明、版本資訊、更新摘要與 `docs/HALO-WRITE-API.md`
 - 儲存庫既有的授權／第三方聲明檔（若存在）
 
 不收錄 `.git/`、`output/`、舊版 `release/`、`tests/`、個人設定匯出、瀏覽器 profile、benchmark 結果或執行紀錄。測試原始碼可以公開在儲存庫，測試程式與示範資料不必裝進瀏覽器。
@@ -40,7 +40,7 @@ node --test tests/*.test.js
 
 本機執行 `Configure-Ornith.ps1` 後的 manifest 包含部署專用主機，屬於使用者的安裝設定；公開發佈仍應從示例主機版本重新組裝。
 
-## 本次驗證
+## 1.1.2 歷史驗證
 
 2026-09-08，Windows／Node 22.23.2：
 

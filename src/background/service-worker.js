@@ -23,6 +23,7 @@
 // ── 共用 Prompt 來源（與 tools/prompt-eval/runner.js 同一份）──
 // classic service worker 可用 importScripts 同步載入；路徑以 / 開頭代表擴充功能根目錄。
 importScripts('/src/ai/provider-settings.js', '/src/ai/prompt-templates.js', '/src/ai/output-validator.js');
+importScripts('/src/background/halo-api.js');
 const buildPrompt = self.HPX_PROMPTS.buildPrompt;
 const buildOrnithRequest = self.HPX_PROMPTS.buildOrnithRequest;
 const AI_SETTINGS = self.HPX_AI_SETTINGS;
@@ -40,7 +41,7 @@ let onboardingSourceTabId = null;
 let onboardingSourceOrigin = '';
 const DEFAULT_APPEARANCE = {
   theme: 'cute-ios',
-  accent: '#0c2d55',
+  accent: '#15487e',
   ultimateMode: false,
 };
 const DEFAULTS = {
@@ -219,6 +220,7 @@ purgeRemovedSettings();
 // ── Azure OpenAI 常數 ──
 const AZURE_API_VERSION = '2024-12-01-preview';
 const ORNITH_REQUEST_TIMEOUT_MS = 120000;
+const AZURE_REQUEST_TIMEOUT_MS = 120000;
 const SUPPORTED_AI_ACTIONS = new Set(['improve_tone', 'professional', 'first_contact', 'translate']);
 
 function usageMetrics(data, elapsedMs, content) {
@@ -306,6 +308,8 @@ function getSettings() {
         ornithApiKey: s.ornithApiKey || DEFAULTS.ornithApiKey,
         azureEndpoint: (s.azureEndpoint || DEFAULTS.azureEndpoint).trim(),
         azureDeployment: (s.azureDeployment || DEFAULTS.azureDeployment).trim(),
+        azureApiVersion: String(s.azureApiVersion || AZURE_API_VERSION).trim(),
+        azureThinkingMode: s.azureThinkingMode === 'disabled' ? 'disabled' : 'default',
         azureApiKey: s.azureApiKey || DEFAULTS.azureApiKey,
       });
     });
@@ -342,35 +346,58 @@ function validateAzureSettings(settings) {
 }
 
 // ── 呼叫 Azure OpenAI ──
-async function callAzureDeepSeek(settings, prompt, action, metrics) {
+async function callAzureDeepSeek(settings, prompt, action, metrics, sourceText) {
   const azure = validateAzureSettings(settings);
   const url =
     azure.endpoint +
     '/openai/deployments/' +
     encodeURIComponent(azure.deployment) +
     '/chat/completions?api-version=' +
-    AZURE_API_VERSION;
+    encodeURIComponent(settings.azureApiVersion || AZURE_API_VERSION);
 
   const startedAt = Date.now();
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': settings.azureApiKey,
-    },
-    body: JSON.stringify({
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.4,
-      max_tokens: 4096,
-    }),
-  });
-
-  const data = await resp.json().catch(function () {
-    return null;
+  const body = AI_SETTINGS.azureRequestBody(settings, prompt, { action: action, text: sourceText });
+  const controller = new AbortController();
+  const timeout = setTimeout(function () { controller.abort(); }, AZURE_REQUEST_TIMEOUT_MS);
+  let resp;
+  let data;
+  let headersAt;
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': settings.azureApiKey,
+      },
+      body: JSON.stringify(body),
+    });
+    headersAt = Date.now();
+    data = await resp.json().catch(function (error) {
+      if (controller.signal.aborted || error.name === 'AbortError') throw error;
+      return null;
+    });
+  } catch (error) {
+    if (controller.signal.aborted || error.name === 'AbortError') {
+      throw new Error('Azure OpenAI 請求超過 120 秒，已中止等待；未自動重送，原文保持不變。');
+    }
+    throw aiConnectionError('Azure OpenAI', azure.endpoint, error);
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (metrics) Object.assign(metrics, {
+    responseHeadersMs: headersAt - startedAt,
+    responseBodyMs: Date.now() - headersAt,
+    requestMaxTokens: body.max_tokens,
+    requestedThinkingMode: settings.azureThinkingMode === 'disabled' ? 'disabled' : 'default',
   });
 
   if (!resp.ok) {
     recordAiPerformance('azure-deepseek', action, data, Date.now() - startedAt, '', resp.status);
+    if (settings.azureThinkingMode === 'disabled' && (resp.status === 400 || resp.status === 422) &&
+        /thinking/i.test(JSON.stringify(data && data.error || {}))) {
+      throw new Error('此 Azure 部署不接受關閉 Thinking 參數。請在 AI 設定改回「服務預設」，或使用支援非推理模式的部署。');
+    }
     const msg =
       (data && data.error && data.error.message) ||
       ('Azure OpenAI 回應 HTTP ' + resp.status);
@@ -378,6 +405,15 @@ async function callAzureDeepSeek(settings, prompt, action, metrics) {
   }
 
   return responseContent('azure-deepseek', data, Date.now() - startedAt, action, resp.status, metrics);
+}
+
+function aiConnectionError(provider, endpoint, error) {
+  if (!error || (error.name !== 'TypeError' && !/failed to fetch|networkerror|network request failed/i.test(error.message || ''))) return error;
+  const hostname = new URL(endpoint).hostname;
+  const guidance = hostname.endsWith('.ts.net')
+    ? '請確認 Tailscale 已登入並連線、MagicDNS 可解析此主機，以及 Ornith 服務與 HTTPS 憑證正常。'
+    : '請確認網路或公司 VPN、主機 DNS、HTTPS 憑證與擴充功能的網站存取權限。';
+  return new Error(provider + ' 無法連線至 ' + hostname + '。' + guidance + ' 原始內容未變更，恢復連線後請重試。');
 }
 
 function validateOrnithSettings(settings) {
@@ -432,7 +468,7 @@ async function callOrnith(settings, request, action, metrics) {
     if (error && error.name === 'AbortError') {
       throw new Error('Ornith 請求超過 ' + ORNITH_REQUEST_TIMEOUT_MS / 1000 + ' 秒，已中止且不會改呼叫 Azure');
     }
-    throw error;
+    throw aiConnectionError('Ornith', ornith.baseUrl, error);
   } finally {
     if (timeout) clearTimeout(timeout);
   }
@@ -475,8 +511,9 @@ async function handleAiPing() {
   }
 
   if (settings.provider === AI_SETTINGS.PROVIDERS.AZURE) {
-    const out = await callAzureDeepSeek(settings, '請只回覆兩個字：OK', 'ping');
-    return { ok: true, provider: 'azure-deepseek', deployment: settings.azureDeployment, sample: out };
+    const metrics = {};
+    const out = await callAzureDeepSeek(settings, '請只回覆兩個字：OK', 'ping', metrics);
+    return { ok: true, provider: 'azure-deepseek', deployment: settings.azureDeployment, sample: out, metrics: metrics };
   }
 
   const out = await callOrnith(settings, buildOrnithRequest('ping', ''), 'ping');
@@ -504,16 +541,16 @@ async function handleAiRequest(payload) {
   }
 
   if (settings.provider === AI_SETTINGS.PROVIDERS.AZURE) {
-    // Azure 刻意維持既有單一 user message、prompt、temperature、max_tokens 與 API version。
-    const result = await callAzureDeepSeek(settings, buildPrompt(action, text, targetLang), action, metrics);
-    AI_OUTPUT.assertValid(action, text, result);
-    return { ok: true, text: result, metrics: metrics, stub: false, provider: 'azure-deepseek', deployment: settings.azureDeployment };
+    // Thinking is opt-in per deployment; never silently retry with reasoning enabled.
+    const result = AI_OUTPUT.normalize(action, await callAzureDeepSeek(settings, buildPrompt(action, text, targetLang), action, metrics, text));
+    const draft = AI_OUTPUT.prepareForPreview(action, text, result, payload.imageTokens);
+    return { ok: true, text: draft.text, warning: draft.warning, metrics: metrics, stub: false, provider: 'azure-deepseek', deployment: settings.azureDeployment };
   }
 
   if (settings.provider === AI_SETTINGS.PROVIDERS.ORNITH) {
-    const result = await callOrnith(settings, buildOrnithRequest(action, text, targetLang), action, metrics);
-    AI_OUTPUT.assertValid(action, text, result);
-    return { ok: true, text: result, metrics: metrics, stub: false, provider: 'ornith', model: settings.ornithModel };
+    const result = AI_OUTPUT.normalize(action, await callOrnith(settings, buildOrnithRequest(action, text, targetLang), action, metrics));
+    const draft = AI_OUTPUT.prepareForPreview(action, text, result, payload.imageTokens);
+    return { ok: true, text: draft.text, warning: draft.warning, metrics: metrics, stub: false, provider: 'ornith', model: settings.ornithModel };
   }
 
   throw new Error('請先選擇 AI Provider');
@@ -703,6 +740,13 @@ chrome.tabs.onRemoved.addListener(function (tabId) {
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   if (!message) return false;
 
+  if (message.type === 'HPX_OPEN_HALO_OPTIONS') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/options/options.html#halo') })
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false, error: '無法開啟 Halo 後台設定' }));
+    return true;
+  }
+
   if (message.type === 'HPX_OPEN_OPTIONS') {
     try {
       const opening = chrome.runtime.openOptionsPage();
@@ -738,7 +782,9 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   }
 
   let work = null;
-  if (message.type === 'HPX_AI_REQUEST') {
+  if (message.type === 'HPX_HALO_API') {
+    work = self.HPX_HALO_API.handle(message, sender);
+  } else if (message.type === 'HPX_AI_REQUEST') {
     work = handleAiRequest(message.payload || {});
   } else if (message.type === 'HPX_AI_PING') {
     work = handleAiPing();

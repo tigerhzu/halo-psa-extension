@@ -1,0 +1,47 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>快速改狀態連續操作測試</title>
+<link rel="stylesheet" href="/src/styles/quick-status.css">
+<style>body{font:14px system-ui;background:#f4f3f8;margin:40px;color:#292639}.details_page_title,.newaction{background:white;padding:16px;border-radius:12px;margin:12px 0}.actionmenubtn{padding:10px;margin-right:6px}.menu{display:none}#result{margin:22px 0}h1{font-size:20px}.workflow-steps-wrap{margin:20px 0}.fr-element{min-height:60px;border:1px solid #ddd;margin:10px 0}.details-form-controls{display:flex;gap:10px}.newaction input[type=submit]{padding:8px 20px}fieldset{border:1px solid #ddd;margin-top:20px}label{margin-right:16px}.details_page_title button{vertical-align:middle}</style></head>
+<body><h1 class="profile-full-name">[ID:000123]</h1><p>本機模擬工單：原生動作、Save、歷程更新與 SPA 重建。沒有連線到 Halo。</p>
+<div class="details_page_title"><div class="buttons-container"></div></div>
+<div class="workflow-steps-wrap"><div class="rc-steps-item-active">Open</div></div>
+<div id="draft"></div><div id="history"></div><div id="result" role="status">尚未執行動作</div>
+<button id="switch">切換工單</button><button id="replace">重建動作列</button><button id="reset">重設測試</button>
+<fieldset><legend>例外情境</legend><label><input id="fail" type="checkbox">Save 失敗</label><label><input id="extra" type="checkbox">額外必填欄位</label><label><input id="modal" type="checkbox">先詢問 Log Response</label><label><input id="narrow" type="checkbox">全部動作藏在 More</label></fieldset>
+<script>
+history.replaceState({},'', '?id=123');
+window.__HPX={features:{},ui:{toast:{show(text){document.querySelector('#result').textContent=text}}}};
+let calls=[],step=0,recordId=5;
+function result(){document.querySelector('#result').textContent=calls.join(' → ')||'尚未執行動作'}
+function buttons(){
+ const root=document.querySelector('.details_page_title .buttons-container');
+ const trigger=root.querySelector('.hpx-quick-status-trigger');
+ const next=document.createElement('div');next.className='buttons-container';
+ const labels=step===0?['In Progress']:step===1?['In Progress','On Hold','Final Check with Customer/Sales']:['Resolved Ticket'];
+ const menu=document.createElement('div');menu.setAttribute('role','listbox');menu.innerHTML='<div class="menu"></div>';
+ labels.forEach((label,index)=>{const node=document.createElement(index===0&&!document.querySelector('#narrow').checked?'button':'div');node.title=label;node.textContent=label;
+ if(node.tagName==='BUTTON'){node.className='actionmenubtn';next.append(node)}else{node.className='item';node.setAttribute('role','option');menu.firstChild.append(node)}
+ node.onclick=()=>openAction(label);});next.append(menu);root.replaceWith(next);
+ document.querySelector('.rc-steps-item-active').textContent=step===0?'Open':step===1?'In-Progress':'Final confirmation';
+}
+function openAction(label){
+ calls.push('開啟 '+label);result();
+ if(document.querySelector('#modal').checked){document.querySelector('#modal').checked=false;const dialog=document.createElement('section');dialog.setAttribute('role','dialog');dialog.innerHTML='<h1>Log Response</h1><p>模擬 Halo 提示，需由使用者處理。</p><button type="button">繼續</button>';dialog.lastChild.onclick=()=>{dialog.remove();renderForm(label)};document.body.append(dialog);return}
+ renderForm(label);
+}
+function renderForm(label){
+ const box=document.createElement('div');box.className='newaction';
+ box.innerHTML='<button title="Cancel Action" type="button">Discard</button><div class="history-header"><div class="outcome"></div></div><form class="action-form"><label>Time Taken <input name="timetaken_!mins" value="0"></label><div class="fr-element" contenteditable="true"></div><div class="details-form-controls"><input type="submit" value="Save"></div></form>';
+ box.querySelector('.outcome').textContent=label;
+ if(document.querySelector('#extra').checked){const input=document.createElement('input');input.name='requiredExtra';input.required=true;input.placeholder='請填必填欄位';box.querySelector('form').prepend(input)}
+ box.firstChild.onclick=()=>{calls.push('取消 '+label);box.remove();result()};
+ box.querySelector('form').onsubmit=event=>{event.preventDefault();calls.push('Save '+label);result();
+ if(document.querySelector('#fail').checked){box.querySelector('.fr-element').textContent='模擬驗證失敗';return}
+ setTimeout(()=>{box.remove();const record=document.createElement('div');record.className='action-history-item';record.dataset.id=String(++recordId);record.innerHTML='<div class="history-header"><div class="outcome"></div></div>';record.querySelector('.outcome').textContent=label;document.querySelector('#history').prepend(record);
+ if(label==='In Progress')step=1;if(label==='Final Check with Customer/Sales')step=2;buttons();},120);
+ };
+ document.querySelector('#draft').append(box);
+}
+document.querySelector('#switch').onclick=()=>{history.pushState({},'','?id=124');document.querySelector('h1').textContent='[ID:000124]'};
+document.querySelector('#replace').onclick=buttons;document.querySelector('#narrow').onchange=buttons;
+document.querySelector('#reset').onclick=()=>location.reload();buttons();
+</script><script src="/src/features/quick-status-chain.js"></script><script src="/src/features/quick-status.js"></script><script>window.__HPX.features.quickStatus.start();</script></body></html>

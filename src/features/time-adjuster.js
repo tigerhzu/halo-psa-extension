@@ -745,22 +745,6 @@
     });
   }
 
-  /**
-   * 找出這個區塊殘留的舊工具列。
-   * 'beside' 模式在容器內部，'below' 模式是容器的下一個兄弟節點，兩種都要檢查。
-   */
-  function findExistingToolbar(container) {
-    let inside = null;
-    try {
-      inside = container.querySelector('.' + TOOLBAR_CLASS);
-    } catch (e) {
-      inside = null;
-    }
-    if (inside) return inside;
-    const next = container.nextElementSibling;
-    return next && next.classList && next.classList.contains(TOOLBAR_CLASS) ? next : null;
-  }
-
   function scan() {
     scanTimer = null;
     if (!isHaloPage()) return;
@@ -774,19 +758,29 @@
       } else group.reconcileLayout();
     });
 
+    // 全寬工具列位於外層 details-group，未必在偵測容器內或緊接其後。
+    // 框架重繪可能複製它；只保留仍由有效控制器管理的節點。
+    const ownedRoots = new Set();
+    const ownedInputs = new Set();
+    groups.forEach(function (group) {
+      ownedRoots.add(group.root);
+      fieldList(group.fields).forEach(function (input) { ownedInputs.add(input); });
+    });
+    document.querySelectorAll('.' + TOOLBAR_CLASS).forEach(function (root) {
+      if (!ownedRoots.has(root)) root.remove();
+    });
+
     findTimeTakenGroups().forEach(function (descriptor) {
       // 已由控制器管理中 → 絕不重複插入。
       if (groups.has(descriptor.container)) return;
-
-      // 走到這裡代表沒有對應的控制器。若仍留著上一輪的工具列
-      // （例如框架把容器搬移／重建，導致舊控制器已被清掉），
-      // 先移除殘留節點再重建，確保同一區塊永遠只有一組工具列。
-      const stale = findExistingToolbar(descriptor.container);
-      if (stale && stale.parentNode) stale.parentNode.removeChild(stale);
+      // 修改標題等重繪可改變標籤所在層級；同一組原生欄位仍只能有一個控制器。
+      const inputs = fieldList(descriptor.fields);
+      if (inputs.some(function (input) { return ownedInputs.has(input); })) return;
       descriptor.container.removeAttribute(cfg.MARK_ATTR);
 
       try {
         groups.set(descriptor.container, createGroup(descriptor));
+        inputs.forEach(function (input) { ownedInputs.add(input); });
         NS.log('Time Taken 快速調整已掛載');
       } catch (error) {
         NS.warn('Time Taken 工具列掛載失敗', error);
