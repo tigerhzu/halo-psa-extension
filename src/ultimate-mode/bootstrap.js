@@ -118,6 +118,21 @@
     chrome.storage.local.get(STORAGE_KEY, function (data) {
       const settings = (data && data[STORAGE_KEY]) || {};
       updateTeamGuard(settings[TEAMS_FIELD]);
+      // 渲染背景與面板不透明度同樣要在第一幀就位，否則整頁載入時會先閃一下素底。
+      // 數值規則與 theme.js 的 normalizeWallpaper 相同（tests/wallpaper.test.js 會比對）；
+      // 風格 id 這裡只擋格式，不認得的 id 在 glass.css 沒有對應顏色，等同沒有背景，
+      // 之後由 theme.js 依正式清單修正。
+      const percent = function (value, min, fallback) {
+        return typeof value === 'number' && isFinite(value)
+          ? Math.max(min, Math.min(100, Math.round(value)))
+          : fallback;
+      };
+      document.documentElement.setAttribute(
+        'data-hpxg-wash',
+        /^[a-z]{1,16}$/.test(String(settings.wash || '')) ? String(settings.wash) : 'none'
+      );
+      document.documentElement.style.setProperty('--hpxg-wash', (percent(settings.washIntensity, 0, 55) / 100).toFixed(2));
+      document.documentElement.style.setProperty('--hpxg-surface', (percent(settings.opacity, 55, 100) / 100).toFixed(2));
       // 整頁載入（例如 Team 快捷列的 <a> 導頁）時，theme attribute 與 accent
       // 必須在第一幀就存在，theme-cute-ios.css 的 Sidebar 樣式才不會晚到。
       // 正規化規則與 theme.js loadAll 相同：非 'default' 一律視為 cute-ios。

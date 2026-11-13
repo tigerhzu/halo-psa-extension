@@ -118,6 +118,16 @@ test('only an explicit false envelope flag preserves keys; legacy raw imports ke
   }
 });
 
+test('wallpaper preferences travel with a backup', async function () {
+  const importer = createImporter({ provider: 'ornith', ornithApiKey: 'local-key', wash: 'none' });
+  const result = await importer.import(backup({ provider: 'ornith', wash: 'aurora', washIntensity: 80, opacity: 70 }, false));
+  assert.equal(result.writes.length, 1);
+  assert.equal(result.stored.wash, 'aurora');
+  assert.equal(result.stored.washIntensity, 80);
+  assert.equal(result.stored.opacity, 70);
+  assert.equal(result.stored.ornithApiKey, 'local-key');
+});
+
 test('complete backups with both providers configured are rejected without any write', async function () {
   const initial = { provider: 'ornith', ornithApiKey: 'local-key' };
   const result = await createImporter(initial).import(backup({ provider: 'ornith', ornithApiKey: 'first-key', azureApiKey: 'second-key' }, true));

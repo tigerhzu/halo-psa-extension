@@ -1,0 +1,473 @@
+/* glass.css — finish for the 輕透 theme: translucent floating chrome for the
+   components this extension injects into Halo, plus the optional wallpaper wash.
+
+   Loaded last (see manifest.json) and scoped to html[data-hpx-theme="cute-ios"],
+   so 原生配色 keeps the plain styles underneath. theme.js owns the three inputs:
+     data-hpxg-wash   which preset (or "none")
+     --hpxg-wash      0–1, how strongly the wallpaper colours come through
+     --hpxg-surface   .55–1, how opaque panels are (1 = solid)
+
+   Rule of thumb: floating chrome (dock, menus, toasts) is translucent; anything
+   holding text the user reads or edits stays near-opaque. */
+
+html[data-hpx-theme="cute-ios"] {
+  --hpxg-wash: .55;
+  --hpxg-surface: 1;
+  --hpxg-ink: #1b2231;
+  --hpxg-ink-2: #5a6477;
+  --hpxg-tint: rgb(255 255 255 / calc(var(--hpxg-surface) * .82));
+  --hpxg-tint-strong: rgb(255 255 255 / calc(.5 + var(--hpxg-surface) * .36));
+  /* Menus, popovers and the draft review hold text, so they ignore the dial. */
+  --hpxg-sheet: rgba(250, 251, 254, .93);
+  --hpxg-blur: blur(22px) saturate(180%);
+  --hpxg-blur-strong: blur(34px) saturate(180%);
+  --hpxg-hairline: rgba(22, 32, 54, .08);
+  --hpxg-hairline-strong: rgba(22, 32, 54, .16);
+  --hpxg-fill: rgba(64, 78, 108, .08);
+  --hpxg-fill-hover: rgba(64, 78, 108, .14);
+  --hpxg-edge: inset 0 1px 0 rgba(255, 255, 255, .85);
+  --hpxg-float: 0 12px 32px rgba(28, 40, 72, .14), 0 2px 6px rgba(28, 40, 72, .08);
+  --hpxg-float-lg: 0 28px 72px rgba(28, 40, 72, .2), 0 4px 12px rgba(28, 40, 72, .08);
+  --hpxg-ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* Soften the shared control tokens only inside the components restyled below.
+   The category picker, timesheet editor and quick-status panel read the same
+   tokens and have not been reworked, so they keep their current values. */
+html[data-hpx-theme="cute-ios"] :is(.hpx-toolbar, .hpx-tta, .hpx-sidebar-controls, .hpx-sidebar-popover, .hpx-sp, .hpx-modal-overlay, .hpx-toast-container, .hpx-loader) {
+  --hpx-ink: var(--hpxg-ink);
+  --hpx-muted: var(--hpxg-ink-2);
+  --hpx-line: var(--hpxg-hairline);
+  --hpx-control-bg: var(--hpxg-fill);
+  --hpx-control-hover: var(--hpxg-fill-hover);
+  --hpx-control-border: var(--hpxg-hairline-strong);
+  --hpx-control-ink: var(--hpxg-ink);
+  --hpx-control-shadow: none;
+}
+
+/* ── Wallpaper wash ─────────────────────────────────────────────
+   A preset only names four colours; strength, vividness and spread all come
+   from --hpxg-wash, so every preset answers to the same slider. The preset
+   selectors are unscoped on purpose: the swatch buttons in the appearance
+   panel carry the same attribute and read the same colours, so each preset is
+   defined exactly once. theme.js lists the ids; tests/wallpaper.test.js keeps
+   the two in step. */
+[data-hpxg-wash="aurora"]  { --w1: #5eead4; --w2: #818cf8; --w3: #c084fc; --w4: #38bdf8; }
+[data-hpxg-wash="sunrise"] { --w1: #fdba74; --w2: #fb7185; --w3: #fcd34d; --w4: #f9a8d4; }
+[data-hpxg-wash="ocean"]   { --w1: #38bdf8; --w2: #3b82f6; --w3: #22d3ee; --w4: #818cf8; }
+[data-hpxg-wash="sakura"]  { --w1: #fb7185; --w2: #fda4af; --w3: #f43f5e; --w4: #fdba74; }
+[data-hpxg-wash="forest"]  { --w1: #86efac; --w2: #2dd4bf; --w3: #a3e635; --w4: #34d399; }
+[data-hpxg-wash="dusk"]    { --w1: #a78bfa; --w2: #f472b6; --w3: #60a5fa; --w4: #fbbf24; }
+/* Follows whatever accent the user picked, fanned out around its hue. */
+[data-hpxg-wash="accent"] {
+  --w1: oklch(from var(--hpx-accent) .74 .15 h);
+  --w2: oklch(from var(--hpx-accent) .78 .13 calc(h + 45));
+  --w3: oklch(from var(--hpx-accent) .72 .16 calc(h - 40));
+  --w4: oklch(from var(--hpx-accent) .84 .1 calc(h + 90));
+}
+
+html[data-hpx-theme="cute-ios"][data-hpxg-wash]:not([data-hpxg-wash="none"]) {
+  /* Strength is the alpha; vividness scales chroma and leaves lightness alone,
+     so dark text on the wallpaper keeps its contrast at full strength. */
+  --hpxg-c1: oklch(from var(--w1) l calc(c * (.85 + var(--hpxg-wash) * .6)) h / var(--hpxg-wash));
+  --hpxg-c2: oklch(from var(--w2) l calc(c * (.85 + var(--hpxg-wash) * .6)) h / var(--hpxg-wash));
+  --hpxg-c3: oklch(from var(--w3) l calc(c * (.85 + var(--hpxg-wash) * .6)) h / var(--hpxg-wash));
+  --hpxg-c4: oklch(from var(--w4) l calc(c * (.85 + var(--hpxg-wash) * .6)) h / var(--hpxg-wash));
+  --hpxg-spread: calc(50% + var(--hpxg-wash) * 30%);
+  --hpxg-wash-image:
+    radial-gradient(72% 62% at 6% 2%, var(--hpxg-c1), transparent var(--hpxg-spread)),
+    radial-gradient(62% 56% at 98% 8%, var(--hpxg-c2), transparent var(--hpxg-spread)),
+    radial-gradient(66% 62% at 90% 98%, var(--hpxg-c3), transparent var(--hpxg-spread)),
+    radial-gradient(62% 60% at 8% 100%, var(--hpxg-c4), transparent var(--hpxg-spread));
+
+  /* Halo's own layers, light theme only (verified on the 2025 layout).
+     The wallpaper is painted on Halo's shell and on the ticket-details pane,
+     which is an opaque sheet laid over the list; the same-coloured layers in
+     between turn transparent. Both painted elements are fixed panes that never
+     scroll, so there is no background-attachment: fixed and no backdrop-filter:
+     a smooth gradient gains nothing from blurring and both cost scroll time.
+     If Halo renames a class the rule stops matching and that layer simply
+     stays solid. */
+  & .app-container.theme-light,
+  & .app-container.theme-light .details-container {
+    background-image: var(--hpxg-wash-image) !important;
+  }
+  & .app-container.theme-light :is(.container-full.mainview, .container-max.mainscreen),
+  & .app-container.theme-light .details-container .infinite-scroll-component,
+  & .app-container.theme-light .ReactTable .-loading:not(.-active) {
+    background-color: transparent !important;
+  }
+  /* Rows keep Halo's own hover colour; .transparent widgets were never painted. */
+  & .app-container.theme-light .ReactTable :is(.rt-thead.-header, .rt-tr-group.table-tr:not(:hover)),
+  & .app-container.theme-light .action-history-item.wcontainer,
+  & .app-container.theme-light .details-container .widget-container:not(.transparent) {
+    background-color: rgb(255 255 255 / var(--hpxg-surface)) !important;
+  }
+}
+
+/* ── Editor toolbar ─────────────────────────────────────────── */
+html[data-hpx-theme="cute-ios"] .hpx-toolbar {
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--hpxg-hairline);
+  border-radius: 16px;
+  /* No backdrop-filter here: the toolbar sits in the page flow with nothing behind
+     it to blur, and a filtered ancestor would stop the dropdown below from
+     blurring the editor text it covers. */
+  background: color-mix(in srgb, var(--hpx-accent) 4%, rgba(255, 255, 255, .6));
+  box-shadow: 0 6px 20px rgba(28, 40, 72, .06), var(--hpxg-edge);
+}
+html[data-hpx-theme="cute-ios"] .hpx-toolbar.hpx-besties-toolbar {
+  padding: 0; border: 0; background: transparent; box-shadow: none;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-group { gap: 2px; padding-right: 0; }
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--hpxg-fill);
+  color: var(--hpxg-ink);
+  font-weight: 500;
+  box-shadow: none;
+  transition: background .18s var(--hpxg-ease), transform .18s var(--hpxg-ease), box-shadow .18s var(--hpxg-ease);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn:hover { background: var(--hpxg-fill-hover); }
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn:active { background: var(--hpxg-fill-hover); transform: scale(.97); }
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--hpx-accent) 70%, #fff);
+  outline-offset: 2px;
+}
+/* The one filled control per toolbar. */
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--window,
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--window:hover {
+  background: linear-gradient(rgba(255, 255, 255, .16), rgba(255, 255, 255, 0)), var(--hpx-accent);
+  color: var(--hpx-accent-ink);
+  font-weight: 600;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--hpx-accent) 30%, transparent), inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--window:hover { filter: brightness(1.06); }
+/* AI actions read as one segmented control instead of five separate pills. */
+html[data-hpx-theme="cute-ios"] .hpx-tb-group:has(> .hpx-tb-btn--ai) {
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--hpxg-fill);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-group-label {
+  margin: 0 4px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .4px;
+  color: var(--hpxg-ink-2);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--ai {
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 9px;
+  background: transparent;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--ai:hover {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(28, 40, 72, .16), 0 0 0 .5px rgba(28, 40, 72, .06);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--template { background: transparent; }
+html[data-hpx-theme="cute-ios"] .hpx-tb-btn--template::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 2px 3px 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  opacity: .7;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-menu {
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, .75);
+  border-radius: 16px;
+  background: var(--hpxg-sheet);
+  -webkit-backdrop-filter: var(--hpxg-blur-strong);
+  backdrop-filter: var(--hpxg-blur-strong);
+  box-shadow: var(--hpxg-float), 0 0 0 1px var(--hpxg-hairline);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-item { min-height: 34px; border-radius: 10px; background: transparent; }
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-item:hover { background: var(--hpxg-fill-hover); }
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-divider { background: var(--hpxg-hairline); }
+html[data-hpx-theme="cute-ios"] .hpx-tb-dropdown-item--strong { color: var(--hpx-accent-text); font-weight: 600; }
+
+/* ── Time Taken quick adjust ────────────────────────────────── */
+html[data-hpx-theme="cute-ios"] .hpx-tta { column-gap: 4px; row-gap: 6px; color: var(--hpxg-ink-2); }
+html[data-hpx-theme="cute-ios"] .hpx-tta > .hpx-tta-summary { font-weight: 500; color: var(--hpxg-ink-2); }
+html[data-hpx-theme="cute-ios"] .hpx-tta > .hpx-tta-btn {
+  padding: 3px 10px !important;
+  border: 0;
+  border-radius: 8px;
+  background: var(--hpxg-fill);
+  color: var(--hpxg-ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  transition: background .18s var(--hpxg-ease), transform .18s var(--hpxg-ease);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tta > .hpx-tta-btn:hover { background: var(--hpxg-fill-hover); color: var(--hpxg-ink); }
+html[data-hpx-theme="cute-ios"] .hpx-tta > .hpx-tta-btn--reset {
+  margin-right: 8px !important;
+  border: 0;
+  background: transparent;
+  color: var(--hpxg-ink-2);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tta > .hpx-tta-btn--apply {
+  margin-left: 4px !important;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--hpx-accent) 13%, transparent);
+  color: var(--hpx-accent-text);
+  font-weight: 600;
+}
+html[data-hpx-theme="cute-ios"] .hpx-tta > .hpx-tta-btn--apply:hover {
+  background: color-mix(in srgb, var(--hpx-accent) 20%, transparent);
+}
+html[data-hpx-theme="cute-ios"] .hpx-tta > .hpx-tta-input {
+  border: 1px solid var(--hpxg-hairline-strong);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+/* ── Bottom-left dock: the piece that actually floats over Halo ── */
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-controls {
+  gap: 2px;
+  padding: 5px;
+  min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 999px;
+  background: var(--hpxg-tint);
+  -webkit-backdrop-filter: var(--hpxg-blur);
+  backdrop-filter: var(--hpxg-blur);
+  box-shadow: var(--hpxg-float), var(--hpxg-edge);
+  color: var(--hpxg-ink);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--hpxg-ink);
+  font-weight: 500;
+  box-shadow: none;
+  transition: background .18s var(--hpxg-ease), transform .18s var(--hpxg-ease);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control:hover,
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control:focus-visible {
+  border: 0;
+  background: var(--hpxg-fill-hover);
+  color: var(--hpxg-ink);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--hpx-accent) 70%, #fff);
+  outline-offset: 1px;
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control:active { transform: scale(.96); }
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control-label { color: inherit; font-size: 13px; }
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control[data-hpx-sidebar-control="links"] { font-weight: 500; color: var(--hpxg-ink); }
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control[data-hpx-sidebar-control="collapse"] {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--hpxg-ink-2);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control--active {
+  border: 0;
+  background: color-mix(in srgb, var(--hpx-accent) 14%, transparent);
+  box-shadow: none;
+  color: var(--hpx-accent-text);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control-state[data-hpx-sidebar-state="mode"] {
+  padding: 3px 6px;
+  background: rgba(64, 78, 108, .14);
+  color: var(--hpxg-ink-2);
+  font: 600 11px/1.1 var(--hpx-font);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control--active .hpx-sidebar-control-state[data-hpx-sidebar-state="mode"] {
+  background: var(--hpx-accent);
+  color: var(--hpx-accent-ink);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control-state[data-hpx-sidebar-state="color"] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--hpxg-hairline-strong);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-controls--collapsed { width: 48px !important; height: 48px; padding: 5px; }
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-controls--collapsed .hpx-sidebar-control[data-hpx-sidebar-control="collapse"] {
+  width: 36px; min-width: 36px; height: 36px; border: 0; background: transparent;
+}
+
+/* ── Popovers and the settings sheet: near-opaque so text never bleeds ── */
+html[data-hpx-theme="cute-ios"] :is(.hpx-sidebar-popover, .hpx-sp) {
+  border: 1px solid rgba(255, 255, 255, .75);
+  border-radius: 24px;
+  background: var(--hpxg-sheet);
+  -webkit-backdrop-filter: var(--hpxg-blur-strong);
+  backdrop-filter: var(--hpxg-blur-strong);
+  box-shadow: var(--hpxg-float-lg), 0 0 0 1px var(--hpxg-hairline);
+  color: var(--hpxg-ink);
+  transition: opacity .2s var(--hpxg-ease), transform .24s var(--hpxg-ease), visibility 0s linear .2s;
+}
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-popover { transform: translateY(8px) scale(.96); transform-origin: left bottom; }
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-popover--open { transform: none; transition-delay: 0s; }
+html[data-hpx-theme="cute-ios"] :is(.hpx-sidebar-popover-header, .hpx-sp-header) {
+  background: transparent;
+  border-bottom: 1px solid var(--hpxg-hairline);
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-sidebar-popover-title, .hpx-sp-title) { color: var(--hpxg-ink); font-weight: 600; }
+html[data-hpx-theme="cute-ios"] :is(.hpx-sidebar-popover-close, .hpx-sp-close) {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--hpxg-fill);
+  color: var(--hpxg-ink-2);
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-sidebar-popover-close, .hpx-sp-close):hover { background: var(--hpxg-fill-hover); color: var(--hpxg-ink); }
+html[data-hpx-theme="cute-ios"] :is(.hpx-sp-intro, .hpx-sp-label) { color: var(--hpxg-ink-2); }
+html[data-hpx-theme="cute-ios"] :is(.hpx-sp-shortcut-card, .hpx-sp-thumb, .hpx-sp-pet-choice, .hpx-sp-pet-visibility) {
+  border-color: transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .72);
+  box-shadow: 0 0 0 1px var(--hpxg-hairline);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sp-shortcut-card:hover { border-color: transparent; background: #fff; box-shadow: 0 0 0 1px var(--hpxg-hairline-strong); }
+html[data-hpx-theme="cute-ios"] :is(.hpx-sp-thumb, .hpx-sp-pet-choice).hpx-sp-on {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--hpx-accent);
+}
+html[data-hpx-theme="cute-ios"] .hpx-sp-shortcut-button { color: var(--hpxg-ink); border-radius: 10px; }
+html[data-hpx-theme="cute-ios"] .hpx-sp-shortcut-button:hover:not(:disabled) { background: var(--hpxg-fill); }
+html[data-hpx-theme="cute-ios"] :is(.hpx-sp-shortcut-add, .hpx-sp-shortcut-edit, .hpx-sp-shortcut-cancel, .hpx-sp-pet-visibility-toggle:not(.hpx-sp-on)) {
+  border: 0;
+  background: var(--hpxg-fill);
+  color: var(--hpxg-ink);
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-sp-shortcut-add, .hpx-sp-shortcut-edit, .hpx-sp-shortcut-cancel):hover { background: var(--hpxg-fill-hover); border: 0; }
+html[data-hpx-theme="cute-ios"] :is(.hpx-sp-shortcut-confirm, .hpx-sp-pet-visibility-toggle.hpx-sp-on) { border-color: transparent; }
+html[data-hpx-theme="cute-ios"] .hpx-sp-shortcut-remove { border-color: transparent; background: rgba(255, 59, 48, .12); color: #c0271d; }
+html[data-hpx-theme="cute-ios"] .hpx-sp-shortcut-row input {
+  border: 1px solid var(--hpxg-hairline-strong);
+  border-radius: 10px;
+  background: #fff;
+}
+html[data-hpx-theme="cute-ios"] .hpx-sp-swatch { border-radius: 50%; }
+
+/* ── AI draft review ────────────────────────────────────────── */
+html[data-hpx-theme="cute-ios"] .hpx-modal-overlay {
+  background: rgba(22, 30, 48, .28);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+html[data-hpx-theme="cute-ios"] .hpx-modal {
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 26px;
+  background: rgba(246, 248, 252, .92);
+  -webkit-backdrop-filter: var(--hpxg-blur-strong);
+  backdrop-filter: var(--hpxg-blur-strong);
+  box-shadow: var(--hpxg-float-lg);
+  color: var(--hpxg-ink);
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-modal__header, .hpx-modal__footer) { background: transparent; border-color: var(--hpxg-hairline); }
+html[data-hpx-theme="cute-ios"] .hpx-modal__title { font-weight: 600; }
+html[data-hpx-theme="cute-ios"] .hpx-modal__close { border: 0; border-radius: 50%; background: var(--hpxg-fill); color: var(--hpxg-ink-2); }
+html[data-hpx-theme="cute-ios"] .hpx-modal__note { background: transparent; border-color: var(--hpxg-hairline); color: var(--hpxg-ink-2); }
+html[data-hpx-theme="cute-ios"] .hpx-modal__col-label { color: var(--hpxg-ink-2); }
+html[data-hpx-theme="cute-ios"] .hpx-modal__textarea { border: 1px solid var(--hpxg-hairline-strong); border-radius: 14px; background: #fff; color: var(--hpxg-ink); }
+html[data-hpx-theme="cute-ios"] .hpx-modal__textarea--readonly { background: rgba(255, 255, 255, .55); color: var(--hpxg-ink-2); }
+html[data-hpx-theme="cute-ios"] .hpx-modal__textarea:is(:focus, :focus-visible) {
+  outline: none;
+  border-color: var(--hpx-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hpx-accent) 30%, transparent);
+}
+html[data-hpx-theme="cute-ios"] .hpx-btn { min-height: 38px; padding: 9px 18px; border: 0; border-radius: 12px; font-weight: 600; transition: background .18s var(--hpxg-ease), transform .18s var(--hpxg-ease); }
+html[data-hpx-theme="cute-ios"] .hpx-btn:active { transform: scale(.97); }
+html[data-hpx-theme="cute-ios"] .hpx-btn--secondary { border: 0; background: var(--hpxg-fill); color: var(--hpxg-ink); font-weight: 500; }
+html[data-hpx-theme="cute-ios"] :is(.hpx-btn--secondary, .hpx-modal__close):hover { border: 0; background: var(--hpxg-fill-hover); color: var(--hpxg-ink); }
+html[data-hpx-theme="cute-ios"] .hpx-btn--primary,
+html[data-hpx-theme="cute-ios"] .hpx-btn--primary:hover {
+  border: 0;
+  background: linear-gradient(rgba(255, 255, 255, .16), rgba(255, 255, 255, 0)), var(--hpx-accent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--hpx-accent) 30%, transparent), inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+
+/* ── Feedback: a light capsule at the top instead of a dark slab ── */
+html[data-hpx-theme="cute-ios"] .hpx-toast-container {
+  top: 18px;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  align-items: center;
+  transform: translateX(-50%);
+}
+html[data-hpx-theme="cute-ios"] .hpx-toast,
+html[data-hpx-theme="cute-ios"] .hpx-loader {
+  border: 1px solid rgba(255, 255, 255, .75);
+  border-radius: 999px;
+  background: var(--hpxg-tint-strong);
+  -webkit-backdrop-filter: var(--hpxg-blur);
+  backdrop-filter: var(--hpxg-blur);
+  box-shadow: var(--hpxg-float), var(--hpxg-edge);
+  color: var(--hpxg-ink);
+  font-weight: 500;
+  transition: opacity .22s var(--hpxg-ease), transform .28s var(--hpxg-ease);
+}
+html[data-hpx-theme="cute-ios"] .hpx-toast {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 18px 10px 14px;
+  transform: translateY(-10px) scale(.96);
+}
+html[data-hpx-theme="cute-ios"] .hpx-toast--visible { transform: none; }
+html[data-hpx-theme="cute-ios"] .hpx-toast::before {
+  content: '';
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hpx-accent);
+}
+html[data-hpx-theme="cute-ios"] .hpx-toast--success::before { background: #34c759; }
+html[data-hpx-theme="cute-ios"] .hpx-toast--error::before { background: #ff3b30; }
+html[data-hpx-theme="cute-ios"] .hpx-loader { padding: 11px 18px; }
+html[data-hpx-theme="cute-ios"] .hpx-loader__tiger { border-color: rgba(64, 78, 108, .2); border-top-color: var(--hpx-accent); }
+html[data-hpx-theme="cute-ios"] .hpx-loader--done .hpx-loader__tiger { color: #248a3d; }
+
+/* Translucency is decoration; drop it when the user or the browser says no. */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-hpx-theme="cute-ios"] {
+    --hpxg-surface: 1 !important;
+    --hpxg-tint: #fff;
+    --hpxg-tint-strong: #fff;
+    --hpxg-sheet: #fafbfe;
+    --hpxg-blur: none;
+    --hpxg-blur-strong: none;
+  }
+  html[data-hpx-theme="cute-ios"][data-hpxg-wash] { --hpxg-wash-image: none !important; }
+  html[data-hpx-theme="cute-ios"] .hpx-toolbar { background: #fff; }
+  html[data-hpx-theme="cute-ios"] .hpx-modal { background: #f6f8fc; }
+  html[data-hpx-theme="cute-ios"] .hpx-modal-overlay { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html[data-hpx-theme="cute-ios"] {
+    --hpxg-tint: rgba(255, 255, 255, .96);
+    --hpxg-tint-strong: rgba(255, 255, 255, .98);
+    --hpxg-sheet: #fafbfe;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-hpx-theme="cute-ios"] :is(.hpx-tb-btn, .hpx-sidebar-control, .hpx-btn, .hpx-tta > .hpx-tta-btn):active { transform: none; }
+}

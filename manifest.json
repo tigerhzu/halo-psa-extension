@@ -139,7 +139,8 @@
         "src/styles/time-adjuster.css",
         "src/styles/ticket-reader.css",
         "src/styles/quick-status.css",
-        "src/styles/workbench-surfaces.css"
+        "src/styles/workbench-surfaces.css",
+        "src/styles/glass.css"
       ]
     }
   ],

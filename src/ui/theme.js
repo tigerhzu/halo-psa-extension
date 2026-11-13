@@ -23,9 +23,54 @@
   const DEFAULT_OPACITY = 100; // 百分比 40~100
   const VALID = ['default', 'cute-ios'];
 
+  // 渲染背景（輕透主題專用）。這份清單是風格 id 與名稱的唯一來源；四個顏色定義在
+  // glass.css 的 [data-hpxg-wash="…"]，tests/wallpaper.test.js 會比對兩邊是否一致。
+  const DEFAULT_WASH = 'none';
+  const DEFAULT_WASH_INTENSITY = 55; // 百分比 0~100
+  // 面板最低不透明度。再低的話，Halo 的灰色次要文字在高強度背景上不易閱讀。
+  const MIN_SURFACE_OPACITY = 55;
+  const WASHES = [
+    { id: 'none', name: '無' },
+    { id: 'aurora', name: '極光' },
+    { id: 'sunrise', name: '晨曦' },
+    { id: 'ocean', name: '海洋' },
+    { id: 'sakura', name: '緋紅' },
+    { id: 'forest', name: '森林' },
+    { id: 'dusk', name: '暮色' },
+    { id: 'accent', name: '跟隨主題色' },
+  ];
+
   function normalizeAccent(value) {
     const hex = String(value || '').trim();
     return /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : DEFAULT_ACCENT;
+  }
+
+  function clampPercent(value, min, fallback) {
+    return typeof value === 'number' && isFinite(value)
+      ? Math.max(min, Math.min(100, Math.round(value)))
+      : fallback;
+  }
+
+  /**
+   * 把設定物件整理成渲染背景實際使用的三個值。
+   * bootstrap.js 在 document_start 用同一套規則先套一次（它載入時本檔還不存在）。
+   */
+  function normalizeWallpaper(s) {
+    s = s || {};
+    return {
+      wash: WASHES.some(function (wash) { return wash.id === s.wash; }) ? s.wash : DEFAULT_WASH,
+      washIntensity: clampPercent(s.washIntensity, 0, DEFAULT_WASH_INTENSITY),
+      opacity: clampPercent(s.opacity, MIN_SURFACE_OPACITY, DEFAULT_OPACITY),
+    };
+  }
+
+  function applyWallpaper(s) {
+    const wallpaper = normalizeWallpaper(s);
+    const root = document.documentElement;
+    root.setAttribute('data-hpxg-wash', wallpaper.wash);
+    root.style.setProperty('--hpxg-wash', (wallpaper.washIntensity / 100).toFixed(2));
+    root.style.setProperty('--hpxg-surface', (wallpaper.opacity / 100).toFixed(2));
+    return wallpaper;
   }
 
   const SIDEBAR_MARKER = 'hpx-theme-sidebar'; // 逐欄（fallback）樣式用
@@ -38,6 +83,8 @@
     theme: DEFAULT_THEME,
     accent: DEFAULT_ACCENT,
     opacity: DEFAULT_OPACITY,
+    wash: DEFAULT_WASH,
+    washIntensity: DEFAULT_WASH_INTENSITY,
   };
   let mo = null;
   let sidebarMo = null;
@@ -431,7 +478,7 @@
 
   // ── 套用外觀（theme + accent + opacity）─────────────────────
 
-  function applyAppearance(s) {
+  function applyAppearance(s, options) {
     s = s || {};
     const theme = VALID.indexOf(s.theme) !== -1 ? s.theme : DEFAULT_THEME;
     currentTheme = theme;
@@ -456,7 +503,17 @@
     root.style.setProperty('--hpx-opacity', frac);
     root.style.setProperty('--hpx-glass-opacity', frac); // 沿用既有 cute 規則別名
 
-    currentAppearance = { theme: theme, accent: accent, opacity: op };
+    // keepWallpaper：bootstrap.js 已在第一幀套好時，start() 的預設值不可以把它蓋掉。
+    const wallpaper = options && options.keepWallpaper
+      ? { wash: currentAppearance.wash, washIntensity: currentAppearance.washIntensity }
+      : applyWallpaper(s);
+    currentAppearance = {
+      theme: theme,
+      accent: accent,
+      opacity: op,
+      wash: wallpaper.wash,
+      washIntensity: wallpaper.washIntensity,
+    };
 
     updateSidebarMarker(theme);
   }
@@ -495,6 +552,9 @@
   const Theme = {
     DEFAULT_THEME: DEFAULT_THEME,
     VALID: VALID,
+    WASHES: WASHES,
+    MIN_SURFACE_OPACITY: MIN_SURFACE_OPACITY,
+    normalizeWallpaper: normalizeWallpaper,
     apply: function (name) {
       applyAppearance(Object.assign({}, currentAppearance, { theme: name }));
     },
@@ -502,7 +562,10 @@
 
     start: function () {
       // 先用預設避免閃爍
-      applyAppearance({ theme: DEFAULT_THEME, accent: DEFAULT_ACCENT, opacity: DEFAULT_OPACITY });
+      applyAppearance(
+        { theme: DEFAULT_THEME, accent: DEFAULT_ACCENT, opacity: DEFAULT_OPACITY },
+        { keepWallpaper: document.documentElement.hasAttribute('data-hpxg-wash') }
+      );
       loadAll(applyAppearance);
       bindSidebarObserver();
 

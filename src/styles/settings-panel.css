@@ -624,6 +624,63 @@ button.hpx-sp-pet:active {
   font: 600 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
+/* ── Wallpaper wash (輕透 only) ─────────────────────────────── */
+html[data-hpx-theme="default"] .hpx-sp-wallpaper { display: none; }
+.hpx-sp-wash-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+/* --w1…--w3 come from glass.css through the same data-hpxg-wash attribute. */
+.hpx-sp-wash {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--w1, #e2e8f0), var(--w2, #e2e8f0) 50%, var(--w3, #e2e8f0));
+  box-shadow: 0 0 0 1px rgba(22, 32, 54, .16);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.hpx-sp-wash[data-hpxg-wash="none"] {
+  background: linear-gradient(135deg, #fff 46%, #c3cad8 46% 54%, #fff 54%);
+}
+.hpx-sp-wash:hover { transform: translateY(-2px) scale(1.1); }
+/* --hpx-accent-text stays dark for every accent, including a white one. */
+.hpx-sp-wash[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--hpx-accent-text, #1d4ed8); }
+.hpx-sp-dial {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 0;
+  color: #52617a;
+  font: 12px/1.4 var(--hpx-font, "Segoe UI", "Microsoft JhengHei", sans-serif);
+}
+/* Halo's form rules restyle bare inputs, so the range control states everything. */
+.hpx-sp-dial input[type="range"] {
+  width: 100%;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  accent-color: var(--hpx-accent-text, #1d4ed8);
+  cursor: pointer;
+}
+.hpx-sp-dial output {
+  color: #1d2433;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Pet picker ────────────────────────────────────────────── */
 .hpx-sp-pet-choice-row {
   display: grid;

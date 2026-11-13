@@ -502,6 +502,73 @@
     return section;
   }
 
+  /** 一條滑桿：拖曳時即時預覽（commit=false），放開才寫入設定（commit=true）。 */
+  function buildDial(labelText, max, value, onChange) {
+    const row = el('label', 'hpx-sp-dial');
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = '0';
+    input.max = String(max);
+    input.step = '1';
+    input.value = String(value);
+    const output = el('output', '', value + '%');
+    input.addEventListener('input', function () {
+      output.textContent = input.value + '%';
+      onChange(Number(input.value), false);
+    });
+    input.addEventListener('change', function () {
+      onChange(Number(input.value), true);
+    });
+    row.appendChild(el('span', '', labelText));
+    row.appendChild(input);
+    row.appendChild(output);
+    return row;
+  }
+
+  /**
+   * 渲染背景：風格、強度與面板透明度。只對輕透主題有效，原生配色時由 CSS 隱藏整段。
+   * 風格清單與數值範圍都取自 theme.js；色票顏色來自 glass.css 的同一組 attribute 規則。
+   */
+  function buildWallpaperSection(draft) {
+    const theme = NS.ui.theme;
+    const section = el('div', 'hpx-sp-section hpx-sp-wallpaper');
+    section.appendChild(el('div', 'hpx-sp-label', '背景渲染'));
+    Object.assign(draft, theme.normalizeWallpaper(draft));
+
+    const row = el('div', 'hpx-sp-wash-row');
+    theme.WASHES.forEach(function (wash) {
+      const swatch = el('button', 'hpx-sp-wash');
+      swatch.type = 'button';
+      swatch.setAttribute('data-hpxg-wash', wash.id);
+      swatch.setAttribute('aria-label', wash.name);
+      swatch.setAttribute('aria-pressed', String(draft.wash === wash.id));
+      swatch.title = wash.name;
+      swatch.addEventListener('click', function () {
+        draft.wash = wash.id;
+        row.querySelectorAll('.hpx-sp-wash').forEach(function (button) {
+          button.setAttribute('aria-pressed', String(button === swatch));
+        });
+        theme.applyAppearance(draft);
+        persistSettings({ wash: draft.wash });
+      });
+      row.appendChild(swatch);
+    });
+    section.appendChild(row);
+
+    section.appendChild(buildDial('渲染強度', 100, draft.washIntensity, function (value, commit) {
+      draft.washIntensity = value;
+      theme.applyAppearance(draft);
+      if (commit) persistSettings({ washIntensity: value });
+    }));
+    // 設定存的是不透明度（opacity）；介面上以「透明度」呈現，所以兩邊互為 100 的補數。
+    section.appendChild(buildDial('透明度', 100 - theme.MIN_SURFACE_OPACITY, 100 - draft.opacity, function (value, commit) {
+      draft.opacity = 100 - value;
+      theme.applyAppearance(draft);
+      if (commit) persistSettings({ opacity: draft.opacity });
+    }));
+    return section;
+  }
+
   function buildPetSection(draft) {
     const section = el('div', 'hpx-sp-section');
     const label = el('div', 'hpx-sp-label');
@@ -1146,6 +1213,7 @@
     } else {
       body.appendChild(buildThemeSection(draft));
       body.appendChild(buildColorSection(draft));
+      body.appendChild(buildWallpaperSection(draft));
     }
     popover.appendChild(body);
     sidebarPopoverEl = popover;

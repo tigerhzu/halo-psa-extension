@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-Hant" data-hpx-theme="cute-ios">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Halo Companion · 玻璃 UI 預覽</title>
+  <!-- Same stylesheets, in the same order, as the content script entry in manifest.json. -->
+  <link rel="stylesheet" href="../src/styles/workbench.css">
+  <link rel="stylesheet" href="../src/styles/toolbar.css">
+  <link rel="stylesheet" href="../src/styles/modal.css">
+  <link rel="stylesheet" href="../src/styles/settings-panel.css">
+  <link rel="stylesheet" href="../src/styles/time-adjuster.css">
+  <link rel="stylesheet" href="../src/styles/workbench-surfaces.css">
+  <link rel="stylesheet" href="../src/styles/glass.css">
+  <style>
+    /* Stand-in for Halo's own page. It borrows Halo's real class names
+       (.app-container.theme-light, .mainview, .ReactTable rows, history cards) so
+       the wallpaper rules in glass.css paint this page exactly as they paint Halo;
+       nothing here restyles the extension's components. */
+    *{box-sizing:border-box}
+    body{margin:0;color:#1d2433;font:14px/1.7 'Segoe UI','Microsoft JhengHei',sans-serif}
+    .app-container{position:relative;height:100vh;overflow:hidden;background-color:#f1f5fb}
+    .gp-rail{position:absolute;inset:0 auto 0 0;width:68px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;background:var(--hpx-accent);color:var(--hpx-accent-ink)}
+    .gp-rail img{width:44px;height:44px;border-radius:11px;margin-bottom:14px;display:block}
+    .gp-rail span{display:grid;place-items:center;width:56px;height:52px;border-radius:10px;font-size:11px;opacity:.86}
+    .gp-rail span.on{background:color-mix(in srgb,var(--hpx-accent-ink) 16%,transparent);opacity:1}
+    .gp-tree{position:absolute;inset:0 auto 0 68px;width:204px;padding:18px 12px;background:#f1f3f8;border-right:1px solid #e1e5ee;color:#31394b;font-size:13px;overflow:auto}
+    .gp-tree h3{margin:0 8px 10px;font-size:11px;font-weight:600;letter-spacing:.6px;color:#6e7788}
+    .gp-tree div{display:flex;justify-content:space-between;padding:7px 10px;border-radius:10px}
+    .gp-tree div.on{background:var(--hpx-accent);color:var(--hpx-accent-ink)}
+    .gp-tree b{font-weight:500;font-variant-numeric:tabular-nums;opacity:.75}
+    .mainview{position:absolute;inset:0 0 0 272px;overflow:auto;background-color:#f1f5fb}
+    .review-main{padding:22px 32px 120px;max-width:1180px}
+    .gp-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid rgba(22,32,54,.1);color:#4c566a;font-size:12px}
+    .gp-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .gp-tools>button{appearance:none;border:1px solid #d5dbe7;border-radius:8px;padding:6px 14px;background:#fff;color:#42506a;font:500 12px/1.4 inherit;font-family:inherit;cursor:pointer}
+    .gp-tools>button:focus-visible{outline:2px solid #0067e6;outline-offset:2px}
+    .gp-heading{margin:26px 0 20px}
+    .gp-heading h1{margin:0;font-size:25px;line-height:1.4;font-weight:650}
+    .gp-chip{display:inline-block;margin-left:10px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600;vertical-align:middle}
+    .gp-chip.blue{background:#dbeafe;color:#1d4ed8}.gp-chip.green{background:#dcfce7;color:#15803d}.gp-chip.amber{background:#fef3c7;color:#b45309}.gp-chip.red{background:#fee2e2;color:#b91c1c}.gp-chip.violet{background:#ede9fe;color:#6d28d9}
+    .action-history-item.wcontainer{padding:20px 22px;background-color:#fff;border-radius:18px;box-shadow:0 8px 28px rgba(28,40,72,.06);min-width:0}
+    .wcontainer h2{margin:0 0 14px;font-size:15px}
+    .wcontainer label{display:block;margin:12px 0 6px;font-size:11px;color:#6e7788}
+    .review-editor{min-height:170px;padding:18px;background:#fff;border:1px solid rgba(22,32,54,.1);border-radius:14px;outline-color:#0067e6;line-height:1.9}
+    .review-editor p{margin:0 0 10px}
+    .details-group{margin:14px 0 20px}.details-group>.col-md-4.inline{display:inline-block;width:33.333333%;vertical-align:top}.details-group .row{display:flex}.details-group .col-md-12{width:100%}
+    .details-group .col-md-12>input{width:60px;height:30px;border:1px solid #dce3ef;border-radius:8px;text-align:center;color:#39465e;background:#fff}
+    .details-group .action-form-btn{border:0;background:transparent;color:#0067e6;font-size:19px;vertical-align:middle}
+    .ReactTable{margin-top:22px;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(28,40,72,.06)}
+    .rt-thead.-header{padding:10px 22px;background-color:#fafafa;font-size:12px;font-weight:600;color:#42506a}
+    .rt-tr-group.table-tr{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:14px;align-items:center;padding:11px 22px;background-color:#fff;border-top:1px solid rgba(22,32,54,.06);font-size:13px}
+    .rt-tr-group.table-tr:hover{background-color:#eef4fc}
+    .rt-tr-group code{font:500 12px/1 ui-monospace,Consolas,monospace;color:#6e7788}
+    .rt-tr-group span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    @media(max-width:860px){.gp-tree{display:none}.mainview{left:68px}.review-main{padding:18px 18px 120px}}
+  </style>
+  <script src="preview-runtime.js"></script>
+</head>
+<body>
+  <div class="app-container theme-light">
+    <nav class="gp-rail" aria-label="示範導覽列">
+      <img src="../assets/icons/companion128.png" alt="Halo Companion">
+      <span class="on">工單</span><span>工時</span><span>報表</span><span>客戶</span>
+    </nav>
+    <aside class="gp-tree" aria-label="示範 Team 清單">
+      <h3>MY TEAMS</h3>
+      <div class="on">Op Team A <b>12</b></div><div>Op Team B <b>7</b></div><div>Op Team C <b>9</b></div><div>SecOp Team A <b>4</b></div><div>Technical Solutions <b>15</b></div><div>Project Manager <b>3</b></div><div>Other Support <b>6</b></div><div>RD <b>2</b></div><div>Thailand Team <b>5</b></div><div>Sales&amp;Admin <b>1</b></div><div>Timesheets <b></b></div><div>Unassigned <b>8</b></div><div>Awaiting Customer <b>11</b></div><div>On Hold <b>4</b></div><div>Resolved Today <b>19</b></div>
+    </aside>
+    <div class="container-full mainview">
+      <main class="review-main">
+        <div class="gp-top">
+          <span>示範資料，不會連到 Halo 或 AI 服務 · 背景渲染在左下角「主題色」面板調整</span>
+          <div class="gp-tools">
+            <button type="button" data-toast="success">提示：成功</button>
+            <button type="button" data-toast="error">提示：錯誤</button>
+          </div>
+        </div>
+        <div class="gp-heading"><h1>辦公區網路連線異常<span class="gp-chip blue">處理中</span></h1></div>
+        <section class="action-history-item wcontainer">
+          <h2>Activity Note</h2>
+          <div class="details-group"><div class="col-md-4 inline"><div class="row"><div class="col-md-12"><label>Time Taken</label><input type="text" placeholder="hh" value="00" aria-label="小時"> : <input type="text" placeholder="mm" value="37" aria-label="分鐘"> : <input type="text" placeholder="ss" value="59" aria-label="秒" readonly> <button type="button" class="action-form-btn" aria-label="計時器">◷</button></div></div></div></div>
+          <div id="preview-action"><label>Note</label><div class="fr-box"><div id="preview-editor" class="review-editor fr-element" contenteditable="true" role="textbox" aria-label="示範工單內容" aria-multiline="true"><p>已與使用者確認，辦公區網路出現間歇性中斷。</p><p>檢查交換器與上行連線，設備運作正常。更新網路卡驅動程式後已恢復連線，請使用者持續觀察。</p><p>明日上午再確認連線狀態。</p></div></div></div>
+        </section>
+        <div class="ReactTable" role="table" aria-label="示範工單清單">
+          <div class="rt-thead -header">同 Team 的其他工單</div>
+          <div class="rt-tbody">
+            <div class="rt-tr-group table-tr"><code>#10479</code><span>VPN 連線逾時，需重新派發憑證</span><span class="gp-chip amber">等待客戶</span></div>
+            <div class="rt-tr-group table-tr"><code>#10475</code><span>印表機佇列卡住，三樓財務部</span><span class="gp-chip green">已解決</span></div>
+            <div class="rt-tr-group table-tr"><code>#10471</code><span>端點防護告警：可疑 PowerShell 行為</span><span class="gp-chip red">緊急</span></div>
+            <div class="rt-tr-group table-tr"><code>#10468</code><span>新進人員帳號與信箱開通</span><span class="gp-chip blue">處理中</span></div>
+            <div class="rt-tr-group table-tr"><code>#10466</code><span>會議室投影設備無法配對</span><span class="gp-chip violet">廠商處理</span></div>
+            <div class="rt-tr-group table-tr"><code>#10460</code><span>備份工作失敗，磁碟空間不足</span><span class="gp-chip red">緊急</span></div>
+            <div class="rt-tr-group table-tr"><code>#10457</code><span>共用資料夾權限調整申請</span><span class="gp-chip amber">等待客戶</span></div>
+            <div class="rt-tr-group table-tr"><code>#10452</code><span>筆電電池膨脹，申請更換</span><span class="gp-chip violet">廠商處理</span></div>
+            <div class="rt-tr-group table-tr"><code>#10449</code><span>Teams 通話品質不佳</span><span class="gp-chip green">已解決</span></div>
+            <div class="rt-tr-group table-tr"><code>#10441</code><span>防火牆規則變更需求</span><span class="gp-chip blue">處理中</span></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../src/core/namespace.js"></script><script src="../src/config/selectors.js"></script><script src="../src/config/template-data.js"></script><script src="../src/config/ai-actions.js"></script><script src="../src/core/pet-registry.js"></script><script src="../src/ui/theme.js"></script><script src="../src/ui/toast.js"></script><script src="../src/ui/loader.js"></script><script src="../src/ui/preview-modal.js"></script><script src="../src/ui/settings-panel.js"></script>
+  <script src="../src/config/time-adjuster-config.js"></script><script src="../src/features/time-adjuster-core.js"></script><script src="../src/features/time-adjuster.js"></script><script src="workbench-preview.js"></script><script src="../src/ui/toolbar.js"></script><script src="workbench-preview-boot.js"></script>
+  <script>
+    // The shared boot script applies a fixed appearance; start() then loads the saved
+    // one (wallpaper included) from the preview storage, as the extension does.
+    window.__HPX.ui.theme.start();
+    document.querySelectorAll('[data-toast]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const ok = button.dataset.toast === 'success';
+        window.__HPX.ui.toast.show(ok ? '已套用示範草稿' : '無法連線到 AI 服務', { type: button.dataset.toast });
+      });
+    });
+  </script>
+</body></html>

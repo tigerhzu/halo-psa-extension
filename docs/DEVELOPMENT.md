@@ -64,6 +64,7 @@ node tests/preview-server.js
 | `/tests/time-adjuster-browser-test.html` | 原生時間結構、唯讀秒、事件、寬窄版與停用還原 |
 | `/tests/sidebar-theme-browser-test.html` | 側欄、檢視／篩選浮層、主題、選取與對比 |
 | `/tests/besties-toolbar-browser-test.html` | 聯絡人快捷工具列 |
+| `/tests/glass-ui-preview.html` | 輕透主題的玻璃樣式與背景渲染；示範頁沿用 Halo 的 class 名稱，直接套用 `src/styles/glass.css` |
 
 使用 browser-native、Playwright 或 DevTools 檢視頁面。專案環境禁止以 PowerShell 擷取畫面；測試與圖片產生流程不需要此做法。
 
