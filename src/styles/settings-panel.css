@@ -146,6 +146,7 @@ button.hpx-sp-pet:active {
   cursor: pointer;
   font: 700 13px/1 "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
   text-align: center;
+  text-decoration: none;
   appearance: none;
   -webkit-appearance: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);

@@ -152,7 +152,8 @@
         "pet/*",
         "src/pets/*",
         "assets/icons/halo-logo48.png",
-        "src/styles/ticket-reader-window.css"
+        "src/styles/ticket-reader-window.css",
+        "src/options/options.html"
       ],
       "matches": [
         "https://*.halopsa.com/*",

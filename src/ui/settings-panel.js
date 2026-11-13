@@ -69,20 +69,9 @@
     try { return chrome.runtime.getURL(path); } catch (e) { return ''; }
   }
 
-  function openOptionsPage() {
-    try {
-      chrome.runtime.sendMessage({ type: 'HPX_OPEN_OPTIONS' }, function (response) {
-        const lastError = chrome.runtime.lastError;
-        if (lastError || !response || response.ok === false) {
-          const url = getExtUrl('src/options/options.html');
-          if (url) window.open(url, '_blank');
-        }
-      });
-    } catch (error) {
-      const url = getExtUrl('src/options/options.html');
-      if (url) window.open(url, '_blank');
-    }
-  }
+  // Resolve while this content script's extension context is valid. A native
+  // link stays usable after extension reload and does not wait for the worker.
+  const OPTIONS_PAGE_URL = getExtUrl('src/options/options.html');
 
   function loadSettings(cb) {
     chrome.storage.local.get(STORAGE_KEY, function (data) {
@@ -1051,8 +1040,15 @@
   }
 
   function makeSidebarControl(label, key, onClick) {
-    const button = el('button', 'hpx-sidebar-control');
-    button.type = 'button';
+    const isSettings = key === 'settings';
+    const button = el(isSettings ? 'a' : 'button', 'hpx-sidebar-control');
+    if (isSettings) {
+      button.href = OPTIONS_PAGE_URL;
+      button.target = '_blank';
+      button.rel = 'noopener noreferrer';
+    } else {
+      button.type = 'button';
+    }
     button.setAttribute('data-hpx-sidebar-control', key);
     button.setAttribute('aria-label', label);
     const icon = el('span', 'hpx-sidebar-control-icon');
@@ -1065,7 +1061,7 @@
     button.appendChild(text);
     button.appendChild(state);
     button.addEventListener('click', function (event) {
-      event.preventDefault();
+      if (!isSettings) event.preventDefault();
       event.stopPropagation();
       onClick();
     });
@@ -1097,7 +1093,6 @@
     sidebarControlsEl.appendChild(makeSidebarControl('設定', 'settings', function () {
       closeSidebarPopover();
       if (panelEl) SettingsPanel.close();
-      openOptionsPage();
     }));
     document.body.appendChild(sidebarControlsEl);
     refreshSidebarControls();

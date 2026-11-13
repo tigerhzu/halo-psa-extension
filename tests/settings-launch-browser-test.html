@@ -1,0 +1,21 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>設定入口驗證 · 1.1.4.3</title>
+<link rel="stylesheet" href="/output/halo-psa-extension-1.1.4.3/src/styles/workbench.css">
+<link rel="stylesheet" href="/output/halo-psa-extension-1.1.4.3/src/styles/settings-panel.css">
+<link rel="stylesheet" href="/output/halo-psa-extension-1.1.4.3/src/styles/workbench-surfaces.css">
+<style>body{margin:40px;font:16px/1.7 system-ui;background:#f4f7fb;color:#24344b}main{max-width:800px;padding:24px;border:1px solid #cbd5e1;border-radius:18px;background:white}h1{font-size:24px}button{padding:10px 18px}#result{margin:16px 0}</style>
+<script src="/tests/preview-runtime.js"></script>
+<script>
+chrome.runtime.getURL=path=>'/output/halo-psa-extension-1.1.4.3/'+path+(path==='src/options/options.html'?'?preview=1':'');
+chrome.runtime.sendMessage=()=>{throw new Error('No background connection')};
+</script></head><body><main><h1>設定入口驗證 · 1.1.4.3</h1><p>使用正式版本的工作台控制列。背景訊息已停用，按左下角「設定」應直接開啟設定頁。</p><button id="invalidate">模擬擴充功能重新載入</button><p id="result" role="status">背景訊息已停用</p></main>
+<script src="/output/halo-psa-extension-1.1.4.3/src/core/namespace.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.3/src/core/pet-registry.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.3/src/ui/theme.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.3/src/ui/pet-animator.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.3/src/ui/settings-panel.js"></script>
+<script>
+window.__HPX.core.petRegistry.discover=async()=>window.__HPX.core.petRegistry.builtIns();
+window.__HPX.ui.theme.applyAppearance({theme:'cute-ios',accent:'#15487e'});
+window.__HPX.ui.settingsPanel.start();
+document.querySelector('#invalidate').onclick=()=>{chrome.runtime.getURL=()=>{throw new Error('Extension context invalidated')};document.querySelector('#result').textContent='已模擬舊頁面的擴充功能連線失效，請按左下角「設定」。'};
+</script></body></html>
