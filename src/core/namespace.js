@@ -44,5 +44,32 @@
       // eslint-disable-next-line no-console
       console.warn('[HPX]', ...arguments);
     },
+
+    /**
+     * 合併爆量 DOM 變動的排程器，供全頁 MutationObserver 共用。
+     * 閒置時的第一次呼叫在下一幀執行（單次操作維持即時）；之後 minIntervalMs
+     * 內的呼叫合併成一次尾端執行，所以最終的 DOM 狀態一定會被處理到。
+     */
+    burstScheduler: function (run, minIntervalMs) {
+      let pending = false;
+      let lastRun = 0;
+      function fire() {
+        const frame = typeof window.requestAnimationFrame === 'function'
+          ? function (callback) { window.requestAnimationFrame(callback); }
+          : function (callback) { window.setTimeout(callback, 0); };
+        frame(function () {
+          pending = false;
+          lastRun = Date.now();
+          run();
+        });
+      }
+      return function schedule() {
+        if (pending) return;
+        pending = true;
+        const wait = lastRun + minIntervalMs - Date.now();
+        if (wait > 0) window.setTimeout(fire, wait);
+        else fire();
+      };
+    },
   };
 })();

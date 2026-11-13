@@ -44,6 +44,9 @@
   let observedSidebar = null;
   let scheduled = false;
   let warnedNoWrapper = false;
+  let warnedNoSidebar = false;
+  // 全頁結構變動（Halo 載入／換頁時每幀都有）最多每 150ms 重掃一次側欄幾何。
+  const STRUCTURAL_SCAN_INTERVAL_MS = 150;
 
   // ── Sidebar 偵測（整個左側區域）────────────────────────────
 
@@ -255,8 +258,8 @@
    * 會驗證幾何：靠左、寬度受限、右緣不超過主 sidebar 太多、且不到半個畫面，
    * 以免誤抓到包含 ticket 內容的 app root。
    */
-  function findLeftWrapper() {
-    const cols = findSidebarColumns();
+  function findLeftWrapper(precomputed) {
+    const cols = precomputed || findSidebarColumns();
     if (cols.length < 2) return null;
     cols.sort(function (a, b) {
       return a.getBoundingClientRect().left - b.getBoundingClientRect().left;
@@ -285,8 +288,8 @@
   }
 
   /** 逐欄標記（fallback：找不到共同 wrapper 時，至少各欄有虎紋）。 */
-  function markColumns() {
-    const cols = findSidebarColumns();
+  function markColumns(precomputed) {
+    const cols = precomputed || findSidebarColumns();
     const bottomStrip = findSidebarBottomStrip(cols);
     if (bottomStrip && !cols.includes(bottomStrip)) cols.push(bottomStrip);
     const keep = new Set(cols);
@@ -297,16 +300,18 @@
       if (w < 120) {
         if (el.classList.contains(MAIN_MARK)) el.classList.remove(MAIN_MARK);
         if (!el.classList.contains(ICONBAR_MARK)) el.classList.add(ICONBAR_MARK);
-        // eslint-disable-next-line no-console
-        console.log('[HPX] theme sidebar matched', 'width=' + w + 'px', 'class=' + String(el.className || ''));
+        NS.log('theme sidebar matched', 'width=' + w + 'px', 'class=' + String(el.className || ''));
       } else {
         if (el.classList.contains(ICONBAR_MARK)) el.classList.remove(ICONBAR_MARK);
         if (!el.classList.contains(MAIN_MARK)) el.classList.add(MAIN_MARK);
-        // eslint-disable-next-line no-console
-        console.log('[HPX] theme main sidebar matched', 'width=' + w + 'px', 'class=' + String(el.className || ''));
+        NS.log('theme main sidebar matched', 'width=' + w + 'px', 'class=' + String(el.className || ''));
       }
     });
-    if (!document.querySelector('.' + SIDEBAR_MARKER)) {
+    if (document.querySelector('.' + SIDEBAR_MARKER)) {
+      warnedNoSidebar = false;
+    } else if (!warnedNoSidebar) {
+      // 每輪掃描都會走到這裡；找不到時只警告一次，找到後才重新允許警告。
+      warnedNoSidebar = true;
       // eslint-disable-next-line no-console
       console.warn('[HPX] sidebar NOT found —— 無法定位左側 sidebar，主題不套用。請回報 class。');
     }
@@ -329,11 +334,14 @@
 
     markNativeSelection();
 
-    const wrap = findLeftWrapper();
+    // 幾何掃描是這裡最貴的一步；marker 沒被清掉的路徑共用同一份結果。
+    // clearMarkers() 之後必須重掃，因為 marker class 本身會影響候選判斷。
+    const cols = findSidebarColumns();
+    const wrap = findLeftWrapper(cols.slice());
     if (wrap) {
       // wrapper 已存在時仍要重掃各欄；HaloPSA 可能剛顯示原本隱藏的 My Lists 子面板。
       if (wrap.el.classList.contains(WRAP_MARK)) {
-        markColumns();
+        markColumns(cols);
         return;
       }
       // wrapper 升級（例如 DOM 動態載入後涵蓋範圍變大），重新標記。
@@ -343,9 +351,8 @@
       wrap.el.classList.add(WRAP_MARK);
       // wrapper 負責填滿欄與欄之間的 gap / 底部；各欄也要標記，避免原始背景蓋住皮膚。
       markColumns();
-      // eslint-disable-next-line no-console
-      console.log(
-        '[HPX] themed left-wrapper matched',
+      NS.log(
+        'themed left-wrapper matched',
         'theme=' + theme,
         'tag=' + (wrap.el.tagName || '').toLowerCase(),
         'width=' + wrap.width + 'px',
@@ -355,16 +362,23 @@
     }
 
     // 找不到共同 wrapper → 先逐欄套用（wrapper 之後出現會自動升級）。
+    let markersCleared = false;
     if (document.querySelector('.' + WRAP_MARK)) {
       clearMarkers();
       markNativeSelection();
+      markersCleared = true;
     }
     if (!warnedNoWrapper) {
       warnedNoWrapper = true;
       // eslint-disable-next-line no-console
       console.warn('[HPX] themed left-wrapper 尚未找到 —— 暫用逐欄背景。');
     }
-    markColumns();
+    markColumns(markersCleared ? null : cols);
+  }
+
+  function runSidebarUpdate() {
+    updateSidebarMarker(currentTheme);
+    bindSidebarObserver();
   }
 
   function scheduleSidebarUpdate() {
@@ -372,10 +386,12 @@
     scheduled = true;
     (window.requestAnimationFrame || window.setTimeout)(function () {
       scheduled = false;
-      updateSidebarMarker(currentTheme);
-      bindSidebarObserver();
+      runSidebarUpdate();
     }, 80);
   }
+
+  // 全頁 observer 專用：#halo-tree 內的顯示狀態仍走上面的即時排程。
+  const scheduleStructuralUpdate = NS.burstScheduler(runSidebarUpdate, STRUCTURAL_SCAN_INTERVAL_MS);
 
   /**
    * HaloPSA 會預先建立 My Lists / View / Filter 面板，第一次點擊時只切換
@@ -498,7 +514,7 @@
       }
 
       try {
-        mo = new MutationObserver(scheduleSidebarUpdate);
+        mo = new MutationObserver(scheduleStructuralUpdate);
         mo.observe(document.documentElement, { childList: true, subtree: true });
       } catch (e) {
         NS.warn('theme MutationObserver 啟動失敗', e);

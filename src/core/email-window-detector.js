@@ -316,6 +316,10 @@
     (window.requestAnimationFrame || window.setTimeout)(scan, 50);
   }
 
+  // 全頁 observer 專用：Halo 載入／換頁或編輯器連續改 class/style 時，
+  // 最多每 150ms 掃描一次。使用者點擊與外部 rescan 仍走上面的即時排程。
+  const scheduleBurstScan = NS.burstScheduler(scan, 150);
+
   /**
    * 信封切換有些版本只改 React state / class，不一定新增或移除節點；
    * tracked window 內的按鈕點擊因此也要觸發一次生命週期掃描。
@@ -346,7 +350,7 @@
       callbacks.onRemoved = opts && opts.onRemoved;
 
       scan();
-      observer = new MutationObserver(scheduleScan);
+      observer = new MutationObserver(scheduleBurstScan);
       observer.observe(document.body, {
         childList: true,
         subtree: true,

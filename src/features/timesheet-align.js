@@ -510,7 +510,8 @@
     start: function () {
       if (observer) return;
       scan();
-      observer = new MutationObserver(scan);
+      // scan 只做一次 querySelectorAll，但原本每批 mutation 都同步執行；合併到單幀即可。
+      observer = new MutationObserver(NS.burstScheduler(scan, 150));
       observer.observe(document.body, { childList: true, subtree: true });
     },
     parseEntryDetails: parseEntryDetails,
