@@ -128,7 +128,7 @@ function setSaveIndicator(text, state) {
 }
 
 function setupNavigation() {
-  const pageKeys = new Set(['workspace', 'writing', 'halo', 'contacts', 'backup']);
+  const pageKeys = new Set(['workspace', 'status-notes', 'writing', 'halo', 'contacts', 'backup']);
   function showPage(focusContent) {
     const hash = window.location.hash.slice(1);
     if (hash === 'main') return;

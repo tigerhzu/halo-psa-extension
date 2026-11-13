@@ -28,6 +28,7 @@ function fixture(options = {}) {
       form = { node: {}, label: item.label };
     },
     saveBlocker: () => options.blocker || '',
+    prepareForm: options.prepareForm,
     save: current => {
       saves.push(api.keyOf(current.label));
       if (!options.failSave) complete();
@@ -59,6 +60,26 @@ test('Open → Final Check saves In Progress once and leaves final form unsaved'
   assert.deepEqual(f.clicks, ['progress', 'final']);
   assert.deepEqual(f.saves, ['progress']);
   assert.equal(api.keyOf(f.getForm().label), 'final');
+});
+
+test('prerequisite Save waits for async note preparation', async () => {
+  let release, prepared = false;
+  const f = fixture({ prepareForm: () => new Promise(resolve => { release = () => { prepared = true; resolve(); }; }) });
+  const running = f.runner.execute('123', 'final');
+  for (let i = 0; i < 30 && !release; i++) await Promise.resolve();
+  assert.equal(typeof release, 'function');
+  assert.deepEqual(f.saves, []);
+  release(); await running;
+  assert.equal(prepared, true); assert.deepEqual(f.saves, ['progress']);
+});
+
+test('changing the form while notes are prepared prevents Save', async () => {
+  let release;
+  const f = fixture({ prepareForm: () => new Promise(resolve => { release = resolve; }) });
+  const running = f.runner.execute('123', 'final');
+  for (let i = 0; i < 30 && !release; i++) await Promise.resolve();
+  f.setForm({ node: {}, label: 'Email User' }); release();
+  assert.equal(await running, false); assert.deepEqual(f.saves, []);
 });
 test('Open → Resolved saves In Progress and Final Check, never the final Resolved form', async () => {
   const f = fixture();

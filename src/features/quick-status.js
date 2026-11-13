@@ -104,6 +104,7 @@
       ticketId,
       state: () => { const current = context(); return current && { id: current.id, items: actions(current.root), stage: (document.querySelector('.workflow-steps-wrap .rc-steps-item-active') || {}).textContent || '' }; },
       forms, modal, history, saveBlocker,
+      prepareForm: form => NS.features.statusNotes ? NS.features.statusNotes.prepare(form.node) : Promise.resolve(),
       saved: (before, key) => {
         const maximum = Math.max(0, ...before.map(item => item.id).filter(Number.isFinite));
         return history().some(item => item.id > maximum && item.key === key);

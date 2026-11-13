@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="color-scheme" content="light" />
 <title>設定 · Halopsa</title><link rel="stylesheet" href="../styles/workbench.css" /><link rel="stylesheet" href="options.css" /><link rel="stylesheet" href="paper.css" /><link rel="stylesheet" href="halo-paper.css" />
+<link rel="stylesheet" href="status-notes-options.css" />
 </head>
 <body class="hpx-options settings-paper">
 <a class="skip-link paper-skip" href="#main">跳至設定內容</a>
@@ -12,6 +13,7 @@
 <nav class="settings-nav" aria-label="設定分類">
 <a href="#workspace" class="nav-item is-active" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg></span><span>外觀與 Team</span></a>
 <a href="#writing" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2.5"/><circle cx="15" cy="17" r="2.5"/></svg></span><span>AI 服務</span></a>
+<a href="#status-notes" class="nav-item"><span class="nav-icon" aria-hidden="true">✎</span><span>狀態自動帶入</span></a>
 <a href="#contacts" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span>收件人</span></a>
 <a href="#halo" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4H4v16h16V4h-4M8 3h8v4H8zM8 12h8M8 16h5"/></svg></span><span>Halo API 與案件</span></a>
 <a href="#backup" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m-4-4 4 4 4-4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg></span><span>資料備份</span></a>
@@ -111,11 +113,19 @@
 <section class="card" aria-labelledby="groupsTitle"><div class="card-heading"><h2 id="groupsTitle">CC 群組</h2></div><div id="groups"></div><div class="actions"><button id="addGroup" type="button">新增群組</button><span id="groupsStatus" class="status" role="status" aria-live="polite"></span></div></section>
 <p class="page-footnote">Email 必填，姓名選填。</p>
 </section>
+<section id="status-notes" class="settings-page" aria-labelledby="statusNotesTitle" hidden>
+<section class="card"><div class="card-heading"><h2 id="statusNotesTitle">狀態自動帶入</h2></div>
+<p class="card-description">開啟案件的狀態動作時，自動填入下方文字。保留已輸入的內容；文字可在送出前修改。</p>
+<label class="toggle-row"><span><strong>啟用狀態文字自動帶入</strong><small>留白可停用單一狀態。修改文字後離開欄位即自動儲存，下次開啟動作時生效。</small></span><input id="statusNotesEnabled" type="checkbox" /><span class="switch-track" aria-hidden="true"></span></label>
+<div id="statusNotesFields"></div>
+<p class="hint">Closed 也適用於 Halo 的 Resolved Ticket／Resolve Ticket 動作。</p>
+<div class="actions"><button id="resetStatusNotes" type="button">恢復全部預設文字</button><span id="statusNotesStatus" class="status" role="status" aria-live="polite"></span></div>
+</section></section>
 <section id="backup" class="settings-page" aria-labelledby="backupTitle" hidden><h2 id="backupTitle" class="sr-only">備份與移轉設定</h2>
 <section class="card" id="backupCard"><div class="card-heading"><h2>匯出設定</h2></div>
 <div class="backup-grid"><div class="backup-option"><h3>一般備份</h3><span class="backup-tag">不含 API Key</span><button id="exportSettingsWithoutKeys" class="primary" type="button">匯出設定</button></div><div class="backup-option"><h3>完整備份</h3><span class="backup-tag">含 API Key，請妥善保管</span><button id="exportSettingsWithKeys" type="button">匯出完整設定</button></div></div>
 <div class="import-row"><div><h3>還原備份</h3><p>匯入會取代設定；備份未含金鑰時，保留現有金鑰。</p></div><button id="importSettings" type="button">選擇備份檔</button><input id="importSettingsFile" type="file" accept="application/json,.json" hidden /></div><p id="backupStatus" class="status" role="status" aria-live="polite"></p>
 </section></section>
 </main></div>
-<script src="../ai/provider-settings.js"></script><script src="options.js"></script><script src="halo-api-options.js"></script>
+<script src="../ai/provider-settings.js"></script><script src="options.js"></script><script src="../config/status-notes-config.js"></script><script src="status-notes-options.js"></script><script src="halo-api-options.js"></script>
 </body></html>

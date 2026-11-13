@@ -245,11 +245,13 @@
      * 優先透過 HaloPSA 頁面所使用的編輯器框架寫入 HTML，確保框架 model
      * 與畫面同步；若頁面沒有可辨識的框架，再退回既有 DOM 寫入。
      */
-    setHtmlReliable: function (el, html) {
+    setHtmlReliable: function (el, html, options) {
       const value = String(html == null ? '' : html);
       const kind = getKind(el);
       const adapter = this;
 
+      const canWrite = options && options.canWrite;
+      if (canWrite && !canWrite()) return Promise.resolve({ ok: false, cancelled: true });
       if (kind === 'textarea') {
         adapter.setHtml(el, value);
         return Promise.resolve({ ok: true, via: 'native-textarea' });
@@ -257,6 +259,7 @@
 
       return writeHtmlThroughFramework(el, value, 'write').then(function (result) {
         if (result && result.ok) return result;
+        if (canWrite && !canWrite()) return { ok: false, cancelled: true };
         adapter.setHtml(el, value);
         return { ok: true, via: 'dom-fallback' };
       });

@@ -1,0 +1,44 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>狀態文字自動帶入驗證</title>
+<style>body{font:15px/1.6 system-ui;margin:24px auto;padding:0 18px;max-width:960px;color:#24344b;background:#f5f7fb}h1{font-size:24px}section,.newaction{background:white;border:1px solid #cbd5e1;border-radius:12px;padding:20px;margin:16px 0}button,select{padding:9px;margin:4px;font:inherit}button{cursor:pointer}.fr-element{min-height:130px;padding:14px;border:1px solid #8493a8;border-radius:6px;background:#fff}.history-header{font-weight:700;margin-bottom:18px}.profile-full-name{font-size:15px}label{display:block;margin:12px 0}#result,#model{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#15487e}</style>
+<script src="/tests/preview-runtime.js"></script></head><body>
+<h1>狀態自動帶入 · 1.1.4.2</h1><p>本機測試頁，模擬實際 Halo 狀態表單與編輯器同步；不連線正式案件。</p>
+<a href="/output/halo-psa-extension-1.1.4.2/src/options/options.html?preview=1#status-notes" target="_blank">開啟預設文字設定</a>
+<h1 class="profile-full-name">[ID:000123]</h1>
+<section><label>狀態動作 <select id="action"><option>Open</option><option>In Progress</option><option>Awaiting Customer Reply</option><option>Pending</option><option selected>On Hold</option><option>Postponed</option><option>Final Check with Customer/Sales</option><option>Resolved Ticket</option><option>Activity Note</option></select></label>
+<label>原始備註 <select id="initial"><option value="empty">空白</option><option value="placeholder">Halo 佔位文字</option><option value="authored">已有手動內容</option><option value="image">只有圖片</option></select></label>
+<label><input id="bridge" type="checkbox" checked>模擬 Froala 同步橋接</label>
+<button id="open">開啟狀態草稿</button><button id="reuse">沿用編輯器切換狀態</button><button id="scan">重新掃描</button><button id="navigate">切換案件</button>
+</section><div id="draft" class="action-history-item wcontainer isadding nocolouroverride" data-id="-1"></div><section><strong>編輯器同步結果</strong><div id="model">尚未寫入</div><strong>模擬儲存結果</strong><div id="result">尚未儲存</div></section>
+<script src="/output/halo-psa-extension-1.1.4.2/src/core/namespace.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.2/src/config/selectors.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.2/src/config/status-notes-config.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.2/src/core/editor-adapter.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.2/src/page/editor-probe-bridge.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.2/src/features/status-notes.js"></script>
+<script src="/output/halo-psa-extension-1.1.4.2/src/core/editor-detector.js"></script>
+<script>
+history.replaceState({},'', '?id=123');
+const api=window.__HPX.features.statusNotes;
+let editorModel='';
+function openForm(){
+ const box=document.createElement('div');box.className='newaction nopad';
+ box.innerHTML='<div class="history-header"><span class="outcome"></span></div><form class="action-form"><label>Note</label><div class="fr-box"><div class="fr-element fr-view" contenteditable="true" role="textbox" aria-label="狀態備註"></div></div><div class="details-form-controls"><input type="submit" value="Save"><button type="button" id="discard">Discard</button></div></form>';
+ box.querySelector('.outcome').textContent=document.querySelector('#action').value;
+ const editor=box.querySelector('.fr-element');
+ const initial=document.querySelector('#initial').value;
+ editor.innerHTML=initial==='placeholder'?'<p><span>$SERVICESTATUSNOTE</span></p>':initial==='authored'?'<p>手動紀錄：請保留這段文字。</p>':initial==='image'?'<img alt="已附上的圖片" src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Crect width=%2240%22 height=%2240%22 fill=%22blue%22/%3E%3C/svg%3E">':'<p><br></p>';
+ editorModel=editor.innerHTML;
+ const sync=via=>{editorModel=editor.innerHTML;document.querySelector('#model').textContent=via+'：'+editorModel;};
+ editor.addEventListener('input',()=>sync('input'));
+ window.FroalaEditor={INSTANCES:document.querySelector('#bridge').checked?[{el:editor,html:{set(html){editor.innerHTML=html}},events:{trigger(){sync('Froala contentChanged')}}}]:[]};
+ box.querySelector('form').onsubmit=event=>{event.preventDefault();document.querySelector('#result').textContent='已模擬儲存：'+editorModel};
+ box.querySelector('#discard').onclick=()=>box.remove();
+ document.querySelector('#draft').replaceChildren(box);
+ document.querySelector('#model').textContent='等待同步';document.querySelector('#result').textContent='尚未儲存';
+}
+document.querySelector('#open').onclick=openForm;
+document.querySelector('#reuse').onclick=()=>{const outcome=document.querySelector('.newaction .outcome');if(outcome)outcome.textContent=document.querySelector('#action').value};
+document.querySelector('#scan').onclick=()=>api.reconcile();
+document.querySelector('#navigate').onclick=()=>{history.pushState({},'', '?id=124');document.querySelector('.profile-full-name').textContent='[ID:000124]';document.querySelector('#draft').replaceChildren()};
+api.start();window.__HPX.core.detector.start({onScan:()=>api.reconcile()});openForm();
+</script></body></html>

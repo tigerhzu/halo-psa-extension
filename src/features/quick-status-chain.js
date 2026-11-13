@@ -42,7 +42,7 @@
       const end = adapter.now() + timeout;
       while (adapter.now() < end) {
         guard(run);
-        const result = read();
+        const result = await read();
         if (result) return result;
         await adapter.delay(200);
       }
@@ -84,7 +84,7 @@
           let submitted = false;
           let observedForm = false;
           let readySince = null;
-          await until(run, () => {
+          await until(run, async () => {
             if (adapter.modal()) {
               adapter.report('請先處理 Halo 的提示（例如 Log Response）；完成後自動接續。');
               return false;
@@ -112,6 +112,12 @@
               guard(run);
               submitted = true; // Mark before click: handlers can synchronously re-enter.
               adapter.report('正在儲存前置步驟：' + step.item.label);
+              if (adapter.prepareForm) await adapter.prepareForm(form);
+              guard(run);
+              const preparedForms = adapter.forms();
+              if (adapter.modal() || preparedForms.length !== 1 || preparedForms[0].node !== form.node || keyOf(preparedForms[0].label) !== step.key) {
+                throw new Error('準備文字期間表單已變更，請手動檢查與儲存。');
+              }
               adapter.save(form);
               return false;
             }

@@ -54,6 +54,7 @@
 
     // Ticket 閱讀視窗：在 Progress 上提供完整活動歷程的唯讀、可縮放視窗。
     NS.features.ticketReader.start();
+    NS.features.statusNotes.start();
     NS.features.quickStatus.start();
 
     // Category 放大選擇器：觸發並放大 Halo 原生控制項，不接管分類資料或選取流程。
@@ -66,6 +67,7 @@
       // Editor rerender / Action 類型切換後，把既有工具列補回正確掛載點。
       onScan: function () {
         NS.ui.toolbar.ensureAttached();
+        NS.features.statusNotes.reconcile();
         // 沿用 editor-detector 的單一 SPA observer，清理由 route/rerender 取代的欄位。
         NS.ui.categoryPicker.reconcile();
       },
