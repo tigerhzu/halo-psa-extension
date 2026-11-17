@@ -11,8 +11,8 @@
    holding text the user reads or edits stays near-opaque. */
 
 html[data-hpx-theme="cute-ios"] {
-  --hpxg-wash: .55;
-  --hpxg-surface: 1;
+  --hpxg-wash: .42;
+  --hpxg-surface: .55;
   --hpxg-ink: #1b2231;
   --hpxg-ink-2: #5a6477;
   --hpxg-tint: rgb(255 255 255 / calc(var(--hpxg-surface) * .82));
@@ -32,7 +32,7 @@ html[data-hpx-theme="cute-ios"] {
 }
 
 /* Soften the shared control tokens only inside the components restyled below.
-   The category picker, timesheet editor and quick-status panel read the same
+   The timesheet editor and quick-status panel read the same
    tokens and have not been reworked, so they keep their current values. */
 html[data-hpx-theme="cute-ios"] :is(.hpx-toolbar, .hpx-tta, .hpx-sidebar-controls, .hpx-sidebar-popover, .hpx-sp, .hpx-modal-overlay, .hpx-toast-container, .hpx-loader) {
   --hpx-ink: var(--hpxg-ink);
@@ -94,8 +94,20 @@ html[data-hpx-theme="cute-ios"][data-hpxg-wash]:not([data-hpxg-wash="none"]) {
   }
   & .app-container.theme-light :is(.container-full.mainview, .container-max.mainscreen),
   & .app-container.theme-light .details-container .infinite-scroll-component,
-  & .app-container.theme-light .ReactTable .-loading:not(.-active) {
+  & .app-container.theme-light .container-full.mainview .full-container-loading,
+  & .app-container.theme-light .ReactTable .-loading {
     background-color: transparent !important;
+  }
+  /* Keep Halo's loading overlay and pointer blocking, but reveal the one
+     wallpaper beneath it. Hide stale rows while loading rather than painting
+     a second, differently aligned gradient over them. */
+  & .app-container.theme-light .ReactTable:has(> .-loading.-active) {
+    background-color: transparent !important;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  & .app-container.theme-light .ReactTable:has(> .-loading.-active) > :is(.rt-table, .rt-noData) {
+    visibility: hidden;
   }
   /* Rows keep Halo's own hover colour; .transparent widgets were never painted. */
   & .app-container.theme-light .ReactTable :is(.rt-thead.-header, .rt-tr-group.table-tr:not(:hover)),
@@ -103,6 +115,258 @@ html[data-hpx-theme="cute-ios"][data-hpxg-wash]:not([data-hpxg-wash="none"]) {
   & .app-container.theme-light .details-container .widget-container:not(.transparent) {
     background-color: rgb(255 255 255 / var(--hpxg-surface)) !important;
   }
+
+  /* Let the shell's wallpaper continue behind the tree. Tinting even one
+     full-height wrapper creates a separate strip beside the ticket list.
+     Keep the rail and opaque View/Filter overlays from workbench.css. */
+  & .app-container.theme-light :is(.hpx-theme-wrap, .hpx-theme-sidebar, #halo-tree):not(#app-nav-menu, #app-nav-menu *, .hpx-theme-iconbar) {
+    background-color: transparent !important;
+    border-right-color: transparent !important;
+    box-shadow: none !important;
+  }
+  & #halo-tree .treeviewnode:not(.active, .selected):hover {
+    background-color: var(--hpxg-fill-hover) !important;
+  }
+  & #halo-tree .treeviewnode:not(.active, .selected) .treeviewcount {
+    background-color: var(--hpxg-fill) !important;
+  }
+  & :is(.hpx-theme-sidebar, #halo-tree) input {
+    background: rgb(255 255 255 / .72) !important;
+    border-color: var(--hpxg-hairline-strong) !important;
+  }
+
+  /* Halo's team view uses level 1 for teams and level 2 for people. Style
+     only people, leaving team expansion, avatars, drag targets and counts
+     in their native DOM. Inset edges don't change the row's usable width. */
+  & .app-container.theme-light #halo-tree:has(#tv-selected-view-name[data-id="team"]) .treeviewnode[data-level="2"] {
+    --hpxg-person-fill: rgb(255 255 255 / calc(var(--hpxg-surface) * .48));
+    margin-block: 6px;
+    border-radius: 13px !important;
+    background-color: var(--hpxg-person-fill) !important;
+    background-image: linear-gradient(115deg, rgb(255 255 255 / .48), rgb(255 255 255 / .04) 55%, rgb(255 255 255 / .22)) !important;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / .65), inset 0 1px 0 rgb(255 255 255 / .9), 0 3px 8px rgb(28 40 72 / .09);
+    -webkit-backdrop-filter: blur(12px) saturate(145%);
+    backdrop-filter: blur(12px) saturate(145%);
+    transition: background-color .18s var(--hpxg-ease), box-shadow .18s var(--hpxg-ease);
+
+    &:hover {
+      --hpxg-person-fill: rgb(255 255 255 / calc(var(--hpxg-surface) * .76));
+      box-shadow: inset 0 0 0 1px rgb(255 255 255 / .9), 0 4px 10px rgb(28 40 72 / .14);
+    }
+    &:is(.active, .selected, [aria-selected="true"]) {
+      --hpxg-person-fill: color-mix(in srgb, var(--hpx-accent) 20%, rgb(255 255 255 / .78));
+      color: var(--hpxg-ink) !important;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hpx-accent) 60%, white), inset 3px 0 0 var(--hpx-accent), inset 0 1px 0 rgb(255 255 255 / .9), 0 4px 10px rgb(28 40 72 / .12);
+    }
+    & :is(.nodetitle, .treeviewcount) { color: var(--hpxg-ink) !important; }
+    & .treeviewcount { background-color: rgb(255 255 255 / .5) !important; }
+    &:focus-visible {
+      outline: 2px solid var(--hpx-accent-text);
+      outline-offset: 2px;
+    }
+  }
+}
+
+/* The native search paints both a dark wrapper and a rounded input. Give the
+   wrapper sole ownership of the surface, with one radius and one border.
+   Keep the original 45px search strip (5 + 35 + 5), inset from the pane edges. */
+html[data-hpx-theme="cute-ios"] .app-container.theme-light #halo-tree #main_search {
+  padding: 5px 8px;
+  box-sizing: border-box;
+  background: transparent !important;
+  & .searchbox {
+    height: 35px;
+    margin: 0;
+    box-sizing: border-box;
+    border: 1px solid rgb(255 255 255 / .7);
+    border-radius: 12px;
+    background: var(--hpxg-tint-strong) !important;
+    background-clip: padding-box !important;
+    box-shadow: 0 2px 5px rgb(28 40 72 / .06);
+  }
+  & .searchholder {
+    height: 100%;
+    border-radius: inherit;
+    background: transparent !important;
+  }
+  & .searchbox input {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    box-sizing: border-box;
+    border: 0 !important;
+    border-radius: inherit !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none;
+  }
+  & .searchbutton { height: 100%; color: var(--hpxg-ink-2) !important; }
+  & .searchbox:focus-within {
+    border-color: var(--hpx-accent);
+    box-shadow: 0 0 0 2px var(--hpx-accent-soft);
+  }
+}
+
+/* Native ticket-list filter (All / Active / Closed), not ticket status actions.
+   Leave Semantic UI's positioning, keyboard selection and visibility intact. */
+html[data-hpx-theme="cute-ios"] .app-container.theme-light #filter-dropdown {
+  box-sizing: border-box;
+  padding: 2px 10px;
+  border: 1px solid rgb(255 255 255 / .7);
+  border-radius: 12px;
+  background: var(--hpxg-tint-strong);
+  background-clip: padding-box;
+  box-shadow: 0 2px 5px rgb(28 40 72 / .06);
+  color: var(--hpxg-ink);
+  /* The popup must escape the trigger; clipping the trigger clips its menu. */
+  overflow: visible;
+
+  & > .menu {
+    padding: 6px;
+    border: 1px solid rgb(255 255 255 / .78);
+    border-radius: 16px;
+    background: linear-gradient(125deg, rgb(255 255 255 / .42), transparent 60%), var(--hpxg-sheet);
+    box-shadow: var(--hpxg-edge), var(--hpxg-float);
+    -webkit-backdrop-filter: var(--hpxg-blur-strong);
+    backdrop-filter: var(--hpxg-blur-strong);
+  }
+  & > .menu > .item {
+    margin: 2px 0;
+    border-radius: 10px;
+    border-top: 0;
+    color: var(--hpxg-ink);
+    background: transparent;
+  }
+  & > .menu > .item:is(:hover, .selected) {
+    background: var(--hpxg-fill);
+  }
+  & > .menu > .item:is(.active, [aria-checked="true"]) {
+    background: var(--hpx-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--hpx-accent-border), inset 3px 0 0 var(--hpx-accent);
+    color: var(--hpx-accent-text);
+    font-weight: 600;
+  }
+  &:focus-visible { outline: 2px solid var(--hpx-accent-text); outline-offset: 2px; }
+}
+
+/* Category: two floating glass panes with quiet, individually raised rows.
+   Blur the panes only; filtering every row adds cost when a large tree scrolls.
+   Rows add opacity over the panes so ticket text cannot compete with labels. */
+html[data-hpx-theme="cute-ios"] .hpx-category-modal-layer {
+  --hpx-category-card: rgb(255 255 255 / .52);
+  --hpx-category-card-hover: rgb(255 255 255 / .85);
+  --hpx-category-edge: rgb(255 255 255 / .8);
+  --hpx-category-field: rgb(255 255 255 / .75);
+}
+html[data-hpx-theme="cute-ios"] .hpx-category-modal-backdrop {
+  background: rgb(22 32 54 / .26);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-category-dialog, .hpx-category-favorites) {
+  border-color: var(--hpx-category-edge);
+  background: linear-gradient(130deg, rgb(255 255 255 / .4), transparent 60%), var(--hpxg-tint-strong);
+  box-shadow: var(--hpxg-edge), var(--hpxg-float-lg);
+  color: var(--hpxg-ink);
+  -webkit-backdrop-filter: var(--hpxg-blur-strong);
+  backdrop-filter: var(--hpxg-blur-strong);
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-category-toolbar, .hpx-category-favorites-header) {
+  background: linear-gradient(180deg, rgb(255 255 255 / .55), rgb(255 255 255 / .12));
+  border-color: var(--hpxg-hairline);
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-category-tree, .hpx-category-favorites-list) {
+  background: transparent;
+  scrollbar-color: #8495a8 transparent;
+  &::-webkit-scrollbar-track { background: transparent; border-color: transparent; }
+  &::-webkit-scrollbar-thumb { border-color: transparent; background-clip: padding-box; }
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-category-row, .hpx-category-favorite-item) {
+  margin-block: 6px;
+  border: 1px solid var(--hpx-category-edge);
+  border-radius: 13px;
+  background: var(--hpx-category-card);
+  box-shadow: var(--hpxg-edge), 0 3px 8px rgb(28 40 72 / .06);
+  &:hover, &:focus-within { background: var(--hpx-category-card-hover); }
+}
+html[data-hpx-theme="cute-ios"] .hpx-category-row:has(.hpx-category-option[aria-selected="true"]) {
+  background: var(--hpx-accent-soft);
+  border-color: var(--hpx-accent-border);
+  box-shadow: inset 3px 0 0 var(--hpx-accent), var(--hpxg-edge);
+}
+html[data-hpx-theme="cute-ios"] .hpx-category-option {
+  color: var(--hpxg-ink);
+  &:hover, &[aria-selected="true"] { background: transparent; color: var(--hpx-accent-text); }
+}
+html[data-hpx-theme="cute-ios"] .hpx-category-favorite-item:is(.hpx-category-favorite-dragging, .hpx-category-favorite-drag-over, .hpx-category-favorite-drag-after) {
+  border-color: var(--hpx-accent);
+  background: var(--hpx-accent-soft);
+  box-shadow: 0 0 0 2px var(--hpx-accent-border);
+}
+html[data-hpx-theme="cute-ios"] .hpx-category-search {
+  background: var(--hpx-category-field);
+  border-color: var(--hpxg-hairline-strong);
+  box-shadow: var(--hpxg-edge), 0 2px 6px rgb(28 40 72 / .05);
+  &:focus-within { border-color: var(--hpx-accent); box-shadow: 0 0 0 3px var(--hpx-accent-soft), var(--hpxg-edge); }
+  & input::placeholder { color: var(--hpxg-ink-2); }
+}
+html[data-hpx-theme="cute-ios"] :is(.hpx-category-dialog-close, .hpx-category-favorites-handle, .hpx-category-search-clear) {
+  background: var(--hpx-category-field);
+  border: 1px solid var(--hpx-category-edge);
+  color: var(--hpxg-ink);
+  box-shadow: var(--hpxg-edge), 0 2px 6px rgb(28 40 72 / .08);
+  &:hover { background: var(--hpx-accent-soft); color: var(--hpx-accent-text); }
+}
+html[data-hpx-theme="cute-ios"] .hpx-category-modal-layer button:focus-visible {
+  outline: 2px solid var(--hpx-accent-text);
+  outline-offset: -2px;
+}
+
+/* ── Left rail: each glyph sits on a glass tile ───────────────
+   The tile is the host element, not the image: the image carries the
+   accent-contrast filter (invert on light accents) and would invert its own
+   background along with the glyph. White glass reads on both dark and light
+   accents; the glyph keeps the contrast ink from workbench.css. */
+html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-branded .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-tile) {
+  display: grid !important;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  border: 1px solid rgb(255 255 255 / .42);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgb(255 255 255 / .34), rgb(255 255 255 / .1)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .55), 0 4px 10px rgb(16 24 40 / .12);
+  transition: background .18s var(--hpxg-ease), border-color .18s var(--hpxg-ease), transform .18s var(--hpxg-ease);
+}
+html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-logo, .hpx-ultimate-team-logo) {
+  width: 22px;
+  height: 22px;
+  border-radius: 0;
+  transform: none !important;
+}
+/* Teams without artwork: the initials sit on the tile instead of their own gradient badge. */
+html[data-hpx-theme="cute-ios"] #app-nav-menu .hpx-ultimate-team-logo-fallback {
+  width: auto;
+  height: auto;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 12px;
+}
+html[data-hpx-theme="cute-ios"] #app-nav-menu .hpx-ultimate-team-shortcut { gap: 4px; }
+html[data-hpx-theme="cute-ios"] #app-nav-menu .hpx-ultimate-team-shortcut-label { font-size: 10.5px; letter-spacing: .1px; }
+html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-branded:hover .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-shortcut:is(:hover, :focus-visible) .hpx-ultimate-team-tile) {
+  border-color: rgb(255 255 255 / .62);
+  background: linear-gradient(180deg, rgb(255 255 255 / .52), rgb(255 255 255 / .2)) !important;
+  transform: translateY(-1px);
+}
+html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-branded.active .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-shortcut[aria-current="page"] .hpx-ultimate-team-tile) {
+  border-color: color-mix(in srgb, var(--hpx-accent-ink) 70%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .55), 0 0 0 1px color-mix(in srgb, var(--hpx-accent-ink) 70%, transparent);
 }
 
 /* ── Editor toolbar ─────────────────────────────────────────── */
@@ -460,6 +724,20 @@ html[data-hpx-theme="cute-ios"] .hpx-loader--done .hpx-loader__tiger { color: #2
   html[data-hpx-theme="cute-ios"] .hpx-toolbar { background: #fff; }
   html[data-hpx-theme="cute-ios"] .hpx-modal { background: #f6f8fc; }
   html[data-hpx-theme="cute-ios"] .hpx-modal-overlay { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html[data-hpx-theme="cute-ios"] .hpx-category-modal-layer {
+    --hpx-category-card: #fff;
+    --hpx-category-card-hover: #f6f8fc;
+    --hpx-category-field: #fff;
+    --hpx-category-edge: #e4e8f0;
+  }
+  html[data-hpx-theme="cute-ios"] .hpx-category-modal-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html[data-hpx-theme="cute-ios"][data-hpxg-wash] .app-container.theme-light #halo-tree:has(#tv-selected-view-name[data-id="team"]) .treeviewnode[data-level="2"] {
+    --hpxg-person-fill: #fff;
+    background-image: none !important;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    &:is(.active, .selected, [aria-selected="true"]) { --hpxg-person-fill: var(--hpx-accent-soft); }
+  }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   html[data-hpx-theme="cute-ios"] {
@@ -469,5 +747,7 @@ html[data-hpx-theme="cute-ios"] .hpx-loader--done .hpx-loader__tiger { color: #2
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  html[data-hpx-theme="cute-ios"] #halo-tree .treeviewnode { transition: none !important; }
   html[data-hpx-theme="cute-ios"] :is(.hpx-tb-btn, .hpx-sidebar-control, .hpx-btn, .hpx-tta > .hpx-tta-btn):active { transform: none; }
+  html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-tile) { transform: none !important; }
 }

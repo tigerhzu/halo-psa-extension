@@ -15,9 +15,110 @@
   const ENHANCED_ATTR = 'data-hpx-besties';
 
   let observer = null;
+  let active = false;
+  let generation = 0;
   let scanScheduled = false;
+  let scheduledHandle = null;
+  let scheduledWithRaf = false;
+  let scheduleBurstScan = null;
   let callbacks = { onFound: null, onRemoved: null };
   const tracked = new Set(); // 目前追蹤中的寄信視窗容器
+  let knownCcNodes = [];
+  let knownContainers = [];
+  let titleCache = new Map();
+  const knownTitles = new Set();
+  let onboardingOpen = false;
+  const OWN_UI = '[data-hpx-extension-toolbar="true"], .hpx-toolbar, .hpx-sp, .hpx-sp-pet, .hpx-modal-overlay, .hpx-loader, .hpx-toast-container, .hpx-onboarding-overlay';
+  const EDITOR_CONTENT = '[contenteditable="true"], .fr-element, .ck-editor__editable, .mce-content-body, .note-editable';
+
+  // These selectors describe a union, not a priority order. One DOM traversal is
+  // enough; retain the per-selector fallback for tenant-specific invalid rules.
+  function queryAll(root, selectors) {
+    if (!root || !root.querySelectorAll || !selectors || !selectors.length) return [];
+    try {
+      return Array.from(root.querySelectorAll(selectors.join(',')));
+    } catch (e) {
+      const found = new Set();
+      selectors.forEach(function (selector) {
+        try { root.querySelectorAll(selector).forEach(function (node) { found.add(node); }); } catch (ignored) { /* invalid selector */ }
+      });
+      return Array.from(found);
+    }
+  }
+
+  function matchesAny(node, selectors) {
+    if (!node || !node.matches || !selectors || !selectors.length) return false;
+    try { return node.matches(selectors.join(',')); } catch (e) {
+      return selectors.some(function (selector) {
+        try { return node.matches(selector); } catch (ignored) { return false; }
+      });
+    }
+  }
+
+  function closest(node, selector) {
+    const element = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+    return element && element.closest ? element.closest(selector) : null;
+  }
+
+  function containsCc(node) {
+    const selectors = NS.config.besties.CC_FIELD_SELECTORS;
+    if (matchesAny(node, selectors)) return true;
+    if (!node || !node.querySelector) return false;
+    try { return !!node.querySelector(selectors.join(',')); } catch (e) {
+      return queryAll(node, selectors).length > 0;
+    }
+  }
+
+  function touchesKnownWindow(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+    return knownCcNodes.concat(knownContainers).some(function (known) {
+      return node === known || node.contains(known) || known.contains(node);
+    });
+  }
+
+  function isTitleMutation(node) {
+    const selectors = NS.config.besties.ACTION_TITLE_SELECTORS || ['.history-header'];
+    let element = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+    if (element === document.body || element === document.documentElement) return false;
+    if (element && Array.from(knownTitles).some(function (title) {
+      return title === element || title.contains(element) || element.contains(title);
+    })) return true;
+    while (element && element !== document.body && element !== document.documentElement) {
+      if (matchesAny(element, selectors)) return true;
+      element = element.parentElement;
+    }
+    return false;
+  }
+
+  function onMutations(records) {
+    if (!active) return;
+    const relevant = records.some(function (record) {
+      const target = record.target;
+      if (target === document.documentElement && record.attributeName === 'class') {
+        if (isOnboardingOpen() !== onboardingOpen) return true;
+      }
+      if (closest(target, OWN_UI) || closest(target, EDITOR_CONTENT)) return false;
+      if (record.type === 'characterData') return isTitleMutation(target);
+      if (record.type === 'attributes') {
+        return touchesKnownWindow(target) || matchesAny(target, NS.config.besties.CC_FIELD_SELECTORS) ||
+          matchesAny(target, NS.config.besties.NEW_TICKET_ROOT_SELECTORS) ||
+          /new-?ticket/i.test(record.oldValue || '') || isTitleMutation(target);
+      }
+      const changed = Array.from(record.addedNodes || []).concat(Array.from(record.removedNodes || []));
+      // Own toolbar/pet updates must not create a scan -> DOM write -> scan loop.
+      const nativeChanged = changed.filter(function (node) { return !closest(node, OWN_UI); });
+      if (!nativeChanged.length) return false;
+      if (isTitleMutation(target)) return true;
+      // Avoid treating body/html as a candidate scope for every unrelated insert.
+      if (target !== document.body && target !== document.documentElement &&
+          touchesKnownWindow(target)) return true;
+      return nativeChanged.some(function (node) {
+        return touchesKnownWindow(node) || containsCc(node) ||
+          matchesAny(node, NS.config.besties.NEW_TICKET_ROOT_SELECTORS);
+      });
+    });
+    if (relevant) scheduleBurstScan();
+  }
 
   /** Timesheet 等可編輯介面不是寄信視窗，必須在所有偵測路徑中排除。 */
   function isExcluded(element) {
@@ -101,6 +202,7 @@
 
   /** 只取得 Halo Action 標題文字，不把編輯器內容或 AI 工具列按鈕算進來。 */
   function getActionTitleText(container) {
+    if (titleCache.has(container)) return titleCache.get(container);
     const selectors = NS.config.besties.ACTION_TITLE_SELECTORS || [
       '.history-header .outcome.oneline',
       '.history-header .outcome',
@@ -113,13 +215,19 @@
         try {
           const titleNode = node.querySelector && node.querySelector(selectors[j]);
           const text = titleNode && (titleNode.textContent || '').trim();
-          if (text) return text.replace(/\s+/g, ' ').toLowerCase();
+          if (text) {
+            const result = text.replace(/\s+/g, ' ').toLowerCase();
+            knownTitles.add(titleNode);
+            titleCache.set(container, result);
+            return result;
+          }
         } catch (e) {
           /* 無效 selector 略過 */
         }
       }
       node = node.parentElement;
     }
+    titleCache.set(container, '');
     return '';
   }
 
@@ -158,19 +266,7 @@
    */
   function hasVisibleCcSignal(container) {
     const c = NS.config.besties;
-    const ccNodes = [];
-    const seen = new Set();
-    (c.CC_FIELD_SELECTORS || []).forEach(function (selector) {
-      try {
-        container.querySelectorAll(selector).forEach(function (node) {
-          if (seen.has(node)) return;
-          seen.add(node);
-          ccNodes.push(node);
-        });
-      } catch (e) {
-        /* 無效 selector 略過 */
-      }
-    });
+    const ccNodes = queryAll(container, c.CC_FIELD_SELECTORS);
 
     if (ccNodes.some(isVisibleControl)) return true;
 
@@ -205,32 +301,16 @@
 
     // a) 只從 CC 欄位推導掛載容器。emailto 不能作為工具列根節點，否則會在
     //    To 上方多掛一條；同一個 emailcc 被多個 selector 命中時 Set 會自動去重。
-    c.CC_FIELD_SELECTORS.forEach(function (sel) {
-      try {
-        document.querySelectorAll(sel).forEach(function (cc) {
-          if (isExcluded(cc)) return;
-          const container = besties._findWindowContainer(cc);
-          if (container && !isExcluded(container)) set.add(container);
-        });
-      } catch (e) {
-        /* 無效 selector 略過 */
-      }
+    knownCcNodes = queryAll(document, c.CC_FIELD_SELECTORS);
+    knownCcNodes.forEach(function (cc) {
+      if (isExcluded(cc)) return;
+      const container = besties._findWindowContainer(cc);
+      if (container && !isExcluded(container)) set.add(container);
     });
-
-    if (!set.size) {
-      // b) 沒有 HaloPSA 專屬欄位時，才使用通用容器 selector 作為後援。
-      c.EMAIL_WINDOW_SELECTORS.forEach(function (sel) {
-        try {
-          document.querySelectorAll(sel).forEach(function (n) {
-            if (!isExcluded(n)) set.add(n);
-          });
-        } catch (e) {
-          /* 無效 selector 略過 */
-        }
-      });
-    }
-
-    return Array.from(set).filter(Boolean);
+    // Without any CC field, no generic form/email container can pass the
+    // visible-CC check. Do not scan unrelated forms and their ancestor titles.
+    knownContainers = Array.from(set).filter(Boolean);
+    return knownContainers;
   }
 
   /**
@@ -238,10 +318,7 @@
    * 必須通過寄信 Action 白名單判斷與可見 CC 欄位檢查；
    * Activity Note、狀態類 Action 等其他 Action 一律排除。
    */
-  function findEmailWindows() {
-    if (isNewTicketPage()) return [];
-    if (isOnboardingOpen()) return [];
-    const candidates = collectCandidates();
+  function findEmailWindows(candidates) {
 
     let windows = candidates.filter(function (el) {
       if (isExcluded(el)) return false;
@@ -274,14 +351,20 @@
   }
 
   function scan() {
+    if (!active) return;
     scanScheduled = false;
-    if (!isHaloPage() || isNewTicketPage() || isOnboardingOpen()) {
+    scheduledHandle = null;
+    titleCache = new Map();
+    knownTitles.clear();
+    onboardingOpen = isOnboardingOpen();
+    const candidates = collectCandidates();
+    if (!candidates.length || !isHaloPage() || isNewTicketPage() || onboardingOpen) {
       clearTracked();
       NS.log('寄信視窗掃描：非寄信頁面（含 New Ticket／首次登入提示），略過');
       return;
     }
 
-    const windows = findEmailWindows();
+    const windows = findEmailWindows(candidates);
     const currentSet = new Set(windows);
 
     // 先移除已失效的舊容器，避免 SPA 結構改變的一瞬間同時存在兩條工具列。
@@ -299,7 +382,7 @@
 
     // 新增
     windows.forEach(function (el) {
-      if (el.getAttribute(ENHANCED_ATTR) === '1') return;
+      if (tracked.has(el)) return;
       el.setAttribute(ENHANCED_ATTR, '1');
       tracked.add(el);
       try {
@@ -311,14 +394,15 @@
   }
 
   function scheduleScan() {
-    if (scanScheduled) return;
+    if (!active || scanScheduled) return;
     scanScheduled = true;
-    (window.requestAnimationFrame || window.setTimeout)(scan, 50);
+    const expectedGeneration = generation;
+    const run = function () {
+      if (active && expectedGeneration === generation) scan();
+    };
+    scheduledWithRaf = typeof window.requestAnimationFrame === 'function';
+    scheduledHandle = scheduledWithRaf ? window.requestAnimationFrame(run) : window.setTimeout(run, 50);
   }
-
-  // 全頁 observer 專用：Halo 載入／換頁或編輯器連續改 class/style 時，
-  // 最多每 150ms 掃描一次。使用者點擊與外部 rescan 仍走上面的即時排程。
-  const scheduleBurstScan = NS.burstScheduler(scan, 150);
 
   /**
    * 信封切換有些版本只改 React state / class，不一定新增或移除節點；
@@ -348,29 +432,54 @@
     start: function (opts) {
       callbacks.onFound = opts && opts.onFound;
       callbacks.onRemoved = opts && opts.onRemoved;
-
-      scan();
-      observer = new MutationObserver(scheduleBurstScan);
-      observer.observe(document.body, {
+      if (active) { scheduleScan(); return; }
+      active = true;
+      const expectedGeneration = ++generation;
+      scheduleBurstScan = NS.burstScheduler(function () {
+        if (active && expectedGeneration === generation) scan();
+      }, 150);
+      observer = new MutationObserver(onMutations);
+      observer.observe(document.documentElement || document.body, {
         childList: true,
         subtree: true,
+        characterData: true,
         attributes: true,
+        attributeOldValue: true,
         attributeFilter: [
           'class', 'style', 'hidden', 'aria-hidden', 'aria-expanded',
           'aria-pressed', 'aria-checked', 'data-state', 'data-active',
-          'data-selected', 'title',
+          'data-selected', 'title', 'name', 'id', 'aria-label', 'placeholder', 'type', 'disabled',
         ],
       });
       document.addEventListener('click', onDocumentClick, true);
+      ['popstate', 'hashchange', 'pageshow'].forEach(function (name) { window.addEventListener(name, scheduleScan); });
+      if (window.navigation && window.navigation.addEventListener) window.navigation.addEventListener('navigate', scheduleScan);
+      scan();
       NS.log('寄信視窗偵測器已啟動');
     },
 
     stop: function () {
+      active = false;
+      generation += 1;
+      if (scheduledHandle !== null) {
+        if (scheduledWithRaf && window.cancelAnimationFrame) window.cancelAnimationFrame(scheduledHandle);
+        else window.clearTimeout(scheduledHandle);
+      }
+      scheduledHandle = null;
+      scanScheduled = false;
+      if (scheduleBurstScan && scheduleBurstScan.cancel) scheduleBurstScan.cancel();
       if (observer) {
         observer.disconnect();
         observer = null;
       }
       document.removeEventListener('click', onDocumentClick, true);
+      ['popstate', 'hashchange', 'pageshow'].forEach(function (name) { window.removeEventListener(name, scheduleScan); });
+      if (window.navigation && window.navigation.removeEventListener) window.navigation.removeEventListener('navigate', scheduleScan);
+      clearTracked();
+      knownCcNodes = [];
+      knownContainers = [];
+      titleCache.clear();
+      knownTitles.clear();
     },
 
     rescan: scheduleScan,

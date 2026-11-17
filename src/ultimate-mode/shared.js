@@ -9,6 +9,7 @@
 
   NS.ultimate = NS.ultimate || {};
   const cfg = NS.config.selectors.ULTIMATE_MODE;
+  const ownUiSelector = cfg.OWN_UI_ROOT_SELECTORS.join(',');
   const warned = new Set();
   const reconciliations = new Map();
   const keepReconciliations = new Map();
@@ -24,6 +25,7 @@
   }
 
   function normalizeText(value) {
+    if (value == null || value === '') return '';
     return String(value == null ? '' : value)
       .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       .replace(/_/g, ' ')
@@ -110,14 +112,14 @@
     return out.replace(/\s+/g, ' ').trim();
   }
 
-  function labelVariants(element) {
+  function labelVariants(element, text) {
     if (!element || !element.getAttribute) return [];
     const values = [
       element.getAttribute('aria-label'),
       element.getAttribute('title'),
       element.getAttribute('data-label'),
       element.getAttribute('data-field-name'),
-      directText(element),
+      text === undefined ? directText(element) : text,
     ];
     const seen = new Set();
     return values.map(normalizeText).filter(function (value) {
@@ -132,16 +134,22 @@
   }
 
   function findByLabels(root, labels, options) {
+    // Label lists are fixed for this lookup. Normalizing the whole whitelist
+    // again for every div/span dominated scans on large ticket lists.
+    const expected = normalizedLabels(labels);
+    if (!expected.length) return [];
     return safeQueryAll(root, cfg.TEXT_CANDIDATE_SELECTORS).filter(function (node) {
-      if (isOwnUi(node) || !isVisible(node)) return false;
+      if (isOwnUi(node)) return false;
       const text = directText(node);
       if (text.length > cfg.MAX_LABEL_TEXT_LENGTH && !node.getAttribute('aria-label') && !node.getAttribute('title')) {
         return false;
       }
-      return matchesLabel(node, labels, options);
+      // Layout reads can force a style/layout flush while Halo is rendering.
+      // Only the few matching labels need a visibility check.
+      return matchesVariants(labelVariants(node, text), expected, options) && isVisible(node);
     }).filter(function (node, index, all) {
       return !all.some(function (other) {
-        return other !== node && node.contains(other) && matchesLabel(other, labels, options);
+        return other !== node && node.contains(other);
       });
     });
   }
@@ -181,9 +189,7 @@
     return best;
   }
 
-  function matchesLabel(element, labels, options) {
-    const expected = normalizedLabels(labels);
-    const variants = labelVariants(element);
+  function matchesVariants(variants, expected, options) {
     const allowCounter = options && options.allowTrailingCounter;
     return variants.some(function (actual) {
       return expected.some(function (label) {
@@ -193,6 +199,10 @@
         return actual.indexOf(label) === 0 && /^\s*(?:[([{]?\s*\d+\s*(?:tickets?)?\s*[)\]}]?)?$/.test(suffix);
       });
     });
+  }
+
+  function matchesLabel(element, labels, options) {
+    return matchesVariants(labelVariants(element), normalizedLabels(labels), options);
   }
 
   function matchedLabel(element, labels, options) {
@@ -212,7 +222,8 @@
   }
 
   function isOwnUi(element) {
-    if (!element || !element.closest) return false;
+    if (!element || !element.closest || !ownUiSelector) return false;
+    try { return !!element.closest(ownUiSelector); } catch (error) { /* isolate invalid selectors below */ }
     return cfg.OWN_UI_ROOT_SELECTORS.some(function (selector) {
       try { return !!element.closest(selector); } catch (e) { return false; }
     });

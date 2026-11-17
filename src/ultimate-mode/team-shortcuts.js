@@ -64,8 +64,8 @@
     if (!link) return false;
     const host = link.querySelector('.app-button-img');
     if (!host) return false;
-    link.classList.add('hpx-ultimate-timesheets-branded');
-    host.classList.add('hpx-ultimate-timesheets-icon-host');
+    if (!link.classList.contains('hpx-ultimate-timesheets-branded')) link.classList.add('hpx-ultimate-timesheets-branded');
+    if (!host.classList.contains('hpx-ultimate-timesheets-icon-host')) host.classList.add('hpx-ultimate-timesheets-icon-host');
     if (!host.querySelector('.hpx-ultimate-timesheets-logo')) host.appendChild(createTimesheetsLogo());
     return true;
   }
@@ -196,7 +196,10 @@
     link.title = '前往 ' + label;
     link.setAttribute('aria-label', '前往 ' + label);
 
-    const icon = createTeamLogo(label);
+    // 輕透主題把 tile 畫成玻璃底座；原生配色下 tile 是 display: contents，不影響版面。
+    const icon = document.createElement('span');
+    icon.className = 'hpx-ultimate-team-tile';
+    icon.appendChild(createTeamLogo(label));
 
     const text = document.createElement('span');
     text.className = 'hpx-ultimate-team-shortcut-label';

@@ -22,7 +22,8 @@ const TEAM_CATALOG_VERSION = 2;
 const DEFAULT_CC_FIELD = 'defaultCcRecipients';
 const ONBOARDING_FIELD = 'onboardingVersion';
 const SETTINGS_EXPORT_FORMAT = 'halo-psa-extension-settings';
-const SETTINGS_EXPORT_VERSION = 1;
+const SETTINGS_EXPORT_VERSION = 2;
+const SETTINGS_BACKUP_MAX_BYTES = 10 * 1024 * 1024;
 const AI_SETTINGS = window.HPX_AI_SETTINGS;
 const PROVIDERS = AI_SETTINGS.PROVIDERS;
 const API_KEY_FIELDS = ['ornithApiKey', 'azureApiKey', 'apiKey'];
@@ -44,8 +45,10 @@ const DEFAULTS = {
   azureApiVersion: '2024-12-01-preview',
   azureApiKey: '',
   theme: 'cute-ios',
-  accent: '#15487e',
-  opacity: 100,
+  accent: '#ff7a1a',
+  opacity: 55,
+  wash: 'ocean',
+  washIntensity: 42,
   ultimateMode: false,
 };
 
@@ -109,6 +112,12 @@ const els = {
   importSettings: $('importSettings'),
   importSettingsFile: $('importSettingsFile'),
   backupStatus: $('backupStatus'),
+  petImportForm: $('petImportForm'),
+  petFolder: $('petFolder'),
+  petActivate: $('petActivate'),
+  importPet: $('importPet'),
+  petImportStatus: $('petImportStatus'),
+  petImportedList: $('petImportedList'),
   saveStatus: $('saveStatus'),
   teamCount: $('teamCount'),
 };
@@ -128,7 +137,7 @@ function setSaveIndicator(text, state) {
 }
 
 function setupNavigation() {
-  const pageKeys = new Set(['workspace', 'status-notes', 'writing', 'halo', 'contacts', 'backup']);
+  const pageKeys = new Set(['workspace', 'status-notes', 'writing', 'halo', 'contacts', 'backup', 'pets']);
   function showPage(focusContent) {
     const hash = window.location.hash.slice(1);
     if (hash === 'main') return;
@@ -184,8 +193,10 @@ function mergeFields(patch) {
 }
 
 function readStoredSettings() {
-  return new Promise(function (resolve) {
+  return new Promise(function (resolve, reject) {
     chrome.storage.local.get(SETTINGS_KEY, function (data) {
+      const error = chrome.runtime.lastError;
+      if (error) { reject(new Error(error.message || '無法讀取設定')); return; }
       resolve((data && data[SETTINGS_KEY]) || {});
     });
   });
@@ -216,6 +227,7 @@ function downloadSettingsJson(payload, includeApiKeys) {
   const stamp = new Date().toISOString().replace(/[.:]/g, '-');
   const suffix = includeApiKeys ? 'complete' : 'without-api-keys';
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  if (blob.size > SETTINGS_BACKUP_MAX_BYTES) throw new Error('含 Pet 的備份超過 10 MB，請減少自訂寵物或縮小圖集後重試。');
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -237,8 +249,12 @@ function liveSettingsSnapshot() {
 }
 
 function exportSettings(includeApiKeys) {
-  liveSettingsSnapshot().then(function (settings) {
-    const exported = Object.assign({}, settings);
+  setStatus(els.backupStatus, '正在匯出設定與 Pet 資料…', '');
+  return liveSettingsSnapshot().then(async function (settings) {
+    const exported = Object.assign({
+      pet: 'claude-crab', petPosition: { right: 16, bottom: 16 }, petHidden: false, shortcutLinks: [],
+    }, settings);
+    exported.petPackages = await window.HPX_PET_REGISTRY.exportPackages(exported);
     if (!includeApiKeys) {
       API_KEY_FIELDS.forEach(function (field) { delete exported[field]; });
     }
@@ -250,8 +266,8 @@ function exportSettings(includeApiKeys) {
       settings: exported,
     }, includeApiKeys);
     setStatus(els.backupStatus, includeApiKeys
-      ? '已匯出完整設定（含 API Key）✓'
-      : '已匯出設定（不含 API Key）✓', 'ok');
+      ? '已匯出完整設定與 Pet 資料（含 API Key）✓'
+      : '已匯出設定與 Pet 資料（不含 API Key）✓', 'ok');
   }).catch(function (error) {
     setStatus(els.backupStatus, '匯出失敗：' + (error.message || '無法讀取設定'), 'err');
   });
@@ -275,6 +291,9 @@ function normalizeImportedSettings(payload) {
     if (key !== '__proto__' && key !== 'constructor' && key !== 'prototype') settings[key] = source[key];
   });
   const includeApiKeys = !isEnvelope || payload.includeApiKeys !== false;
+  if (Object.prototype.hasOwnProperty.call(settings, 'petPackages')) {
+    settings.petPackages = window.HPX_PET_REGISTRY.normalizePackages(settings.petPackages);
+  }
   // A no-secret backup never supplies credentials, even if key fields were added to it.
   if (!includeApiKeys) API_KEY_FIELDS.forEach(function (field) { delete settings[field]; });
 
@@ -287,10 +306,11 @@ function normalizeImportedSettings(payload) {
   settings.azureApiKey = String(settings.azureApiKey || '').trim();
   settings.provider = AI_SETTINGS.resolveProvider(settings);
   AI_SETTINGS.validateExclusive(settings);
-  settings.theme = settings.theme === 'default' || settings.theme === 'cute-ios' ? settings.theme : DEFAULTS.theme;
-  settings.accent = normalizeAccent(settings.accent);
-  const opacity = Number(settings.opacity);
-  settings.opacity = Number.isFinite(opacity) ? Math.max(40, Math.min(100, Math.round(opacity))) : DEFAULTS.opacity;
+  // Imported backups always start with the shared orange glass preset,
+  // including legacy files and files that omit appearance fields.
+  ['theme', 'accent', 'opacity', 'wash', 'washIntensity'].forEach(function (field) {
+    settings[field] = DEFAULTS[field];
+  });
   settings.ultimateMode = settings.ultimateMode === true;
   if (Object.prototype.hasOwnProperty.call(settings, TEAMS_FIELD)) settings[TEAMS_FIELD] = normalizeTeamList(settings[TEAMS_FIELD]);
 
@@ -302,6 +322,10 @@ function normalizeImportedSettings(payload) {
 
 function mergeImportedSettings(imported, current) {
   const next = Object.assign({}, imported.settings);
+  // Older backups have no assets; retain installed pets so their IDs still work.
+  if (!Object.prototype.hasOwnProperty.call(next, 'petPackages') && current && current.petPackages) {
+    next.petPackages = current.petPackages;
+  }
   if (!imported.includeApiKeys) {
     API_KEY_FIELDS.forEach(function (field) { next[field] = (current && current[field]) || ''; });
   }
@@ -313,8 +337,8 @@ function mergeImportedSettings(imported, current) {
 
 function importSettingsFromFile(file) {
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) {
-    setStatus(els.backupStatus, '匯入失敗：設定檔不可超過 5 MB。', 'err');
+  if (file.size > SETTINGS_BACKUP_MAX_BYTES) {
+    setStatus(els.backupStatus, '匯入失敗：設定檔不可超過 10 MB。', 'err');
     return;
   }
   const reader = new FileReader();
@@ -325,7 +349,7 @@ function importSettingsFromFile(file) {
       readStoredSettings().then(function (current) {
         return replaceStoredSettings(mergeImportedSettings(imported, current));
       }).then(function () {
-        setStatus(els.backupStatus, '匯入成功，正在重新載入設定頁…', 'ok');
+        setStatus(els.backupStatus, '匯入成功，已套用橘色透明玻璃預設；請重新整理 Halo 頁面。正在重新載入設定頁…', 'ok');
         setTimeout(function () { window.location.reload(); }, 350);
       }).catch(function (error) {
         setStatus(els.backupStatus, '匯入失敗：' + (error.message || '無法保存設定'), 'err');
@@ -346,6 +370,52 @@ function normalizeTeamList(teams) {
     if (!label || seen.has(key) || list.length >= 20) return list;
     seen.add(key); list.push(label); return list;
   }, []);
+}
+
+function renderImportedPets(settings) {
+  const packages = window.HPX_PET_REGISTRY.normalizePackages(settings.petPackages || []);
+  els.petImportedList.textContent = packages.length
+    ? '已匯入的 Pet：' + packages.map(function (pet) { return pet.manifest.displayName; }).join('、')
+    : '尚未從後台匯入 Pet；內建與資料夾中的寵物仍可使用。';
+}
+
+function saveImportedPet(pet, activate) {
+  return enqueueStorageWrite(function () {
+    return readStoredSettings().then(async function (current) {
+      const packages = window.HPX_PET_REGISTRY.normalizePackages(current.petPackages || [])
+        .filter(function (item) { return item.manifest.id !== pet.manifest.id; });
+      packages.push(pet);
+      const next = Object.assign({}, current, { petPackages: window.HPX_PET_REGISTRY.normalizePackages(packages) });
+      if (activate) { next.pet = pet.manifest.id; next.petHidden = false; }
+      // Verify that the resulting pets still fit in an exportable backup before saving.
+      const backupSettings = Object.assign({}, next, { petPackages: await window.HPX_PET_REGISTRY.exportPackages(next) });
+      const backupSize = new Blob([JSON.stringify(backupSettings, null, 2)]).size;
+      if (backupSize + 1024 > SETTINGS_BACKUP_MAX_BYTES) throw new Error('匯入後的備份將超過 10 MB，請縮小圖集後重試。');
+      return new Promise(function (resolve, reject) {
+        chrome.storage.local.set({ [SETTINGS_KEY]: next }, function () {
+          const error = chrome.runtime.lastError;
+          if (error) { reject(new Error(error.message || '無法保存 Pet')); return; }
+          resolve(next);
+        });
+      });
+    });
+  });
+}
+
+function importPetFromFolder(files, activate) {
+  if (els.importPet.disabled) return Promise.resolve();
+  els.importPet.disabled = true;
+  setStatus(els.petImportStatus, '正在讀取與保存 Pet…', '');
+  return window.HPX_PET_REGISTRY.importFolder(files).then(function (pet) {
+    return saveImportedPet(pet, activate).then(function (settings) {
+      renderImportedPets(settings);
+      els.petImportForm.reset();
+      setStatus(els.petImportStatus, '已匯入「' + pet.manifest.displayName + '」' +
+        (activate ? '並設為目前 Pet' : '') + '。請重新整理 Halo 頁面；之後的備份會包含此 Pet。', 'ok');
+    });
+  }).catch(function (error) {
+    setStatus(els.petImportStatus, '匯入失敗：' + (error.message || '無法讀取 Pet'), 'err');
+  }).finally(function () { els.importPet.disabled = false; });
 }
 
 function readTeamsFromDom() {
@@ -1077,12 +1147,17 @@ els.exportSettingsWithKeys.addEventListener('click', function () {
   exportSettings(true);
 });
 
+els.petImportForm.addEventListener('submit', function (event) {
+  event.preventDefault();
+  importPetFromFolder(els.petFolder.files, els.petActivate.checked);
+});
+
 els.exportSettingsWithoutKeys.addEventListener('click', function () {
   exportSettings(false);
 });
 
 els.importSettings.addEventListener('click', function () {
-  if (!window.confirm('匯入會取代目前的完整設定；含 API Key 的檔案請確認來源可信。要繼續嗎？')) return;
+  if (!window.confirm('匯入會還原功能與 Pet 設定，外觀統一套用橘色透明玻璃預設，不採用備份中的配色、透明度與背景；含 API Key 的檔案請確認來源可信。要繼續嗎？')) return;
   els.importSettingsFile.value = '';
   els.importSettingsFile.click();
 });
@@ -1162,3 +1237,6 @@ els.test.addEventListener('click', function () {
 
 setupNavigation();
 load();
+readStoredSettings().then(renderImportedPets).catch(function (error) {
+  setStatus(els.petImportStatus, '無法讀取已匯入的 Pet：' + error.message, 'err');
+});

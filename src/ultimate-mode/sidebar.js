@@ -263,10 +263,13 @@
     }
 
     let hidden = 0;
-    shared.findByLabels(document, cfg.ICON_ITEMS_TO_HIDE).forEach(function (labelNode) {
+    // A partial/late-loading native rail must not send semantic discovery into
+    // thousands of unrelated ticket rows. Unknown layouts retain the fallback.
+    const rail = document.getElementById('app-nav-menu');
+    shared.findByLabels(rail || document, cfg.ICON_ITEMS_TO_HIDE).forEach(function (labelNode) {
       const rect = shared.elementRect(labelNode);
       if (!rect || rect.left > 90 || rect.right > 150) return;
-      const owner = shared.boundedOwner(labelNode, document.body, {
+      const owner = shared.boundedOwner(labelNode, rail || document.body, {
         maxDepth: 5,
         maxHeight: 84,
         maxTextLength: 80,

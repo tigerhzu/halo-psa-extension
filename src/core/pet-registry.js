@@ -78,6 +78,7 @@
     return {
       id: id,
       name: name,
+      description: String(manifest.description || '').slice(0, 2000),
       atlas: (assetRoot || PET_ROOT) + '/' + folder + '/' + spritesheetPath,
       atlasRows: spriteVersionNumber === 2 ? 11 : 9,
       spriteVersionNumber: spriteVersionNumber,
@@ -240,13 +241,154 @@
 
   function mergeDefinitions(imported) {
     const definitions = BUILT_IN_PETS.map(cloneDefinition);
-    const ids = new Set(definitions.map(function (definition) { return definition.id; }));
     (imported || []).forEach(function (definition) {
-      if (!definition || ids.has(definition.id)) return;
-      ids.add(definition.id);
-      definitions.push(cloneDefinition(definition));
+      if (!definition) return;
+      const index = definitions.findIndex(function (item) { return item.id === definition.id; });
+      if (index < 0) definitions.push(cloneDefinition(definition));
+      else definitions[index] = cloneDefinition(definition);
     });
     return definitions;
+  }
+
+  // Backups embed only raster images, never remote URLs or executable content.
+  function normalizePackages(packages) {
+    if (!Array.isArray(packages) || packages.length > 100) throw new Error('Pet 備份清單格式不正確。');
+    const ids = new Set();
+    return packages.map(function (item) {
+      const manifest = item && item.manifest;
+      const id = manifest && normalizeId(manifest.id);
+      const definition = id && normalizeManifest(manifest, id);
+      const dataUrl = item && item.spritesheet;
+      if (!definition || ids.has(id) || typeof dataUrl !== 'string' || dataUrl.length > 10 * 1024 * 1024) {
+        throw new Error('Pet 備份內容不正確。');
+      }
+      const match = /^data:image\/(webp|png);base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
+      if (!match || match[2].length % 4 !== 0) throw new Error('Pet 圖集必須是 PNG 或 WebP 圖片。');
+      const header = atob(match[2].slice(0, 32));
+      if (match[1] === 'webp'
+        ? header.slice(0, 4) !== 'RIFF' || header.slice(8, 12) !== 'WEBP'
+        : header.slice(0, 8) !== '\x89PNG\r\n\x1a\n') throw new Error('Pet 圖集內容無效。');
+      ids.add(id);
+      return {
+        manifest: {
+          id: id, displayName: definition.name, description: definition.description,
+          spriteVersionNumber: definition.spriteVersionNumber,
+          spritesheetPath: 'spritesheet.' + match[1], idleAnimations: definition.actions,
+        },
+        spritesheet: dataUrl,
+      };
+    });
+  }
+
+  function packageDefinitions(packages) {
+    return normalizePackages(packages).map(function (item) {
+      const definition = normalizeManifest(item.manifest, item.manifest.id);
+      definition.atlas = item.spritesheet;
+      return definition;
+    });
+  }
+
+  async function importFiles(manifestFile, spriteFile, folderName) {
+    if (!manifestFile || !spriteFile) throw new Error('請選擇 pet.json 與對應的圖集檔。');
+    if (manifestFile.size > 256 * 1024) throw new Error('pet.json 不可超過 256 KB。');
+    if (spriteFile.size > 7 * 1024 * 1024) throw new Error('Pet 圖集不可超過 7 MB。');
+    let manifest;
+    try { manifest = JSON.parse(await manifestFile.text()); }
+    catch (_) { throw new Error('pet.json 不是有效的 JSON。'); }
+    const definition = manifest && normalizeManifest(manifest, folderName || manifest.id);
+    if (!definition) throw new Error('pet.json 須包含有效的 id，並使用支援的 v1 或 v2 圖集設定。');
+    manifest.id = definition.id;
+    const expectedName = (manifest.spritesheetPath || 'spritesheet.webp').replace(/\\/g, '/').split('/').pop();
+    if (spriteFile.name !== expectedName) throw new Error('請選擇 pet.json 指定的圖集：' + expectedName);
+    const bytes = new Uint8Array(await spriteFile.arrayBuffer());
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 8192) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + 8192));
+    }
+    const type = expectedName.toLowerCase().endsWith('.png') ? 'png' : 'webp';
+    const pet = normalizePackages([{ manifest: manifest, spritesheet: 'data:image/' + type + ';base64,' + btoa(binary) }])[0];
+    let bitmap;
+    try { bitmap = await createImageBitmap(spriteFile); }
+    catch (_) { throw new Error('無法解碼 Pet 圖集，請確認圖片未損毀。'); }
+    const validGrid = bitmap.width > 0 && bitmap.height > 0 && bitmap.width % 8 === 0 && bitmap.height % definition.atlasRows === 0;
+    bitmap.close();
+    if (!validGrid) throw new Error('圖集尺寸須能整齊分成 8 × ' + definition.atlasRows + ' 個影格。');
+    return pet;
+  }
+
+  async function importFolder(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) throw new Error('請選擇包含 pet.json 的 Pet 資料夾。');
+    const byPath = new Map();
+    let root = '';
+    files.forEach(function (file) {
+      const path = file.webkitRelativePath || '';
+      const parts = path.split('/');
+      if (parts.length < 2 || parts.some(function (part) { return !safeSegment(part); }) ||
+        (root && root !== parts[0]) || byPath.has(path)) {
+        throw new Error('請一次選擇一個完整的 Pet 資料夾。');
+      }
+      root = parts[0];
+      byPath.set(path, file);
+    });
+    const manifestFile = byPath.get(root + '/pet.json');
+    if (!manifestFile) throw new Error('所選資料夾內找不到 pet.json，請選擇該寵物的資料夾，而非上層資料夾。');
+    if (manifestFile.size > 256 * 1024) throw new Error('pet.json 不可超過 256 KB。');
+    let manifest;
+    try { manifest = JSON.parse(await manifestFile.text()); }
+    catch (_) { throw new Error('pet.json 不是有效的 JSON。'); }
+    const spritePath = manifest && safeRelativePath(manifest.spritesheetPath || 'spritesheet.webp');
+    if (!spritePath) throw new Error('pet.json 的 spritesheetPath 須指向資料夾內的 PNG 或 WebP 圖集。');
+    const spriteFile = byPath.get(root + '/' + spritePath);
+    if (!spriteFile) throw new Error('資料夾內缺少指定的 Pet 圖集：' + spritePath);
+    return importFiles(manifestFile, spriteFile, root);
+  }
+
+  function readSavedPackages() {
+    return new Promise(function (resolve, reject) {
+      chrome.storage.local.get('hpx_settings', function (data) {
+        const error = chrome.runtime.lastError;
+        if (error) { reject(new Error(error.message)); return; }
+        resolve(((data || {}).hpx_settings || {}).petPackages || []);
+      });
+    });
+  }
+
+  async function exportPackages(settings) {
+    const canScan = typeof chrome.runtime.getPackageDirectoryEntry === 'function';
+    const packaged = canScan ? await scanPackagePets() : [];
+    const restored = packageDefinitions(settings.petPackages || []);
+    const definitions = mergeDefinitions(packaged.concat(restored));
+    const selected = settings.pet || 'claude-crab';
+    if (!definitions.some(function (item) { return item.id === selected; })) {
+      throw new Error('找不到目前 Pet（' + selected + '）的資料，請先還原寵物資料夾。');
+    }
+    const packages = [];
+    // Other built-ins ship with the extension; preserve the selected pet and
+    // every custom/restored pet without duplicating all bundled image assets.
+    for (const definition of definitions.filter(function (item) { return item.id === selected || item.imported; })) {
+      let dataUrl = definition.atlas;
+      if (!dataUrl.startsWith('data:')) {
+        const response = await fetch(chrome.runtime.getURL(definition.atlas));
+        if (!response.ok) throw new Error('無法讀取 Pet 圖集：' + definition.name);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        let binary = '';
+        for (let offset = 0; offset < bytes.length; offset += 8192) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + 8192));
+        }
+        const type = definition.atlas.toLowerCase().endsWith('.png') ? 'png' : 'webp';
+        dataUrl = 'data:image/' + type + ';base64,' + btoa(binary);
+      }
+      packages.push({
+        manifest: {
+          id: definition.id, displayName: definition.name, description: definition.description || '',
+          spriteVersionNumber: definition.atlasRows === 11 ? 2 : 1,
+          idleAnimations: definition.actions,
+        },
+        spritesheet: dataUrl,
+      });
+    }
+    return normalizePackages(packages);
   }
 
   let scanPromise = null;
@@ -254,15 +396,21 @@
   const PetRegistry = {
     builtIns: function () { return BUILT_IN_PETS.map(cloneDefinition); },
     normalizeManifest: normalizeManifest,
+    normalizePackages: normalizePackages,
+    exportPackages: exportPackages,
+    importFiles: importFiles,
+    importFolder: importFolder,
     discoverPackage: scanPackagePets,
     discover: function () {
       if (scanPromise) return scanPromise;
       const canScanFromThisContext = typeof chrome !== 'undefined' && chrome.runtime &&
         typeof chrome.runtime.getPackageDirectoryEntry === 'function';
       const scan = canScanFromThisContext ? scanPackagePets() : discoverViaCatalogFrame();
-      scanPromise = scan
-        .then(mergeDefinitions)
-        .catch(function () { return mergeDefinitions([]); })
+      scanPromise = Promise.all([
+        scan.catch(function () { return []; }),
+        readSavedPackages().then(packageDefinitions).catch(function () { return []; }),
+      ])
+        .then(function (sources) { return mergeDefinitions(sources[0].concat(sources[1])); })
         .finally(function () { scanPromise = null; });
       return scanPromise;
     },

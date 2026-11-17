@@ -49,6 +49,18 @@ function eventTarget() {
   return { addListener: function () {} };
 }
 
+test('first install saves the shared glass preset without replacing existing appearance choices', function () {
+  const fresh = createWorker({}).store.hpx_settings;
+  assert.equal(fresh.theme, 'cute-ios');
+  assert.equal(fresh.accent, '#ff7a1a');
+  assert.equal(fresh.wash, 'ocean');
+  assert.equal(fresh.washIntensity, 42);
+  assert.equal(fresh.opacity, 55); // UI transparency is 100 - opacity = 45%.
+  const saved = { theme: 'default', accent: '#123456', wash: 'none', washIntensity: 0, opacity: 100, ultimateMode: true };
+  const existing = createWorker(saved).store.hpx_settings;
+  for (const key of Object.keys(saved)) assert.equal(existing[key], saved[key], key);
+});
+
 test('both providers pass locally recoverable image warnings to preview without sending image metadata', async function () {
   for (const provider of ['ornith', 'azure-deepseek']) {
     const worker = createWorker({ provider, ornithBaseUrl: 'https://ornith.example.invalid/v1',

@@ -30,6 +30,27 @@
   let started = false;
   /** container 元素 → group 狀態 */
   const groups = new Map();
+  // Keep only actual labels, not every div/span on the page. SPA updates add
+  // small dirty subtrees; the full document is inspected only at startup.
+  const labels = new Set();
+  const dirtyLabelRoots = new Set();
+
+  function refreshLabels() {
+    labels.forEach(function (node) {
+      if (!document.contains(node) || !isLabelCandidate(node)) labels.delete(node);
+    });
+    const roots = Array.from(dirtyLabelRoots);
+    dirtyLabelRoots.clear();
+    roots.forEach(function (root) {
+      if (root !== document && !document.contains(root)) return;
+      if (roots.some(function (other) { return other !== root && other.contains && other.contains(root); })) return;
+      if (root.matches && root.matches(LABEL_TAGS) && !isOwnUi(root) && isLabelCandidate(root)) labels.add(root);
+      if (!root.querySelectorAll) return;
+      root.querySelectorAll(LABEL_TAGS).forEach(function (node) {
+        if (!isOwnUi(node) && isLabelCandidate(node)) labels.add(node);
+      });
+    });
+  }
 
   // ── 共用小工具 ──────────────────────────────────────────────
 
@@ -343,12 +364,8 @@
     const found = [];
     const seenContainers = new Set();
     const seenInputs = new Set();
-    let nodes;
-    try {
-      nodes = document.querySelectorAll(LABEL_TAGS);
-    } catch (e) {
-      return found;
-    }
+    refreshLabels();
+    const nodes = Array.from(labels);
 
     Array.prototype.forEach.call(nodes, function (node) {
       if (isOwnUi(node) || !isLabelCandidate(node)) return;
@@ -793,23 +810,49 @@
     scanTimer = setTimeout(scan, cfg.SCAN_DEBOUNCE_MS);
   }
 
-  /** 只有節點增減才可能出現／消失 Time Taken 區塊；純屬性變動不必重掃。 */
+  /** 更新標籤索引；只觀察可改變標籤意義的文字、aria-label 與 title。 */
   function onMutations(records) {
+    let changed = false;
     for (let i = 0; i < records.length; i += 1) {
       const record = records[i];
+      const target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+      if (isOwnUi(target)) continue;
+      if (record.type === 'attributes') {
+        if (target && target.matches(LABEL_TAGS)) {
+          dirtyLabelRoots.add(target);
+          changed = true;
+        }
+        continue;
+      }
+      if (record.type === 'characterData') {
+        // Text edits can turn a previously unrelated label into Time Taken.
+        if (target) dirtyLabelRoots.add(target);
+        changed = true;
+        continue;
+      }
       if (record.addedNodes.length || record.removedNodes.length) {
-        scheduleScan();
-        return;
+        // Only inspect newly inserted subtrees; scanning the mutation target
+        // would repeatedly walk the entire table during row-by-row rendering.
+        record.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1 && !isOwnUi(node)) dirtyLabelRoots.add(node);
+        });
+        if (target && target.matches && target.matches(LABEL_TAGS) && isLabelCandidate(target)) labels.add(target);
+        changed = true;
       }
     }
+    if (changed) scheduleScan();
   }
 
   function start() {
     if (started) return;
     started = true;
+    dirtyLabelRoots.add(document);
     scan();
     observer = new MutationObserver(onMutations);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {
+      childList: true, subtree: true, characterData: true,
+      attributes: true, attributeFilter: ['aria-label', 'title'],
+    });
     NS.log('Time Taken 快速調整偵測器已啟動');
   }
 
@@ -825,6 +868,8 @@
     }
     groups.forEach(function (group) { group.destroy(); });
     groups.clear();
+    labels.clear();
+    dirtyLabelRoots.clear();
   }
 
   /**

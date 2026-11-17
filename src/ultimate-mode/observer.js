@@ -9,34 +9,57 @@
   let routeTimer = null;
   let callback = null;
   let lastUrl = window.location.href;
-  let mutationBurstAt = 0;
+  let mutationBurstAt = null;
+  let hiddenDirty = false;
+  const urgentSelector = cfg.OBSERVER_URGENT_SELECTORS.join(',');
+  // A full reconcile includes semantic fallbacks and layout reads. Give Halo's
+  // render bursts room to finish instead of repeating that work every 32 ms.
+  const debounceMs = Math.max(120, cfg.SCAN_DEBOUNCE_MS);
 
   function relevant(record) {
     if (shared.isOwnUi(record.target)) return false;
     if (record.type !== 'childList') return false;
-    const changed = Array.prototype.slice.call(record.addedNodes || [])
-      .concat(Array.prototype.slice.call(record.removedNodes || []));
-    return changed.some(function (node) {
+    function nativeNode(node) {
       return node.nodeType !== 1 || !shared.isOwnUi(node);
-    });
+    }
+    return Array.prototype.some.call(record.addedNodes || [], nativeNode) ||
+      Array.prototype.some.call(record.removedNodes || [], nativeNode);
   }
 
   function containsUrgentNode(record) {
     return Array.prototype.some.call(record.addedNodes || [], function (node) {
       if (node.nodeType !== 1) return false;
-      if (shared.safeMatches(node, cfg.OBSERVER_URGENT_SELECTORS)) return true;
-      return shared.safeQueryAll(node, cfg.OBSERVER_URGENT_SELECTORS).length > 0;
+      if (shared.isOwnUi(node)) return false;
+      // One native subtree query, rather than walking the same subtree once per
+      // selector and materializing every matching element.
+      try {
+        return node.matches(urgentSelector) || !!node.querySelector(urgentSelector);
+      } catch (error) {
+        return shared.safeMatches(node, cfg.OBSERVER_URGENT_SELECTORS) ||
+          shared.safeQueryAll(node, cfg.OBSERVER_URGENT_SELECTORS).length > 0;
+      }
     });
   }
 
   function run() {
     timer = null;
-    mutationBurstAt = 0;
+    mutationBurstAt = null;
+    if (document.hidden) {
+      hiddenDirty = true;
+      return;
+    }
+    hiddenDirty = false;
     if (callback) callback();
   }
 
   function schedule(immediate) {
-    if (timer) clearTimeout(timer);
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+    if (document.hidden) {
+      hiddenDirty = true;
+      mutationBurstAt = null;
+      return;
+    }
     if (immediate) {
       // MutationObserver callback 與 SPA 導覽事件都在下一次 paint 之前執行；
       // urgent 節點必須「同步」reconcile，否則 setTimeout(0) 的 macrotask
@@ -45,21 +68,39 @@
       run();
       return;
     }
-    if (!mutationBurstAt) mutationBurstAt = Date.now();
+    if (mutationBurstAt === null) mutationBurstAt = Date.now();
     const elapsed = Date.now() - mutationBurstAt;
-    const delay = elapsed >= cfg.MAX_MUTATION_WAIT_MS ? 0 : cfg.SCAN_DEBOUNCE_MS;
+    const delay = Math.max(0, Math.min(debounceMs, cfg.MAX_MUTATION_WAIT_MS - elapsed));
     timer = setTimeout(run, delay);
   }
 
   function onMutations(records) {
-    const relevantRecords = records.filter(relevant);
-    if (!relevantRecords.length) return;
-    schedule(relevantRecords.some(containsUrgentNode));
+    // Hidden pages need only one catch-up pass, not subtree queries for every
+    // native render (or every animation update inside extension-owned UI).
+    if (document.hidden) {
+      hiddenDirty = true;
+      return;
+    }
+    let changed = false;
+    for (let i = 0; i < records.length; i += 1) {
+      if (!relevant(records[i])) continue;
+      changed = true;
+      if (containsUrgentNode(records[i])) {
+        schedule(true);
+        return;
+      }
+    }
+    if (changed) schedule(false);
   }
 
   function onRouteEvent() {
+    if (window.location.href === lastUrl) return;
     lastUrl = window.location.href;
     schedule(true);
+  }
+
+  function onVisibilityChange() {
+    if (!document.hidden && hiddenDirty) schedule(true);
   }
 
   function start(onScan) {
@@ -73,28 +114,30 @@
     });
     window.addEventListener('popstate', onRouteEvent);
     window.addEventListener('hashchange', onRouteEvent);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     if (window.navigation && window.navigation.addEventListener) {
-      window.navigation.addEventListener('navigate', onRouteEvent);
+      // currententrychange observes the committed URL; navigate fires before
+      // it changes. Modern Chromium needs no permanent URL polling timer.
+      window.navigation.addEventListener('currententrychange', onRouteEvent);
+    } else {
+      routeTimer = setInterval(onRouteEvent, cfg.ROUTE_POLL_MS);
     }
-    routeTimer = setInterval(function () {
-      if (window.location.href === lastUrl) return;
-      lastUrl = window.location.href;
-      schedule(true);
-    }, cfg.ROUTE_POLL_MS);
   }
 
   function stop() {
     if (observer) observer.disconnect();
     observer = null;
-    if (timer) clearTimeout(timer);
+    if (timer !== null) clearTimeout(timer);
     timer = null;
-    mutationBurstAt = 0;
-    if (routeTimer) clearInterval(routeTimer);
+    mutationBurstAt = null;
+    hiddenDirty = false;
+    if (routeTimer !== null) clearInterval(routeTimer);
     routeTimer = null;
     window.removeEventListener('popstate', onRouteEvent);
     window.removeEventListener('hashchange', onRouteEvent);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     if (window.navigation && window.navigation.removeEventListener) {
-      window.navigation.removeEventListener('navigate', onRouteEvent);
+      window.navigation.removeEventListener('currententrychange', onRouteEvent);
     }
     callback = null;
   }

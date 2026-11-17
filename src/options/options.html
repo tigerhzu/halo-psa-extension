@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#15487e;--hpx-opacity:1">
+<html lang="zh-Hant" data-hpx-theme="cute-ios" style="--hpx-accent:#ff7a1a;--hpx-opacity:.55">
 <head>
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="color-scheme" content="light" />
 <title>設定 · Halopsa</title><link rel="stylesheet" href="../styles/workbench.css" /><link rel="stylesheet" href="options.css" /><link rel="stylesheet" href="paper.css" /><link rel="stylesheet" href="halo-paper.css" />
@@ -17,6 +17,7 @@
 <a href="#contacts" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></span><span>收件人</span></a>
 <a href="#halo" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4H4v16h16V4h-4M8 3h8v4H8zM8 12h8M8 16h5"/></svg></span><span>Halo API 與案件</span></a>
 <a href="#backup" class="nav-item"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v10m-4-4 4 4 4-4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg></span><span>資料備份</span></a>
+<a href="#pets" class="nav-item"><span class="nav-icon" aria-hidden="true">♧</span><span>Pet 寵物</span></a>
 </nav>
 </aside>
 <main id="main" class="settings-main" tabindex="-1">
@@ -30,7 +31,7 @@
 <div class="workspace-grid">
 <section class="card appearance-card" aria-labelledby="appearanceTitle">
 <div class="card-heading"><h2 id="appearanceTitle">外觀</h2></div>
-<label for="theme">介面主題</label><select id="theme"><option value="cute-ios">玻璃</option><option value="default">原生配色</option></select>
+<label for="theme">介面主題</label><select id="theme"><option value="cute-ios">輕透</option><option value="default">原生配色</option></select>
 <fieldset class="accent-fieldset"><legend>主題色</legend><div class="swatches" id="accentRow">
 <button class="swatch" data-accent="#15487e" style="--sw:#15487e" title="藍色" aria-label="藍色" aria-pressed="false" type="button"></button>
 <button class="swatch" data-accent="#5856d6" style="--sw:#5856d6" title="紫色" aria-label="紫色" aria-pressed="false" type="button"></button>
@@ -38,7 +39,7 @@
 <button class="swatch" data-accent="#ff9500" style="--sw:#ff9500" title="橙色" aria-label="橙色" aria-pressed="false" type="button"></button>
 <button class="swatch" data-accent="#34c759" style="--sw:#34c759" title="綠色" aria-label="綠色" aria-pressed="false" type="button"></button>
 <button class="swatch" data-accent="#64748b" style="--sw:#64748b" title="石墨" aria-label="石墨" aria-pressed="false" type="button"></button>
-</div><label class="custom-color" id="customColorWrap" for="accentCustom"><input id="accentCustom" type="color" value="#15487e" aria-label="自訂主題色" /><span>自訂</span><code id="accentValue">#15487E</code></label></fieldset>
+</div><label class="custom-color" id="customColorWrap" for="accentCustom"><input id="accentCustom" type="color" value="#ff7a1a" aria-label="自訂主題色" /><span>自訂</span><code id="accentValue">#FF7A1A</code></label></fieldset>
 <div class="theme-preview" aria-label="主題色即時預覽"><span class="preview-status">處理中</span><span class="preview-button">撰寫回覆</span></div>
 <p id="themeStatus" class="status" role="status" aria-live="polite"></p></section>
 <section class="card mode-card" aria-labelledby="modeTitle"><div class="card-heading"><h2 id="modeTitle">導覽</h2></div>
@@ -123,9 +124,27 @@
 </section></section>
 <section id="backup" class="settings-page" aria-labelledby="backupTitle" hidden><h2 id="backupTitle" class="sr-only">備份與移轉設定</h2>
 <section class="card" id="backupCard"><div class="card-heading"><h2>匯出設定</h2></div>
+<p class="card-description">兩種備份皆包含 Pet 選擇、位置、顯示狀態、快捷連結，以及目前與自訂 Pet 的名稱、動畫設定和圖集。匯入後請重新整理 Halo 頁面；備份上限為 10 MB。</p>
 <div class="backup-grid"><div class="backup-option"><h3>一般備份</h3><span class="backup-tag">不含 API Key</span><button id="exportSettingsWithoutKeys" class="primary" type="button">匯出設定</button></div><div class="backup-option"><h3>完整備份</h3><span class="backup-tag">含 API Key，請妥善保管</span><button id="exportSettingsWithKeys" type="button">匯出完整設定</button></div></div>
-<div class="import-row"><div><h3>還原備份</h3><p>匯入會取代設定；備份未含金鑰時，保留現有金鑰。</p></div><button id="importSettings" type="button">選擇備份檔</button><input id="importSettingsFile" type="file" accept="application/json,.json" hidden /></div><p id="backupStatus" class="status" role="status" aria-live="polite"></p>
+<div class="import-row"><div><h3>還原備份</h3><p>匯入會還原功能與 Pet 設定；外觀統一套用橘色透明玻璃預設，不採用備份中的配色、透明度與背景。備份未含金鑰時，保留現有金鑰。</p></div><button id="importSettings" type="button">選擇備份檔</button><input id="importSettingsFile" type="file" accept="application/json,.json" hidden /></div><p id="backupStatus" class="status" role="status" aria-live="polite"></p>
+</section></section>
+<section id="pets" class="settings-page" aria-labelledby="petsTitle" hidden>
+<section class="card"><div class="card-heading"><h2 id="petsTitle">匯入 Pet</h2></div>
+<p class="card-description">直接選擇整個 Pet 資料夾，系統會自動讀取其中的 pet.json 與對應圖集。支援 v1（8 × 9）與 v2（8 × 11）；圖集上限為 7 MB。</p>
+<form id="petImportForm">
+<label for="petFolder">選擇 Pet 資料夾</label><input id="petFolder" type="file" webkitdirectory multiple required aria-describedby="petFolderHint" />
+<p id="petFolderHint" class="hint">例如選擇 claude-crab 資料夾；pet.json 應放在資料夾最外層，圖集可放在其中的子資料夾。</p>
+<label class="pet-activate"><input id="petActivate" type="checkbox" checked />匯入後設為目前 Pet 並顯示</label>
+<p class="hint">相同 ID 會更新已匯入的 Pet。匯入後請重新整理 Halo 頁面。</p>
+<div class="actions"><button id="importPet" type="submit" class="primary">匯入 Pet</button></div>
+</form><p id="petImportStatus" class="status" role="status" aria-live="polite"></p>
+<p id="petImportedList" class="hint"></p>
+</section>
+<section class="card"><div class="card-heading"><h2>Pet 保存與備份</h2></div>
+<p class="card-description">原本的 pet/&lt;寵物名稱&gt;/ 資料夾仍可使用。從這裡匯入的 Pet 會保存於瀏覽器，不需要搬動原始檔案。</p>
+<p class="card-description">一般備份與完整備份都會包含已匯入 Pet 的設定與圖集，換電腦後匯入備份即可還原。備份總上限為 10 MB。</p>
+<a href="#backup">前往資料備份 →</a>
 </section></section>
 </main></div>
-<script src="../ai/provider-settings.js"></script><script src="options.js"></script><script src="../config/status-notes-config.js"></script><script src="status-notes-options.js"></script><script src="halo-api-options.js"></script>
+<script src="../ai/provider-settings.js"></script><script src="../core/pet-registry.js"></script><script src="options.js"></script><script src="../config/status-notes-config.js"></script><script src="status-notes-options.js"></script><script src="halo-api-options.js"></script>
 </body></html>

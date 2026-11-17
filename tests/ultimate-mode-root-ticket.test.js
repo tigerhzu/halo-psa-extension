@@ -19,6 +19,8 @@ test('New Ticket detail mounted at the root URL still runs detail filters', func
     };
   };
   const documentElement = {
+    getAttribute: function () { return null; },
+    hasAttribute: function () { return false; },
     setAttribute: function () {},
     removeAttribute: function () {},
   };

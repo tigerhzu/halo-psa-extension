@@ -37,7 +37,7 @@ try:
     # Personal deployment permission is deliberately replaced only in the release copy.
     manifest['host_permissions'] = ['https://*.openai.azure.com/*', 'https://ornith.example.invalid/*']
     (stage / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    for name in ('scripts/Configure-Ornith.ps1', 'docs/HALO-WRITE-API.md'):
+    for name in ('scripts/Configure-Ornith.ps1', 'docs/HALO-WRITE-API.md', 'docs/PERFORMANCE.md'):
         target = stage / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / name, target)
@@ -58,6 +58,21 @@ Chrome / Edge 的 HaloPSA 輔助擴充功能，包含 AI 撰寫、工單閱讀�
 4. 重新整理 Halo 網頁，點擴充功能圖示進入後台。
 
 若更新既有安裝，先備份舊程式及設定，再把新程式解壓覆蓋到原本安裝目錄，按擴充功能的「重新載入」。請保留原安裝位置以沿用瀏覽器本機設定。
+
+## 玻璃外觀
+
+新安裝預設：輕透、橘色 #FF7A1A、海洋背景、渲染強度 42%、透明度 45%。可在 Halo 左下角「主題色」調整；既有安裝已保存的外觀選擇會保留。
+從 1.1.9 起，匯入設定備份一律套用上述預設，不採用備份檔的主題、配色、透明度與背景；其他功能與 Pet 設定照常還原。
+人員卡片、案件篩選與 Category 視窗使用玻璃樣式。背景渲染需搭配 Halo 淺色主題；系統若啟用「減少透明度」，會自動改成不透明介面。
+
+## 頁面效能
+
+1.1.10 將啟動拆成閒置任務，減少全頁掃描與重複版面量測，並讓 Time Taken 隨 DOM 變動增量更新。測試條件、量測結果及實際 Halo 比較方式見 docs/PERFORMANCE.md。
+
+## Pet 匯入與備份
+
+到後台「Pet 寵物」，選擇含 pet.json 與圖集的整個 Pet 資料夾，再按「匯入 Pet」，最後重新整理 Halo 頁面。原本 pet/ 下的寵物資料夾仍可使用。
+一般與完整備份都包含目前及自訂 Pet 的設定與圖集，換電腦後匯入備份即可還原。單張匯入圖集上限為 7 MB，整份 JSON 備份上限為 10 MB。
 
 ## Halo API 設定
 

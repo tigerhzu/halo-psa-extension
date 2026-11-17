@@ -47,16 +47,18 @@
   }
 
   function safeContainsEditor(node) {
-    if (!node || !node.querySelectorAll) return false;
+    if (!node || !node.querySelector) return false;
     if (safeMatches(node, NS.config.selectors.EDITOR_SELECTORS)) return true;
     const selectors = NS.config.selectors.EDITOR_SELECTORS;
-    return selectors.some(function (selector) {
-      try {
-        return node.querySelector(selector) !== null;
-      } catch (e) {
-        return false;
-      }
-    });
+    // This is an existence check, so selector priority does not matter. Traverse
+    // each changed subtree once; findEditors still preserves editor priority.
+    try {
+      return selectors.length > 0 && node.querySelector(selectors.join(',')) !== null;
+    } catch (e) {
+      return selectors.some(function (selector) {
+        try { return node.querySelector(selector) !== null; } catch (ignored) { return false; }
+      });
+    }
   }
 
   function isExtensionToolbar(node) {
@@ -115,13 +117,15 @@
   function isRelevantChildList(record) {
     const changed = Array.prototype.slice.call(record.addedNodes || [])
       .concat(Array.prototype.slice.call(record.removedNodes || []));
-    if (changed.some(function (node) {
-      return safeContainsEditor(node) || isExtensionToolbar(node);
-    })) return true;
+    if (changed.some(isExtensionToolbar)) return true;
 
     // contenteditable 內的文字 / inline formatting 變動不是 toolbar lifecycle；
     // 不要因使用者每次輸入或編輯器內部重排而觸發全域 reconcile。
     if (isEditorContentMutationTarget(record.target)) return false;
+
+    // Nested editable captions/pasted markup are content of the tracked editor,
+    // not independent editor instances. Avoid traversing their pasted subtrees.
+    if (changed.some(safeContainsEditor)) return true;
 
     // label、Email 欄位或 editor wrapper 可能是分批掛上的；只要變動發生在
     // 目前 editor 的 scope 內，也要讓 ensureEditorToolbar 重新解析 mount target。

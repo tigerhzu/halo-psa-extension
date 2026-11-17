@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Halo Companion · 玻璃 UI 預覽</title>
-  <!-- Same stylesheets, in the same order, as the content script entry in manifest.json. -->
+  <!-- Same stylesheets, in the same order, as the content script entries in manifest.json. -->
+  <link rel="stylesheet" href="../src/ultimate-mode/ultimate.css">
   <link rel="stylesheet" href="../src/styles/workbench.css">
   <link rel="stylesheet" href="../src/styles/toolbar.css">
   <link rel="stylesheet" href="../src/styles/modal.css">
@@ -19,16 +20,27 @@
     *{box-sizing:border-box}
     body{margin:0;color:#1d2433;font:14px/1.7 'Segoe UI','Microsoft JhengHei',sans-serif}
     .app-container{position:relative;height:100vh;overflow:hidden;background-color:#f1f5fb}
-    .gp-rail{position:absolute;inset:0 auto 0 0;width:68px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;background:var(--hpx-accent);color:var(--hpx-accent-ink)}
-    .gp-rail img{width:44px;height:44px;border-radius:11px;margin-bottom:14px;display:block}
-    .gp-rail span{display:grid;place-items:center;width:56px;height:52px;border-radius:10px;font-size:11px;opacity:.86}
-    .gp-rail span.on{background:color-mix(in srgb,var(--hpx-accent-ink) 16%,transparent);opacity:1}
-    .gp-tree{position:absolute;inset:0 auto 0 68px;width:204px;padding:18px 12px;background:#f1f3f8;border-right:1px solid #e1e5ee;color:#31394b;font-size:13px;overflow:auto}
+    .gp-rail{position:absolute;inset:0 auto 0 0;width:68px;padding:12px 0;background:var(--hpx-accent);color:var(--hpx-accent-ink)}
+    .gp-rail .app-nav-menu-sidebar{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .gp-rail #app-icon img{width:40px;height:40px;border-radius:11px;margin-bottom:10px;display:block}
+    .gp-rail .app-side-link{display:flex;flex-direction:column;align-items:center;gap:4px;width:68px;padding:6px 0;font-size:10.5px;font-weight:600;text-decoration:none}
+    .gp-tree{position:absolute;inset:0 auto 0 68px;width:270px;padding:14px 12px;background:#f1f3f8;border-right:1px solid #e1e5ee;color:#31394b;font-size:13px;overflow:auto}
+    .gp-tree input{width:100%;height:32px;margin-bottom:14px;padding:0 10px;font:inherit}
+    .gp-tree #main_search{margin:0 -12px 12px}
+    .gp-tree .searchbox{position:relative;height:45px;border-radius:10px}
+    .gp-tree .searchholder,.gp-tree .searchbox input{height:45px}
+    .gp-tree .searchbox input{padding-right:40px}
+    .gp-tree .searchbutton{position:absolute;top:0;right:12px;width:16px;height:45px;pointer-events:none}
     .gp-tree h3{margin:0 8px 10px;font-size:11px;font-weight:600;letter-spacing:.6px;color:#6e7788}
-    .gp-tree div{display:flex;justify-content:space-between;padding:7px 10px;border-radius:10px}
-    .gp-tree div.on{background:var(--hpx-accent);color:var(--hpx-accent-ink)}
-    .gp-tree b{font-weight:500;font-variant-numeric:tabular-nums;opacity:.75}
-    .mainview{position:absolute;inset:0 0 0 272px;overflow:auto;background-color:#f1f5fb}
+    .gp-tree .treeviewnode{padding:4px 10px;min-height:32px;border-radius:10px;cursor:pointer}
+    .gp-tree .treeviewnode-container,.gp-tree .treeviewtextholder{display:flex;align-items:center;gap:10px;min-width:0;width:100%}
+    .gp-tree .nodetitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .gp-tree .treeviewcount{margin-left:auto}
+    .gp-tree .avatar{width:24px;height:24px;flex-shrink:0;border-radius:50%;background:var(--avatar-bg,#dbeafe);color:#16263c;text-align:center;font-size:11px;line-height:24px}
+    .gp-tree ul{list-style:none;margin:0;padding:0}
+    .gp-tree .treeviewnode[data-level="1"]{margin:8px 0;color:#52617a}
+    .gp-tree .treeviewcount{padding:0 6px;border-radius:6px;font-size:11px;font-variant-numeric:tabular-nums}
+    .mainview{position:absolute;inset:0 0 0 338px;overflow:auto;background-color:#f1f5fb}
     .review-main{padding:22px 32px 120px;max-width:1180px}
     .gp-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid rgba(22,32,54,.1);color:#4c566a;font-size:12px}
     .gp-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -52,36 +64,85 @@
     .rt-tr-group.table-tr:hover{background-color:#eef4fc}
     .rt-tr-group code{font:500 12px/1 ui-monospace,Consolas,monospace;color:#6e7788}
     .rt-tr-group span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .gp-team-review .action-history-item{display:none}
+    /* Minimal native Semantic UI / ReactTable states, using the real Halo DOM. */
+    #filter-dropdown{position:relative;display:inline-block;cursor:pointer;padding:9px 14px;min-width:150px;font-size:13px;z-index:3}
+    #filter-dropdown>.text{display:inline-block;margin-right:24px}
+    #filter-dropdown>.divider.text{line-height:30px}
+    #filter-dropdown>.dropdown.icon::after{content:'▾'}
+    #filter-dropdown>.menu{display:none;position:absolute;top:100%;left:0;min-width:250px;background:#fff;border:1px solid #ddd;box-shadow:0 2px 4px #0002}
+    #filter-dropdown>.menu.visible{display:block}
+    #filter-dropdown>.menu>.item{padding:10px 12px;white-space:nowrap}
+    #filter-dropdown>.menu>.item.active{font-weight:600}
+    .ReactTable{position:relative}
+    .ReactTable>.-loading{position:absolute;inset:0;background:#f1f5fb;opacity:0;z-index:-1;pointer-events:none}
+    .ReactTable>.-loading.-active{opacity:1;z-index:2;pointer-events:all}
+    .-loading-inner{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:16px;color:#52617a}
+    .gp-spinner{width:44px;height:44px;border:5px solid #00a1df;border-right-color:transparent;border-radius:50%}
     @media(max-width:860px){.gp-tree{display:none}.mainview{left:68px}.review-main{padding:18px 18px 120px}}
   </style>
   <script src="preview-runtime.js"></script>
 </head>
 <body>
   <div class="app-container theme-light">
-    <nav class="gp-rail" aria-label="示範導覽列">
-      <img src="../assets/icons/companion128.png" alt="Halo Companion">
-      <span class="on">工單</span><span>工時</span><span>報表</span><span>客戶</span>
-    </nav>
-    <aside class="gp-tree" aria-label="示範 Team 清單">
-      <h3>MY TEAMS</h3>
-      <div class="on">Op Team A <b>12</b></div><div>Op Team B <b>7</b></div><div>Op Team C <b>9</b></div><div>SecOp Team A <b>4</b></div><div>Technical Solutions <b>15</b></div><div>Project Manager <b>3</b></div><div>Other Support <b>6</b></div><div>RD <b>2</b></div><div>Thailand Team <b>5</b></div><div>Sales&amp;Admin <b>1</b></div><div>Timesheets <b></b></div><div>Unassigned <b>8</b></div><div>Awaiting Customer <b>11</b></div><div>On Hold <b>4</b></div><div>Resolved Today <b>19</b></div>
+    <!-- Rail and tree use Halo's ids and the markup team-shortcuts.js builds,
+         so the tile and panel rules in glass.css apply exactly as on Halo. -->
+    <nav id="app-nav-menu" class="gp-rail" aria-label="示範導覽列"><div class="app-nav-menu-sidebar">
+      <span id="app-icon"><img src="../assets/icons/companion128.png" alt="Halo Companion"></span>
+      <a class="app-side-link hpx-ultimate-timesheets-branded" href="#"><span class="app-button-img hpx-ultimate-timesheets-icon-host"><img class="hpx-ultimate-timesheets-logo" src="../assets/ultimate-mode/timesheets-transparent.png" alt=""></span><span class="app-button-text">Timesheet</span></a>
+      <div class="hpx-ultimate-team-shortcuts">
+        <a class="hpx-ultimate-team-shortcut" href="#"><span class="hpx-ultimate-team-tile"><img class="hpx-ultimate-team-logo" src="../assets/ultimate-mode/team-a-transparent.png" alt=""></span><span class="hpx-ultimate-team-shortcut-label">Team A</span></a>
+        <a class="hpx-ultimate-team-shortcut" href="#" aria-current="page"><span class="hpx-ultimate-team-tile"><img class="hpx-ultimate-team-logo" src="../assets/ultimate-mode/team-c-transparent.png" alt=""></span><span class="hpx-ultimate-team-shortcut-label">Team C</span></a>
+        <a class="hpx-ultimate-team-shortcut" href="#"><span class="hpx-ultimate-team-tile"><span class="hpx-ultimate-team-logo hpx-ultimate-team-logo-fallback">QA</span></span><span class="hpx-ultimate-team-shortcut-label">QA Team</span></a>
+      </div>
+    </div></nav>
+    <aside id="halo-tree" class="gp-tree" aria-label="示範 Team 清單">
+      <form id="main_search" onsubmit="return false"><div class="searchbox" style="background-color:rgb(0,89,123)"><svg class="searchbutton" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M15 15L21 21" stroke="currentColor" stroke-width="1.5"/></svg><div class="searchholder"><input type="text" placeholder="Search Tickets..." aria-label="搜尋工單"></div></div></form>
+      <h3 id="tv-selected-view-name" data-id="team">Tickets by Team</h3>
+      <div class="tree-content"><ul><li><div class="treeviewnode" data-level="1" tabindex="0" role="button" aria-expanded="true"><div class="treeviewnode-container"><span class="nodetitle">⌄ Op Team C</span><span class="treeviewcount">203</span></div></div><ul>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Unassigned"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#fff">U</span><span class="nodetitle">Unassigned</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Brady Pan"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#80d9f1">BP</span><span class="nodetitle">Brady Pan</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Cactus Dai"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#71e1ce">CD</span><span class="nodetitle">Cactus Dai</span><span class="treeviewcount">83</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Criss sim"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#ffe05a">Cs</span><span class="nodetitle">Criss sim</span><span class="treeviewcount">36</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Johnny Chang"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#b5d1e6">JC</span><span class="nodetitle">Johnny Chang</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Kai Yang"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#ffe05a">KY</span><span class="nodetitle">Kai Yang</span><span class="treeviewcount">24</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Purple Liu"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#edb0ff">PL</span><span class="nodetitle">Purple Liu</span><span class="treeviewcount">25</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Tab Liao"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#ffcb83">TL</span><span class="nodetitle">Tab Liao</span><span class="treeviewcount">17</span></div></div></div></li>
+        <li><div class="treeviewnode active" data-level="2" tabindex="0" role="button" aria-label="Tiger Tiger (You)"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#fff">TT</span><span class="nodetitle">Tiger Tiger (You)</span><span class="treeviewcount">7</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Timmy su"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#c7b5f9">Ts</span><span class="nodetitle">Timmy su</span><span class="treeviewcount">11</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Wade Lee"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#ccd6c7">WL</span><span class="nodetitle">Wade Lee</span></div></div></div></li>
+        <li><div class="treeviewnode" data-level="2" tabindex="0" role="button" aria-label="Willie Yang"><div class="treeviewnode-container"><div class="treeviewtextholder"><span class="avatar" style="--avatar-bg:#c7b5f9">WY</span><span class="nodetitle">Willie Yang</span></div></div></div></li>
+      </ul></li></ul></div>
     </aside>
     <div class="container-full mainview">
       <main class="review-main">
         <div class="gp-top">
           <span>示範資料，不會連到 Halo 或 AI 服務 · 背景渲染在左下角「主題色」面板調整</span>
           <div class="gp-tools">
+            <button type="button" id="gp-loading" aria-pressed="false">示範 Loading</button>
+            <button type="button" id="gp-category">Category 預覽</button>
             <button type="button" data-toast="success">提示：成功</button>
             <button type="button" data-toast="error">提示：錯誤</button>
           </div>
         </div>
         <div class="gp-heading"><h1>辦公區網路連線異常<span class="gp-chip blue">處理中</span></h1></div>
+        <div id="filter-dropdown" role="listbox" aria-label="案件篩選" aria-expanded="false" class="ui inline dropdown" tabindex="0">
+          <div class="divider text">Active 案件</div><i class="dropdown icon" aria-hidden="true"></i>
+          <div class="menu transition">
+            <div role="option" aria-checked="false" aria-selected="false" class="item"><span class="text">All Tickets</span></div>
+            <div role="option" aria-checked="true" aria-selected="true" class="active selected item"><span class="text">Active 案件</span></div>
+            <div role="option" aria-checked="false" aria-selected="false" class="item"><span class="text">Active 案件-Pending deletion</span></div>
+            <div role="option" aria-checked="false" aria-selected="false" class="item"><span class="text">Closed 案件</span></div>
+            <div role="option" aria-checked="false" aria-selected="false" class="item"><span class="text">In Progress 案件</span></div>
+          </div>
+        </div>
         <section class="action-history-item wcontainer">
           <h2>Activity Note</h2>
           <div class="details-group"><div class="col-md-4 inline"><div class="row"><div class="col-md-12"><label>Time Taken</label><input type="text" placeholder="hh" value="00" aria-label="小時"> : <input type="text" placeholder="mm" value="37" aria-label="分鐘"> : <input type="text" placeholder="ss" value="59" aria-label="秒" readonly> <button type="button" class="action-form-btn" aria-label="計時器">◷</button></div></div></div></div>
           <div id="preview-action"><label>Note</label><div class="fr-box"><div id="preview-editor" class="review-editor fr-element" contenteditable="true" role="textbox" aria-label="示範工單內容" aria-multiline="true"><p>已與使用者確認，辦公區網路出現間歇性中斷。</p><p>檢查交換器與上行連線，設備運作正常。更新網路卡驅動程式後已恢復連線，請使用者持續觀察。</p><p>明日上午再確認連線狀態。</p></div></div></div>
         </section>
         <div class="ReactTable" role="table" aria-label="示範工單清單">
+          <div class="rt-table">
           <div class="rt-thead -header">同 Team 的其他工單</div>
           <div class="rt-tbody">
             <div class="rt-tr-group table-tr"><code>#10479</code><span>VPN 連線逾時，需重新派發憑證</span><span class="gp-chip amber">等待客戶</span></div>
@@ -95,6 +156,8 @@
             <div class="rt-tr-group table-tr"><code>#10449</code><span>Teams 通話品質不佳</span><span class="gp-chip green">已解決</span></div>
             <div class="rt-tr-group table-tr"><code>#10441</code><span>防火牆規則變更需求</span><span class="gp-chip blue">處理中</span></div>
           </div>
+          </div>
+          <div class="-loading"><div class="-loading-inner" role="status"><span class="gp-spinner" aria-hidden="true"></span>載入工單中…</div></div>
         </div>
       </main>
     </div>
@@ -105,6 +168,52 @@
     // The shared boot script applies a fixed appearance; start() then loads the saved
     // one (wallpaper included) from the preview storage, as the extension does.
     window.__HPX.ui.theme.start();
+    document.getElementById('gp-loading').addEventListener('click', function () {
+      const active = document.querySelector('.ReactTable > .-loading').classList.toggle('-active');
+      this.setAttribute('aria-pressed', String(active));
+    });
+    document.getElementById('gp-category').addEventListener('click', function () { location.href = 'category-picker-search-preview.html'; });
+    const filter = document.getElementById('filter-dropdown');
+    function toggleFilter(open) {
+      filter.setAttribute('aria-expanded', String(open));
+      filter.querySelector('.menu').classList.toggle('visible', open);
+    }
+    filter.addEventListener('click', function (event) {
+      const item = event.target.closest('.item');
+      if (item) {
+        filter.querySelectorAll('.item').forEach(function (other) {
+          other.classList.toggle('active', other === item);
+          other.classList.toggle('selected', other === item);
+          other.setAttribute('aria-checked', String(other === item));
+          other.setAttribute('aria-selected', String(other === item));
+        });
+        filter.querySelector('.divider.text').textContent = item.textContent;
+        toggleFilter(false);
+      } else { toggleFilter(filter.getAttribute('aria-expanded') !== 'true'); }
+    });
+    filter.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') toggleFilter(false);
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleFilter(filter.getAttribute('aria-expanded') !== 'true'); }
+    });
+    document.addEventListener('click', function (event) { if (!filter.contains(event.target)) toggleFilter(false); });
+    // Optional reproducible review state; never changes saved preview settings.
+    if (new URLSearchParams(location.search).has('team-glass')) {
+      document.body.classList.add('gp-team-review');
+      document.querySelector('.gp-heading h1').textContent = 'My Tickets';
+      chrome.storage.local.get('hpx_settings', function () {
+        window.__HPX.ui.theme.applyAppearance({theme:'cute-ios',accent:'#ff790d',wash:'ocean',washIntensity:70,opacity:65});
+      });
+    }
+    document.querySelectorAll('.gp-tree .treeviewnode[data-level="2"]').forEach(function (row) {
+      function select() {
+        document.querySelectorAll('.gp-tree .treeviewnode.active').forEach(function (item) { item.classList.remove('active'); });
+        row.classList.add('active');
+      }
+      row.addEventListener('click', select);
+      row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(); }
+      });
+    });
     document.querySelectorAll('[data-toast]').forEach(function (button) {
       button.addEventListener('click', function () {
         const ok = button.dataset.toast === 'success';

@@ -28,7 +28,7 @@ Halo Companion 是 Chrome／Edge 的 Manifest V3 擴充功能。它在 HaloPSA �
 | 閱讀工單 | 完整活動歷程的唯讀快照，支援搜尋、類型篩選、排序、收合、縮放及列印。 |
 | 調整工時 | Time Taken 快速加減、重設與分鐘輸入；Timesheet 可明確套用新的時間範圍。 |
 | 整理工作台 | Team 顯示與排序、簡單模式、主題色、快捷入口及寵物開關。 |
-| 換一台電腦 | JSON 設定匯出／匯入，可選含金鑰或不含金鑰。 |
+| 換一台電腦 | JSON 設定匯出／匯入，可選含金鑰或不含金鑰；還原功能與 Pet 設定，外觀統一套用橘色透明玻璃預設。 |
 
 **操作邊界：** AI、範本和獨立編輯視窗套用到 Halo 草稿；工單的儲存或送出仍由使用者執行。啟用後台 **Halo API 與案件** 後，可直接開案、改狀態與結案；按下操作按鈕即送出至 Halo，詳見 [Halo 寫入 API 設定](docs/HALO-WRITE-API.md)。Time Taken 修改原生輸入欄位。Timesheet 的「套用」則會呼叫 Halo 原生更新流程，可能直接保存該筆工時，使用前請確認時間範圍。
 
@@ -36,7 +36,7 @@ Halo Companion 是 Chrome／Edge 的 Manifest V3 擴充功能。它在 HaloPSA �
 
 圖解操作請見[使用者指南](docs/使用者指南.html)。
 
-1. 前往 [最新 Release](https://github.com/tigerhzu/halo-psa-extension/releases/latest)，下載 `halo-psa-extension-1.1.7.zip` 並解壓縮。
+1. 前往 [最新 Release](https://github.com/tigerhzu/halo-psa-extension/releases/latest)，下載 `halo-psa-extension-1.1.10.zip` 並解壓縮。
 2. 在 Chrome 開啟 `chrome://extensions`，或在 Edge 開啟 `edge://extensions`，啟用「開發人員模式」。
 3. 選擇「載入未封裝項目」，指定含有 `manifest.json` 的資料夾。
 4. 重新整理 Halo 頁面，點擊擴充功能圖示開啟設定中心。初始導覽中的每個步驟都可以略過。
@@ -103,6 +103,8 @@ node tests/preview-server.js
 ```
 
 預覽服務只監聽 `http://127.0.0.1:4173`，使用獨立的示範瀏覽器 API，不會寫入正式 Halo 或呼叫真實 AI。測試與預覽檔不放入安裝 ZIP。
+
+1.1.10 改善啟動排程、側欄與寄信偵測、Time Taken 增量掃描及簡單模式的 DOM 處理。量測方法、修改前後結果與實機比較步驟見 [效能驗證](docs/PERFORMANCE.md)。
 
 程式路徑、瀏覽器回歸頁、測試限制與發佈步驟分別記錄於 [開發指南](docs/DEVELOPMENT.md) 和 [發佈指南](docs/RELEASE.md)。
 

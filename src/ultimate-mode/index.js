@@ -140,8 +140,12 @@
   function scan() {
     if (!enabled) return { enabled: false };
     const startedAt = window.performance && window.performance.now ? window.performance.now() : Date.now();
-    document.documentElement.setAttribute('data-hpx-ultimate-mode', 'on');
-    document.documentElement.removeAttribute('data-hpx-ultimate-bootstrap');
+    if (document.documentElement.getAttribute('data-hpx-ultimate-mode') !== 'on') {
+      document.documentElement.setAttribute('data-hpx-ultimate-mode', 'on');
+    }
+    if (document.documentElement.hasAttribute('data-hpx-ultimate-bootstrap')) {
+      document.documentElement.removeAttribute('data-hpx-ultimate-bootstrap');
+    }
     const ticketDetailsMounted = isTicketDetailsMounted();
     const report = {
       enabled: true,

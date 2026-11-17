@@ -114,6 +114,11 @@ html[data-hpx-ultimate-mode="on"] #halo-nav .nhd-nav-rightAlign > .buttoncontain
   outline: none;
 }
 
+/* 只在輕透主題（glass.css）成為玻璃底座；這裡保持原生版面不變。 */
+.hpx-ultimate-team-tile {
+  display: contents;
+}
+
 .hpx-ultimate-team-logo {
   display: block;
   width: 36px;

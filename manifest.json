@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Halopsa",
-  "version": "1.1.7",
+  "version": "1.1.10",
   "minimum_chrome_version": "122",
   "description": "Halo Companion：整合 AI 草稿預覽、範本、工單閱讀、原生工時調整與個人化工作台的 HaloPSA 輔助工具。",
   "icons": {

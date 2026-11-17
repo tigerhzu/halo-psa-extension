@@ -13,8 +13,10 @@
 
   const DEFAULTS = {
     theme: 'cute-ios',
-    accent: '#15487e',
-    opacity: 100,
+    accent: '#ff7a1a',
+    opacity: 55,
+    wash: 'ocean',
+    washIntensity: 42,
     pet: 'claude-crab',
     petPosition: { right: 16, bottom: 16 },
     petHidden: false,
@@ -201,7 +203,7 @@
       petImageUrls[definition.id] = {
         image: definition.image ? getExtUrl(definition.image) : '',
         wink: definition.wink ? getExtUrl(definition.wink) : '',
-        atlas: definition.atlas ? getExtUrl(definition.atlas) : '',
+        atlas: definition.atlas ? (definition.atlas.startsWith('data:image/') ? definition.atlas : getExtUrl(definition.atlas)) : '',
       };
     });
   }

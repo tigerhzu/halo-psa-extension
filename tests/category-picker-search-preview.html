@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-hpx-theme="cute-ios" data-hpxg-wash="ocean" style="--hpxg-wash:.7;--hpxg-surface:.65;--hpx-accent:#ff790d;--hpx-accent-ink:#1b2231;--hpx-accent-soft:#ffead9;--hpx-accent-text:#713600;--hpx-accent-border:#f4c39b">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,9 +7,16 @@
   <link rel="stylesheet" href="../src/styles/workbench.css">
   <link rel="stylesheet" href="../src/styles/category-picker.css">
   <link rel="stylesheet" href="../src/styles/workbench-surfaces.css">
-  <style>html,body{margin:0;min-height:100%;background:#d7dde7}.hpx-category-modal-layer{position:fixed}</style>
+  <link rel="stylesheet" href="../src/styles/glass.css">
+  <style>
+    html,body{margin:0;min-height:100%;background:#eaf3fb;font-family:'Segoe UI',sans-serif}
+    .hpx-category-modal-layer{position:fixed}
+    .app-container{position:fixed;inset:0;padding:40px;box-sizing:border-box;color:#31394b}
+    .preview-ticket{margin:24px 0 24px 280px;padding:28px;background:#fffb;border-radius:20px;min-height:100px}
+  </style>
 </head>
 <body>
+  <div class="app-container theme-light" aria-hidden="true"><h2>Tickets › Op Team C › Tiger Tiger</h2><div class="preview-ticket">辦公區網路連線異常<br><br>In Progress · Category</div><div class="preview-ticket">Activity Note<br><br>已確認網路連線與設備運作正常。</div><div class="preview-ticket">同 Team 的其他工單</div></div>
   <div class="hpx-category-modal-layer">
     <div class="hpx-category-modal-backdrop"></div>
     <div class="hpx-category-shell">
@@ -20,9 +27,9 @@
           <div class="hpx-category-favorite-item"><button class="hpx-category-favorite-select"><strong>Offboarding</strong><span class="hpx-category-favorite-path">Personnel Changes</span></button></div>
         </div>
       </aside>
-      <button class="hpx-category-favorites-handle">‹</button>
+      <button class="hpx-category-favorites-handle" aria-label="收合我的最愛" aria-expanded="true">‹</button>
       <section class="hpx-category-dialog">
-        <button class="hpx-category-dialog-close">×</button>
+        <button class="hpx-category-dialog-close" aria-label="返回工單預覽">×</button>
         <header class="hpx-category-toolbar">
           <label class="hpx-category-search">
             <span class="hpx-category-search-icon">⌕</span>
@@ -40,6 +47,13 @@
           <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Hardware Setup / Updates / Troubleshooting</button><button class="hpx-category-star">☆</button></div>
           <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Information Security</button><button class="hpx-category-star">☆</button></div>
           <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">IT Service Request</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Network Infrastructure</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">On-Premises Support (Credits)</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Personnel Changes</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Power Platform ticket</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Printers / Scanners</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Routine Tasks</button><button class="hpx-category-star">☆</button></div>
+          <div class="hpx-category-row"><button class="hpx-category-toggle">＋</button><button class="hpx-category-option">Servers</button><button class="hpx-category-star">☆</button></div>
         </div>
       </section>
     </div>
@@ -48,9 +62,12 @@
     (function () {
       const shell = document.querySelector('.hpx-category-shell');
       const handle = document.querySelector('.hpx-category-favorites-handle');
+      document.querySelector('.hpx-category-dialog-close').addEventListener('click', function () { location.href = 'glass-ui-preview.html?team-glass'; });
       handle.addEventListener('click', function () {
         const collapsed = shell.classList.toggle('hpx-category-shell--favorites-collapsed');
         handle.textContent = collapsed ? '★' : '‹';
+        handle.setAttribute('aria-expanded', String(!collapsed));
+        handle.setAttribute('aria-label', collapsed ? '展開我的最愛' : '收合我的最愛');
       });
     })();
   </script>

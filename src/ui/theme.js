@@ -19,14 +19,14 @@
 
   const STORAGE_KEY = 'hpx_settings';
   const DEFAULT_THEME = 'cute-ios';
-  const DEFAULT_ACCENT = '#15487e'; // 預設側欄藍色；保留既有使用者自訂色
-  const DEFAULT_OPACITY = 100; // 百分比 40~100
+  const DEFAULT_ACCENT = '#ff7a1a'; // 分享版預設橘色；保留既有使用者自訂色
+  const DEFAULT_OPACITY = 55; // 不透明度 55% = 面板顯示的透明度 45%
   const VALID = ['default', 'cute-ios'];
 
   // 渲染背景（輕透主題專用）。這份清單是風格 id 與名稱的唯一來源；四個顏色定義在
   // glass.css 的 [data-hpxg-wash="…"]，tests/wallpaper.test.js 會比對兩邊是否一致。
-  const DEFAULT_WASH = 'none';
-  const DEFAULT_WASH_INTENSITY = 55; // 百分比 0~100
+  const DEFAULT_WASH = 'ocean';
+  const DEFAULT_WASH_INTENSITY = 42; // 百分比 0~100
   // 面板最低不透明度。再低的話，Halo 的灰色次要文字在高強度背景上不易閱讀。
   const MIN_SURFACE_OPACITY = 55;
   const WASHES = [
@@ -110,7 +110,7 @@
    * 同一棵樹允許保留幾何範圍不同的巢狀面板，因為 HaloPSA 的 View / Filter
    * 選單會在既有 sidebar 內再建立一層不透明面板。
    */
-  function findSidebarColumns() {
+  function findSidebarColumns(rect) {
     const vh = window.innerHeight || document.documentElement.clientHeight || 800;
     const vw = window.innerWidth || document.documentElement.clientWidth || 1280;
     const rightLimit = Math.min(560, Math.max(320, vw * 0.45));
@@ -119,15 +119,24 @@
     const extra = sidebarSelectors();
     const selector = extra.length ? extra.join(',') + ',' + hint : hint;
 
+    const haloRoot = document.getElementById('halo-tree');
+    const navRoot = document.getElementById('app-nav-menu');
     let nodes;
     try {
-      nodes = document.querySelectorAll(selector);
+      // Standard Halo navigation has stable roots. Ticket lists can contain
+      // thousands of "list", "panel" and "icon" nodes unrelated to the sidebar.
+      // Retain discovery for tenants whose navigation uses another structure.
+      nodes = haloRoot && navRoot
+        ? Array.from(new Set([haloRoot, navRoot].concat(
+          Array.from(haloRoot.querySelectorAll('div, section, ' + selector)),
+          Array.from(navRoot.querySelectorAll(selector))
+        )))
+        : document.querySelectorAll(selector);
     } catch (e) {
       return [];
     }
 
     const cands = [];
-    const haloRoot = document.getElementById('halo-tree');
     nodes.forEach(function (el) {
       // Ticket/New Ticket 的 details sidebar 是白底主內容；在 Ultimate Mode
       // 隱藏 Team tree 或窄視窗時會移到左側，不能只因幾何位置而套深色主題。
@@ -142,10 +151,13 @@
 
       let r;
       try {
-        r = el.getBoundingClientRect();
+        r = rect(el);
       } catch (e) {
         return;
       }
+      // Reject off-screen/small candidates before asking for computed style.
+      if (r.left < -4 || r.left > Math.min(140, rightLimit) || r.right > rightLimit ||
+          r.width < 36 || r.width > 520 || r.height < vh * 0.5) return;
       const position = window.getComputedStyle(el).position;
       const tag = (el.tagName || '').toLowerCase();
       const role = (el.getAttribute && el.getAttribute('role')) || '';
@@ -178,7 +190,7 @@
     // 不透明子面板，這些面板也必須各自套用目前主題。
     const haloTree = document.getElementById('halo-tree');
     if (haloTree) {
-      const rHT = haloTree.getBoundingClientRect();
+      const rHT = rect(haloTree);
       if (
         rHT.left <= 500 &&
         rHT.right <= rightLimit &&
@@ -194,8 +206,8 @@
     return cands.filter(function (el) {
       return !cands.some(function (o) {
         if (o === el || !o.contains(el)) return false;
-        const a = o.getBoundingClientRect();
-        const b = el.getBoundingClientRect();
+        const a = rect(o);
+        const b = rect(el);
         return (
           Math.abs(a.left - b.left) <= 8 &&
           Math.abs(a.top - b.top) <= 8 &&
@@ -211,22 +223,22 @@
    * 高度不足以通過一般 sidebar（至少半個畫面）的偵測。直接從視窗左下角
    * 往 DOM 祖先查找小型底部區塊，讓它也取得相同主題 marker。
    */
-  function findSidebarBottomStrip(cols) {
+  function findSidebarBottomStrip(cols, rect) {
     const vh = window.innerHeight || document.documentElement.clientHeight || 800;
     const icon = cols.filter(function (el) {
-      const r = el.getBoundingClientRect();
+      const r = rect(el);
       return r.left <= 8 && r.width >= 36 && r.width <= 120;
     }).sort(function (a, b) {
-      return a.getBoundingClientRect().width - b.getBoundingClientRect().width;
+      return rect(a).width - rect(b).width;
     })[0];
     if (!icon || !document.elementFromPoint) return null;
 
-    const iconRect = icon.getBoundingClientRect();
+    const iconRect = rect(icon);
     const x = Math.max(2, Math.min(iconRect.right - 2, iconRect.left + iconRect.width / 2));
     let node = document.elementFromPoint(x, Math.max(0, vh - 2));
     let match = null;
     while (node && node !== document.body && node !== document.documentElement) {
-      const r = node.getBoundingClientRect();
+      const r = rect(node);
       if (
         r.left <= 8 &&
         r.right <= 140 &&
@@ -305,11 +317,10 @@
    * 會驗證幾何：靠左、寬度受限、右緣不超過主 sidebar 太多、且不到半個畫面，
    * 以免誤抓到包含 ticket 內容的 app root。
    */
-  function findLeftWrapper(precomputed) {
-    const cols = precomputed || findSidebarColumns();
+  function findLeftWrapper(cols, rect) {
     if (cols.length < 2) return null;
     cols.sort(function (a, b) {
-      return a.getBoundingClientRect().left - b.getBoundingClientRect().left;
+      return rect(a).left - rect(b).left;
     });
     const left = cols[0];
     const right = cols[cols.length - 1];
@@ -318,8 +329,8 @@
     const lca = lowestCommonAncestor(left, right);
     if (!lca) return null;
 
-    const r = lca.getBoundingClientRect();
-    const rightEdge = right.getBoundingClientRect().right;
+    const r = rect(lca);
+    const rightEdge = rect(right).right;
     const vw = window.innerWidth || document.documentElement.clientWidth || 1280;
     const position = window.getComputedStyle(lca).position;
     if (
@@ -335,15 +346,16 @@
   }
 
   /** 逐欄標記（fallback：找不到共同 wrapper 時，至少各欄有虎紋）。 */
-  function markColumns(precomputed) {
-    const cols = precomputed || findSidebarColumns();
-    const bottomStrip = findSidebarBottomStrip(cols);
+  function markColumns(precomputed, rect) {
+    const cols = precomputed || findSidebarColumns(rect);
+    const bottomStrip = findSidebarBottomStrip(cols, rect);
     if (bottomStrip && !cols.includes(bottomStrip)) cols.push(bottomStrip);
+    const widths = new Map(cols.map(function (el) { return [el, Math.round(rect(el).width)]; }));
     const keep = new Set(cols);
     clearColumnMarkersExcept(keep);
     cols.forEach(function (el) {
       if (!el.classList.contains(SIDEBAR_MARKER)) el.classList.add(SIDEBAR_MARKER);
-      const w = Math.round(el.getBoundingClientRect().width);
+      const w = widths.get(el);
       if (w < 120) {
         if (el.classList.contains(MAIN_MARK)) el.classList.remove(MAIN_MARK);
         if (!el.classList.contains(ICONBAR_MARK)) el.classList.add(ICONBAR_MARK);
@@ -379,25 +391,31 @@
       return;
     }
 
-    markNativeSelection();
+    const bounds = new Map();
+    function rect(el) {
+      if (!bounds.has(el)) bounds.set(el, el.getBoundingClientRect());
+      return bounds.get(el);
+    }
 
     // 幾何掃描是這裡最貴的一步；marker 沒被清掉的路徑共用同一份結果。
     // clearMarkers() 之後必須重掃，因為 marker class 本身會影響候選判斷。
-    const cols = findSidebarColumns();
-    const wrap = findLeftWrapper(cols.slice());
+    const cols = findSidebarColumns(rect);
+    const wrap = findLeftWrapper(cols.slice(), rect);
+    markNativeSelection();
     if (wrap) {
       // wrapper 已存在時仍要重掃各欄；HaloPSA 可能剛顯示原本隱藏的 My Lists 子面板。
       if (wrap.el.classList.contains(WRAP_MARK)) {
-        markColumns(cols);
+        markColumns(cols, rect);
         return;
       }
       // wrapper 升級（例如 DOM 動態載入後涵蓋範圍變大），重新標記。
       clearMarkers();
+      bounds.clear();
       markNativeSelection();
       warnedNoWrapper = false;
       wrap.el.classList.add(WRAP_MARK);
       // wrapper 負責填滿欄與欄之間的 gap / 底部；各欄也要標記，避免原始背景蓋住皮膚。
-      markColumns();
+      markColumns(null, rect);
       NS.log(
         'themed left-wrapper matched',
         'theme=' + theme,
@@ -412,6 +430,7 @@
     let markersCleared = false;
     if (document.querySelector('.' + WRAP_MARK)) {
       clearMarkers();
+      bounds.clear();
       markNativeSelection();
       markersCleared = true;
     }
@@ -420,7 +439,7 @@
       // eslint-disable-next-line no-console
       console.warn('[HPX] themed left-wrapper 尚未找到 —— 暫用逐欄背景。');
     }
-    markColumns(markersCleared ? null : cols);
+    markColumns(markersCleared ? null : cols, rect);
   }
 
   function runSidebarUpdate() {
@@ -440,6 +459,49 @@
   // 全頁 observer 專用：#halo-tree 內的顯示狀態仍走上面的即時排程。
   const scheduleStructuralUpdate = NS.burstScheduler(runSidebarUpdate, STRUCTURAL_SCAN_INTERVAL_MS);
 
+  function isThemeUi(node) {
+    const element = node && (node.nodeType === 1 ? node : node.parentElement);
+    return !!(element && element.closest && element.closest(
+      '.hpx-sidebar-controls, .hpx-sidebar-popover, .hpx-sp-pet, .hpx-sp-panel, .hpx-toolbar, .hpx-tta'
+    ));
+  }
+
+  function onStructuralChanges(records) {
+    if (currentTheme !== 'cute-ios') return;
+    const root = document.getElementById('halo-tree');
+    const nav = document.getElementById('app-nav-menu');
+    const nativeRoots = '#halo-tree, #app-nav-menu';
+    const relevant = records.some(function (record) {
+      if (isThemeUi(record.target)) return false;
+      const changed = Array.from(record.addedNodes || []).concat(Array.from(record.removedNodes || []));
+      // textContent updates (counters, loading labels) do not create a sidebar.
+      const elements = changed.filter(function (node) { return node.nodeType === 1 && !isThemeUi(node); });
+      if (!elements.length) return false;
+      if (!root || !nav) return true; // compatibility discovery until both roots exist
+      if (root.contains(record.target) || nav.contains(record.target)) return true;
+      return elements.some(function (node) {
+        return node.matches(nativeRoots) || !!node.querySelector(nativeRoots);
+      });
+    });
+    if (relevant) scheduleStructuralUpdate();
+  }
+
+  function nativeClasses(value) {
+    return String(value || '').split(/\s+/).filter(function (name) {
+      return name && [SIDEBAR_MARKER, ICONBAR_MARK, MAIN_MARK, WRAP_MARK].indexOf(name) === -1;
+    }).sort().join(' ');
+  }
+
+  function onSidebarAttributes(records) {
+    if (currentTheme !== 'cute-ios') return;
+    if (records.some(function (record) {
+      if (isThemeUi(record.target)) return false;
+      // Marker writes must not schedule another geometry scan of their own.
+      return record.attributeName !== 'class' ||
+        nativeClasses(record.oldValue) !== nativeClasses(record.target.getAttribute('class'));
+    })) scheduleSidebarUpdate();
+  }
+
   /**
    * HaloPSA 會預先建立 My Lists / View / Filter 面板，第一次點擊時只切換
    * class / style / hidden，而不新增 DOM。全頁 observer 只負責結構變動；
@@ -457,9 +519,10 @@
     if (!root) return;
 
     try {
-      sidebarMo = new MutationObserver(scheduleSidebarUpdate);
+      sidebarMo = new MutationObserver(onSidebarAttributes);
       sidebarMo.observe(root, {
         attributes: true,
+        attributeOldValue: true,
         subtree: true,
         attributeFilter: [
           'class',
@@ -515,7 +578,7 @@
       washIntensity: wallpaper.washIntensity,
     };
 
-    updateSidebarMarker(theme);
+    if (!(options && options.deferSidebar)) updateSidebarMarker(theme);
   }
 
   function loadAll(cb) {
@@ -564,9 +627,12 @@
       // 先用預設避免閃爍
       applyAppearance(
         { theme: DEFAULT_THEME, accent: DEFAULT_ACCENT, opacity: DEFAULT_OPACITY },
-        { keepWallpaper: document.documentElement.hasAttribute('data-hpxg-wash') }
+        { keepWallpaper: document.documentElement.hasAttribute('data-hpxg-wash'), deferSidebar: true }
       );
-      loadAll(applyAppearance);
+      loadAll(function (settings) {
+        applyAppearance(settings, { deferSidebar: true });
+        scheduleStructuralUpdate();
+      });
       bindSidebarObserver();
 
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
@@ -577,8 +643,9 @@
       }
 
       try {
-        mo = new MutationObserver(scheduleStructuralUpdate);
+        mo = new MutationObserver(onStructuralChanges);
         mo.observe(document.documentElement, { childList: true, subtree: true });
+        window.addEventListener('resize', scheduleStructuralUpdate);
       } catch (e) {
         NS.warn('theme MutationObserver 啟動失敗', e);
       }

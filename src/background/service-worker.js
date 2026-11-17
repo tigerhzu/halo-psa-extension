@@ -41,7 +41,10 @@ let onboardingSourceTabId = null;
 let onboardingSourceOrigin = '';
 const DEFAULT_APPEARANCE = {
   theme: 'cute-ios',
-  accent: '#15487e',
+  accent: '#ff7a1a',
+  opacity: 55,
+  wash: 'ocean',
+  washIntensity: 42,
   ultimateMode: false,
 };
 const DEFAULTS = {
@@ -205,6 +208,14 @@ function purgeRemovedSettings() {
       next.accent = DEFAULT_APPEARANCE.accent;
       changed = true;
     }
+
+    // Seed missing appearance fields only; an existing explicit choice wins.
+    ['opacity', 'wash', 'washIntensity'].forEach(function (field) {
+      if (!Object.prototype.hasOwnProperty.call(next, field)) {
+        next[field] = DEFAULT_APPEARANCE[field];
+        changed = true;
+      }
+    });
 
     if (typeof next.ultimateMode !== 'boolean') {
       next.ultimateMode = DEFAULT_APPEARANCE.ultimateMode;

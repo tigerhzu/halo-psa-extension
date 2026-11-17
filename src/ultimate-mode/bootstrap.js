@@ -109,7 +109,8 @@
       rules.push('html[data-hpx-ultimate-mode="on"] #halo-tree li:has(> .treeviewnode[data-level="1"]' + keepIds + '){display:none!important;}');
     }
     // 沒有任何可驗證依據（title / data-id）時維持空 guard，避免整棵 tree 被藏。
-    style.textContent = rules.join('\n');
+    const css = rules.join('\n');
+    if (style.textContent !== css) style.textContent = css;
   }
 
   window.__HPXUltimateBootstrap = { updateTeams: updateTeamGuard, normalizeTeams: normalizedTeams };
@@ -129,16 +130,16 @@
       };
       document.documentElement.setAttribute(
         'data-hpxg-wash',
-        /^[a-z]{1,16}$/.test(String(settings.wash || '')) ? String(settings.wash) : 'none'
+        /^[a-z]{1,16}$/.test(String(settings.wash || '')) ? String(settings.wash) : 'ocean'
       );
-      document.documentElement.style.setProperty('--hpxg-wash', (percent(settings.washIntensity, 0, 55) / 100).toFixed(2));
-      document.documentElement.style.setProperty('--hpxg-surface', (percent(settings.opacity, 55, 100) / 100).toFixed(2));
+      document.documentElement.style.setProperty('--hpxg-wash', (percent(settings.washIntensity, 0, 42) / 100).toFixed(2));
+      document.documentElement.style.setProperty('--hpxg-surface', (percent(settings.opacity, 55, 55) / 100).toFixed(2));
       // 整頁載入（例如 Team 快捷列的 <a> 導頁）時，theme attribute 與 accent
       // 必須在第一幀就存在，theme-cute-ios.css 的 Sidebar 樣式才不會晚到。
       // 正規化規則與 theme.js loadAll 相同：非 'default' 一律視為 cute-ios。
       if (settings.theme !== 'default') {
         document.documentElement.setAttribute('data-hpx-theme', 'cute-ios');
-        const accent = /^#[0-9a-f]{6}$/i.test(String(settings.accent || '')) ? String(settings.accent).toLowerCase() : '#15487e';
+        const accent = /^#[0-9a-f]{6}$/i.test(String(settings.accent || '')) ? String(settings.accent).toLowerCase() : '#ff7a1a';
         document.documentElement.style.setProperty('--hpx-accent', accent);
       }
       if (settings[FIELD] === true) {
