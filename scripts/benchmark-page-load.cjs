@@ -7,7 +7,7 @@ const { spawn } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const baseline = process.argv[2] && path.resolve(process.argv[2]);
 const repeats = Number(process.env.HPX_BENCH_REPEATS || 3);
-const modes = process.env.HPX_BENCH_MODE ? [process.env.HPX_BENCH_MODE] : ['native', ...(baseline ? ['baseline'] : []), 'optimized'];
+const modes = process.env.HPX_BENCH_MODE ? [process.env.HPX_BENCH_MODE] : ['native', ...(baseline ? ['baseline'] : []), 'optimized', 'quiet'];
 const ultimateModes = process.env.HPX_BENCH_ULTIMATE ? [process.env.HPX_BENCH_ULTIMATE === '1'] : [false, true];
 const browser = [process.env.CHROME_PATH, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(p => p && fs.existsSync(p));
 if (!browser) throw Error('Set CHROME_PATH to a Chromium browser.');
@@ -41,7 +41,7 @@ async function connect(url) {
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const results=[];
   try {
-    for (let repeat=0;repeat<repeats;repeat++) for (const ultimate of ultimateModes) for (const mode of modes) {
+    for (let repeat=0;repeat<repeats;repeat++) for (const ultimate of ultimateModes) for (const mode of modes.slice(repeat % modes.length).concat(modes.slice(0,repeat % modes.length))) {
       source=mode==='baseline'?baseline:root;
       const profile=fs.mkdtempSync(path.join(temporary,'perf-browser-'));
       const proc=spawn(browser,['--headless=new','--no-first-run','--disable-extensions','--disable-background-networking','--remote-debugging-port=0','--window-size=1280,900','--user-data-dir='+profile,'about:blank'],{stdio:'ignore',windowsHide:true});
@@ -61,7 +61,17 @@ async function connect(url) {
           await client.send('Profiler.enable');
           await client.send('Profiler.start');
         }
-        await client.send('Page.navigate',{url:'http://127.0.0.1:'+server.address().port+'/?mode='+mode+'&ultimate='+Number(ultimate)});
+        await client.send('Page.navigate',{url:'http://127.0.0.1:'+server.address().port+'/?mode='+mode+'&ultimate='+Number(ultimate)+'&pet='+Number(process.env.HPX_BENCH_PET === '1')});
+        for (let i=0;i<200;i++) {
+          const r=await client.send('Runtime.evaluate',{expression:'window.__benchRendering'});
+          if(r.result.value) break;
+          await sleep(10);
+        }
+        const point=await client.send('Runtime.evaluate',{expression:`(()=>{const r=document.getElementById('input-probe').getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}})()`,returnByValue:true});
+        for(let i=0;i<5;i++) {
+          await sleep(75);
+          for(const type of ['mousePressed','mouseReleased']) await client.send('Input.dispatchMouseEvent',{type,...point.result.value,button:'left',clickCount:1});
+        }
         let data;
         for(let i=0;i<600;i++){
           await sleep(100);
@@ -77,6 +87,12 @@ async function connect(url) {
         }
         const counters=Object.fromEntries(perf.metrics.map(m=>[m.name,m.value]));
         Object.assign(data,{repeat,taskMs:counters.TaskDuration*1000,scriptMs:counters.ScriptDuration*1000,layoutMs:counters.LayoutDuration*1000,heapMB:counters.JSHeapUsedSize/1024/1024});
+        if(data.input.length!==5) throw Error('Missing native input samples: '+data.input.length);
+        if(mode==='quiet') {
+          const check=await client.send('Runtime.evaluate',{expression:'window.__exerciseQuiet()',awaitPromise:true,returnByValue:true});
+          if(check.exceptionDetails)throw Error(check.exceptionDetails.exception.description);
+          data.activationMs=check.result.value;
+        }
         results.push(data); console.log(JSON.stringify(data));
       } finally {
         if(client) {

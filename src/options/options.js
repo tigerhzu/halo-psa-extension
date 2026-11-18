@@ -935,6 +935,8 @@ function load() {
       els.azureApiKey.value = s.azureApiKey || DEFAULTS.azureApiKey;
       applyProviderState(Object.assign({}, s, { provider: provider }));
 
+      const modeSelect = $('workspaceMode');
+      if (modeSelect) modeSelect.value = s.workspaceMode === 'quiet' ? 'quiet' : 'standard';
       els.theme.value = s.theme === 'default' || s.theme === 'cute-ios' ? s.theme : DEFAULTS.theme;
       const accent = normalizeAccent(s.accent);
       if (els.accentCustom) els.accentCustom.value = accent;
@@ -1028,6 +1030,13 @@ els.addGroup.addEventListener('click', function () {
   els.groups.appendChild(created);
   created.querySelector('.group-name').focus();
   scheduleGroupsPersist();
+});
+
+const workspaceMode = $('workspaceMode');
+if (workspaceMode) workspaceMode.addEventListener('change', function () {
+  mergeFields({workspaceMode: workspaceMode.value}).then(function () {
+    setStatus(els.themeStatus, '已儲存，重新整理 Halo 分頁後生效', 'ok');
+  }).catch(function (error) { setStatus(els.themeStatus, '無法儲存：' + error.message, 'err'); });
 });
 
 els.theme.addEventListener('change', function () {

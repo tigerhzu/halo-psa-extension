@@ -1,13 +1,13 @@
 # 發佈指南
 
-目前公開發佈版本為 **1.1.10**。執行 `python scripts/build-release.py`，產生安裝 ZIP 與 SHA-256 校驗檔。正式 GitHub 發佈使用對應的乾淨 Git commit；本機分享包若包含未提交修改，會在 `release-info.json` 標記 `sourceIncludesWorkingTreeChanges`。
+目前公開發佈版本為 **1.1.11**。執行 `python scripts/build-release.py`，產生安裝 ZIP 與 SHA-256 校驗檔。正式 GitHub 發佈使用對應的乾淨 Git commit；本機分享包若包含未提交修改，會在 `release-info.json` 標記 `sourceIncludesWorkingTreeChanges`。
 
 ## 發佈內容
 
 | 項目 | 提供方式 |
 | --- | --- |
 | 可讀原始碼、測試與文件 | GitHub 儲存庫及對應 tag 的 Source code 下載 |
-| 可直接載入的擴充功能 | `halo-psa-extension-1.1.10.zip` |
+| 可直接載入的擴充功能 | `halo-psa-extension-1.1.11.zip` |
 | 品牌 logo、主視覺與設計資料 | `docs/assets/`，以及 Release 的品牌資產（若提供） |
 | 安裝包雜湊 | Release 的 SHA-256 校驗檔（若提供） |
 

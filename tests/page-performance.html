@@ -5,7 +5,7 @@ body{margin:0;font:14px sans-serif}#app-nav-menu{position:fixed;left:0;top:0;wid
 .ticket-row{display:flex;height:26px}.ticket-row>div{width:160px}.treeviewnode{height:28px}
 </style></head><body><nav id="app-nav-menu"><a href="/timesheet"><span class="app-button-img"></span>Timesheets</a></nav>
 <aside id="halo-tree"><ul><li><div class="treeviewnode" data-level="1" data-id="1"><span class="nodetitle">Op Team A</span></div></li></ul></aside>
-<main id="main"><h1>Tickets</h1><div id="rows"></div></main>
+<button id="input-probe" style="position:fixed;top:4px;right:4px;z-index:2147483600;width:120px;height:32px">Select ticket</button><main id="main"><h1>Tickets</h1><div id="rows"></div></main>
 <script>
 (async function () {
   const params = new URLSearchParams(location.search), mode = params.get('mode');
@@ -24,9 +24,23 @@ body{margin:0;font:14px sans-serif}#app-nav-menu{position:fixed;left:0;top:0;wid
   window.MutationObserver = class extends Observer {
     constructor(fn) { super((...args) => { const start = performance.now(); metrics.observerCallbacks++; try { return fn(...args); } finally { metrics.observerMs += performance.now() - start; } }); }
   };
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const nativeTimer = window.setTimeout.bind(window);
+  const sleep = ms => new Promise(resolve => nativeTimer(resolve, ms));
+  const input = [];
+  document.getElementById('input-probe').addEventListener('click', e => {
+    e.target.textContent = 'Selected';
+    requestAnimationFrame(() => nativeTimer(() => input.push(performance.now()-e.timeStamp), 0));
+  });
+  metrics.timerCallbacks = 0;
+  for (const key of ['setTimeout','setInterval']) {
+    const original = window[key].bind(window);
+    window[key] = (fn, ms, ...args) => typeof fn !== 'function' ? original(fn,ms,...args) : original((...passed) => {
+      metrics.timerCallbacks++;
+      return fn(...passed);
+    },ms,...args);
+  }
   const settings = { theme: 'cute-ios', accent: '#ff7a1a', opacity: 55, wash: 'ocean', washIntensity: 42,
-    petHidden: true, ultimateMode: params.get('ultimate') === '1', onboardingVersion: 99 };
+    workspaceMode: mode === 'quiet' ? 'quiet' : 'standard', petHidden: params.get('pet') !== '1', ultimateMode: params.get('ultimate') === '1', onboardingVersion: 99 };
   const changed = [];
   window.chrome = {
     storage: { local: {
@@ -47,6 +61,7 @@ body{margin:0;font:14px sans-serif}#app-nav-menu{position:fixed;left:0;top:0;wid
     }
     await script('/bundle.js');
   }
+  window.__benchRendering = true;
   const before = performance.now();
   const rows = document.getElementById('rows');
   for (let batch = 0; batch < 20; batch++) {
@@ -59,7 +74,8 @@ body{margin:0;font:14px sans-serif}#app-nav-menu{position:fixed;left:0;top:0;wid
     rows.append(fragment);
     await sleep(30);
   }
-  const renderMs = performance.now() - before;
+  const listReadyMs = performance.now();
+  const renderMs = listReadyMs - before;
   await sleep(1800);
   const startup = {...metrics}, idleBefore = {...metrics};
   await sleep(1000);
@@ -70,6 +86,25 @@ body{margin:0;font:14px sans-serif}#app-nav-menu{position:fixed;left:0;top:0;wid
   for (let i=0;i<20;i++) { pet.style.backgroundPosition = i+'px 0px'; await sleep(20); }
   await sleep(350);
   const animation = Object.fromEntries(Object.keys(metrics).map(k => [k, metrics[k]-animationBefore[k]]));
-  window.__benchmarkResult = {mode,ultimate:settings.ultimateMode,rows:2000,renderMs,startup,idle,animation,errors};
+  if (mode === 'quiet') {
+    const dock = document.getElementById('hpx-quiet-dock');
+    if (!dock || document.documentElement.hasAttribute('data-hpx-theme') || document.documentElement.hasAttribute('data-hpx-ultimate-mode') || document.querySelector('.hpx-sidebar-controls')) throw Error('Quiet workspace did not keep native UI');
+    window.__exerciseQuiet = async () => {
+      const field = document.createElement('textarea'); field.className='hpx-target'; field.value='unsaved draft'; document.body.append(field);
+      if (document.querySelector('.hpx-toolbar')) throw Error('Toolbar started before opt-in');
+      const started = performance.now();
+      dock.querySelector('button').click();
+      for (let i=0; i<400; i++) {
+        const bars = document.querySelectorAll('.hpx-toolbar');
+        if (bars.length === 1 && dock.querySelector('[role=status]').textContent === '本頁工具已開啟') {
+          if (field.value !== 'unsaved draft' || !bars[0].querySelector('button')) throw Error('Draft/toolbar invalid');
+          return performance.now()-started;
+        }
+        await sleep(5);
+      }
+      throw Error('Quiet workspace did not activate editor tools');
+    };
+  }
+  window.__benchmarkResult = {listReadyMs,input,mode,ultimate:settings.ultimateMode,rows:2000,renderMs,startup,idle,animation,errors};
 })().catch(error => { window.__benchmarkResult = {errors:[String(error.stack)]}; });
 </script></body></html>

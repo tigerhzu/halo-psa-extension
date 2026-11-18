@@ -1,4 +1,33 @@
-# 1.1.10 頁面效能驗證
+# Halo 頁面效能驗證
+
+## 1.1.11 靜閱模式 · 2026-11-18
+
+在 Windows 使用 Chrome 157 headless，比較無擴充功能、Git tag `v1.1.10`、1.1.11 標準、1.1.11 靜閱。各組 5 次、每次新 profile、逐輪輪換測試順序。所有組別執行同一個 2,000 筆列表工作負載；擴充功能組設成相同玻璃主題、顯示桌寵、關閉簡單導覽。靜閱按設計保留原生外觀並等待手動啟用；以下瀏覽數據不含事後啟用工具的成本。
+
+| 本機測量（中位數） | 無擴充 | 昨天 1.1.10 標準 | 1.1.11 標準 | 1.1.11 靜閱 |
+| --- | ---: | ---: | ---: | ---: |
+| 導覽開始到列表建完，含 fixture 載入 | 953 ms | 1,168 ms | 1,241 ms | 1,097 ms |
+| 20 批工單列表渲染階段 | 645 ms | 852 ms | 867 ms | 638 ms |
+| 點選列表按鈕到下一幀後的回呼（每組 25 次） | 12 ms | 54 ms | 56 ms | 12 ms |
+| 瀏覽期間 JavaScript 執行時間（CDP ScriptDuration） | 3.9 ms | 69.3 ms | 69.3 ms | 7.1 ms |
+| 靜置一秒：計時器／DOM 監看回呼 | 0／0 | 6／12 | 6／18 | 0／0 |
+
+靜閱的列表渲染與點擊中位數接近原生；完整導覽仍比原生多約 144 ms。標準模式此次沒有量到整體加快。使用者點「啟用本頁工具」後，到編輯器按鈕出現並完成啟動的中位數為 **96 ms**。工具啟動後會恢復編輯器、CC 等偵測，不能把待命時的零回呼外推到使用工具期間。
+
+測試將 manifest 內的腳本合併，和 CSS 經 localhost 載入；Halo 清單與 storage 是模擬的。每次渲染發送五次 Chromium 真實滑鼠點擊，量測事件時間戳至下一次 `requestAnimationFrame` 之後的 task，並非正式 INP。靜置前先等 1.8 秒，監測 `setTimeout`／`setInterval`、`MutationObserver` 的實際回呼，不計 fixture 自己的等待。桌寵動作有隨機性。數字代表瀏覽器工作量，不是瓦數、實體電池續航或生產租戶的載入時間；套件仍由瀏覽器載入，不是零成本。
+
+重跑這組測試：準備 `v1.1.10` 的 checkout，再執行：
+
+```powershell
+$env:HPX_BENCH_REPEATS='5'
+$env:HPX_BENCH_PET='1'
+$env:HPX_BENCH_ULTIMATE='0'
+node scripts/benchmark-page-load.cjs path/to/v1.1.10
+```
+
+另用 `python scripts/smoke-quiet-mode.py` 以 Playwright 載入真正的未封裝擴充功能，在攔截至本機 fixture 的 Halo 分頁驗證設定保存、鍵盤啟用、草稿、SPA 重建、重新整理、設定連結與恢復標準／簡單模式。需要 Python Playwright 與支援載入未封裝擴充的 Chromium；可用 `CHROME_PATH` 指定測試瀏覽器。
+
+## 1.1.10 的歷史測量
 
 2026-11-17，Windows、Node 22.23.2、Chromium headless、1280 × 900。比較的是修改前的本機 1.1.9 工作區與本次 1.1.10；前者包含當時尚未提交的外觀及 Pet 更新，並非 GitHub 上的 1.1.7。
 

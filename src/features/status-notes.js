@@ -67,7 +67,7 @@
   }
 
   function reconcile() {
-    if (!loaded) return;
+    if (!loaded || !settings.enabled) return;
     document.querySelectorAll('.newaction form.action-form').forEach(fill);
   }
 

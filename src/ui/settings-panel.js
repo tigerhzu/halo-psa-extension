@@ -1082,12 +1082,6 @@
     });
   }
 
-  function startSidebarObserver() {
-    if (sidebarObserver || typeof MutationObserver !== 'function' || !document.body) return;
-    sidebarObserver = new MutationObserver(function () { scheduleSidebarPosition(); });
-    sidebarObserver.observe(document.body, { childList: true, subtree: true });
-  }
-
   function toggleSidebarCollapse() {
     if (!sidebarSettings) return;
     sidebarSettings.sidebarCollapsed = sidebarSettings.sidebarCollapsed !== true;
@@ -1165,7 +1159,6 @@
     }));
     document.body.appendChild(sidebarControlsEl);
     refreshSidebarControls();
-    startSidebarObserver();
     scheduleSidebarPosition();
   }
 
@@ -1174,6 +1167,7 @@
       if (button.getAttribute('data-hpx-sidebar-control') !== 'collapse') button.setAttribute('aria-expanded', 'false');
     });
     if (sidebarPopoverEl && sidebarPopoverEl.parentNode) sidebarPopoverEl.parentNode.removeChild(sidebarPopoverEl);
+    if (sidebarObserver) { sidebarObserver.disconnect(); sidebarObserver = null; }
     sidebarPopoverEl = null;
   }
 
@@ -1220,6 +1214,11 @@
     popover.appendChild(body);
     sidebarPopoverEl = popover;
     document.body.appendChild(popover);
+    if (typeof ResizeObserver === 'function') {
+      sidebarObserver = new ResizeObserver(scheduleSidebarPosition);
+      sidebarObserver.observe(popover);
+      sidebarObserver.observe(sidebarControlsEl);
+    }
     const trigger = sidebarControlsEl && sidebarControlsEl.querySelector('[data-hpx-sidebar-control="' + kind + '"]');
     if (trigger) trigger.setAttribute('aria-expanded', 'true');
     popover.addEventListener('keydown', function (event) {

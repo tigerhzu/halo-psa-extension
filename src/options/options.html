@@ -31,6 +31,8 @@
 <div class="workspace-grid">
 <section class="card appearance-card" aria-labelledby="appearanceTitle">
 <div class="card-heading"><h2 id="appearanceTitle">外觀</h2></div>
+<label for="workspaceMode">開頁模式</label><select id="workspaceMode" aria-describedby="workspaceModeHint"><option value="standard">標準 · 自動啟用工具</option><option value="quiet">靜閱 · 按需啟用工具</option></select>
+<p id="workspaceModeHint" class="card-description">靜閱保留 Halo 原生畫面，點右下角「啟用本頁工具」才會開啟編輯、工時與自動 CC 等功能。桌寵、主題與簡單模式設定會保留，切回標準即可恢復。更改模式後請重新整理 Halo 分頁。</p>
 <label for="theme">介面主題</label><select id="theme"><option value="cute-ios">輕透</option><option value="default">原生配色</option></select>
 <fieldset class="accent-fieldset"><legend>主題色</legend><div class="swatches" id="accentRow">
 <button class="swatch" data-accent="#15487e" style="--sw:#15487e" title="藍色" aria-label="藍色" aria-pressed="false" type="button"></button>
