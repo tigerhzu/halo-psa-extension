@@ -46,3 +46,21 @@ test('quick links remain available without the pet and collapsed editors stay hi
   assert.match(surfaces, /\[hidden\]\s*\{\s*display:none!important/);
   assert.match(js, /event\.key === 'Escape'/);
 });
+
+test('quiet mode toggles live and only removes Halo-page styling', function () {
+  const root = path.join(__dirname, '..');
+  const read = function (file) { return fs.readFileSync(path.join(root, file), 'utf8'); };
+  const panel = read('src/ui/settings-panel.js');
+  const content = read('src/content.js');
+  const theme = read('src/ui/theme.js');
+  const glass = read('src/styles/glass.css');
+  assert.match(panel, /makeSidebarControl\('靜閱模式', 'quiet', toggleSidebarQuietMode\)/);
+  assert.doesNotMatch(panel, /location\.reload|window\.confirm/);
+  assert.doesNotMatch(content, /hpx-quiet-dock|location\.reload/);
+  assert.match(theme, /setQuiet: function/);
+  // Extension chrome keeps its glass look; native Halo skin turns off in quiet mode.
+  assert.match(glass, /html\[data-hpx-theme="cute-ios"\] \.hpx-sidebar-controls \{/);
+  assert.match(glass, /html\[data-hpx-theme="cute-ios"\]:not\(\[data-hpx-quiet\]\)\[data-hpxg-wash\]/);
+  const workbench = read('src/styles/workbench.css');
+  assert.doesNotMatch(workbench, /html\[data-hpx-theme="cute-ios"\](?!:not\(\[data-hpx-quiet\]\))/);
+});

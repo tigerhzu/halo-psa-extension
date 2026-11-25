@@ -115,14 +115,11 @@
 
   window.__HPXUltimateBootstrap = { updateTeams: updateTeamGuard, normalizeTeams: normalizedTeams };
 
-  let resolveMode;
-  window.__HPXUltimateBootstrap.modeReady = new Promise(resolve => { resolveMode = resolve; });
   try {
     chrome.storage.local.get(STORAGE_KEY, function (data) {
       const settings = (data && data[STORAGE_KEY]) || {};
-      const quiet = settings.workspaceMode === 'quiet';
-      resolveMode(quiet);
-      if (quiet) return;
+      // 靜閱只關閉 Halo 原生畫面的配色與特效；工具列與功能照常啟動。
+      if (settings.workspaceMode === 'quiet') document.documentElement.setAttribute('data-hpx-quiet', 'on');
       updateTeamGuard(settings[TEAMS_FIELD]);
       // 渲染背景與面板不透明度同樣要在第一幀就位，否則整頁載入時會先閃一下素底。
       // 數值規則與 theme.js 的 normalizeWallpaper 相同（tests/wallpaper.test.js 會比對）；
@@ -158,6 +155,6 @@
       }
     });
   } catch (error) {
-    resolveMode(false);
+    // storage 不可用時維持 Halo 原貌，content.js 仍會照常啟動。
   }
 })();

@@ -87,23 +87,8 @@ body{margin:0;font:14px sans-serif}#app-nav-menu{position:fixed;left:0;top:0;wid
   await sleep(350);
   const animation = Object.fromEntries(Object.keys(metrics).map(k => [k, metrics[k]-animationBefore[k]]));
   if (mode === 'quiet') {
-    const dock = document.getElementById('hpx-quiet-dock');
-    if (!dock || document.documentElement.hasAttribute('data-hpx-theme') || document.documentElement.hasAttribute('data-hpx-ultimate-mode') || document.querySelector('.hpx-sidebar-controls')) throw Error('Quiet workspace did not keep native UI');
-    window.__exerciseQuiet = async () => {
-      const field = document.createElement('textarea'); field.className='hpx-target'; field.value='unsaved draft'; document.body.append(field);
-      if (document.querySelector('.hpx-toolbar')) throw Error('Toolbar started before opt-in');
-      const started = performance.now();
-      dock.querySelector('button').click();
-      for (let i=0; i<400; i++) {
-        const bars = document.querySelectorAll('.hpx-toolbar');
-        if (bars.length === 1 && dock.querySelector('[role=status]').textContent === '本頁工具已開啟') {
-          if (field.value !== 'unsaved draft' || !bars[0].querySelector('button')) throw Error('Draft/toolbar invalid');
-          return performance.now()-started;
-        }
-        await sleep(5);
-      }
-      throw Error('Quiet workspace did not activate editor tools');
-    };
+    // Quiet keeps every tool and the toolbar; only the native-page skin is off.
+    if (document.documentElement.getAttribute('data-hpx-quiet') !== 'on' || !document.querySelector('.hpx-sidebar-controls') || document.querySelector('.hpx-theme-wrap, .hpx-theme-sidebar')) throw Error('Quiet workspace should keep tools and drop native skin');
   }
   window.__benchmarkResult = {listReadyMs,input,mode,ultimate:settings.ultimateMode,rows:2000,renderMs,startup,idle,animation,errors};
 })().catch(error => { window.__benchmarkResult = {errors:[String(error.stack)]}; });

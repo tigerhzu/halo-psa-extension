@@ -49,8 +49,7 @@ function createImporter(initialSettings) {
       } },
     },
     els: {
-      backupStatus: {}, petImportStatus: {}, petImportedList: {}, importPet: { disabled: false },
-      petImportForm: { reset() {} },
+      backupStatus: {},
     },
     enqueueStorageWrite: function (task) { return task(); },
     setStatus: function (node, text, kind) { statuses.push({ text, kind }); },
@@ -64,7 +63,6 @@ function createImporter(initialSettings) {
   [
     'normalizeTeamList', 'normalizeImportedSettings', 'mergeImportedSettings',
     'readStoredSettings', 'replaceStoredSettings', 'importSettingsFromFile', 'exportSettings',
-    'renderImportedPets', 'saveImportedPet', 'importPetFromFolder',
   ].forEach(function (name) { vm.runInContext(functionSource(name), context); });
   context.liveSettingsSnapshot = context.readStoredSettings;
   context.downloadSettingsJson = function (payload) { downloads.push(JSON.parse(JSON.stringify(payload))); };
@@ -333,142 +331,8 @@ test('exports above the import size limit fail before creating a download', func
   assert.throws(function () { exporter.context.downloadSettingsJson({ data: 'x'.repeat(10 * 1024 * 1024) }, false); }, /超過 10 MB/);
 });
 
-function petFiles(overrides) {
-  const manifest = Object.assign({ id: 'uploaded-pet', displayName: '上傳的寵物', description: '匯入測試', spriteVersionNumber: 1 }, overrides);
-  return [
-    new File([JSON.stringify(manifest)], 'pet.json', { type: 'application/json' }),
-    new File([fs.readFileSync(path.join(ROOT, 'pet/claude-crab/spritesheet.webp'))], 'spritesheet.webp', { type: 'image/webp' }),
-  ];
-}
-
-function folderFiles(files, root = 'uploaded-pet') {
-  return files.filter(Boolean).map(function (file) {
-    Object.defineProperty(file, 'webkitRelativePath', { value: root + '/' + file.name, configurable: true });
-    return file;
-  });
-}
-
-test('direct Pet import activates the pet, preserves other settings, and travels in both backup modes', async function () {
-  const importer = createImporter({ pet: 'soyo', petHidden: true, petPosition: { right: 30, bottom: 20 }, ornithApiKey: 'local-key', shortcutLinks: [{ name: 'Wiki', url: 'https://example.com' }] });
-  await importer.context.importPetFromFolder(folderFiles(petFiles()), true);
-  const stored = await importer.context.readStoredSettings();
-  assert.equal(stored.pet, 'uploaded-pet');
-  assert.equal(stored.petHidden, false);
-  assert.deepEqual(stored.petPosition, { right: 30, bottom: 20 });
-  assert.equal(stored.ornithApiKey, 'local-key');
-  assert.equal(stored.shortcutLinks[0].name, 'Wiki');
-  assert.equal(importer.context.els.importPet.disabled, false);
-  assert.match(importer.context.els.petImportedList.textContent, /上傳的寵物/);
-  for (const includeKeys of [false, true]) {
-    const result = await importer.export(includeKeys);
-    const payload = result.downloads.at(-1);
-    assert.equal(payload.settings.petPackages[0].manifest.id, 'uploaded-pet');
-    assert.equal(payload.settings.petPackages[0].manifest.description, '匯入測試');
-    assert.equal(payload.settings.ornithApiKey, includeKeys ? 'local-key' : undefined);
-    const restored = await createImporter({}).import(payload);
-    assert.equal(restored.stored.pet, 'uploaded-pet');
-    assert.deepEqual(restored.stored.petPackages, stored.petPackages);
-  }
-});
-
-test('importing the same ID updates just that pet and optional activation preserves the current choice', async function () {
-  const importer = createImporter({ pet: 'soyo', petHidden: true, petPackages: [customPet()] });
-  await importer.context.importPetFromFolder(folderFiles(petFiles()), false);
-  await importer.context.importPetFromFolder(folderFiles(petFiles({ displayName: '新版寵物' })), false);
-  const stored = await importer.context.readStoredSettings();
-  assert.equal(stored.pet, 'soyo');
-  assert.equal(stored.petHidden, true);
-  assert.equal(stored.petPackages.length, 2);
-  assert.equal(stored.petPackages[0].manifest.id, 'my-pet');
-  assert.equal(stored.petPackages[1].manifest.displayName, '新版寵物');
-});
-
-test('direct Pet import handles v2 PNG and verifies the image grid', async function () {
-  const importer = createImporter({});
-  importer.context.createImageBitmap = async function () { return { width: 256, height: 352, close() {} }; };
-  const registry = importer.context.HPX_PET_REGISTRY;
-  const manifest = new File([JSON.stringify({ id: 'v2-png', spriteVersionNumber: 2, spritesheetPath: 'images/sprite.png' })], 'pet.json');
-  const png = new File([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')], 'sprite.png');
-  const pet = await registry.importFiles(manifest, png);
-  assert.equal(pet.manifest.spriteVersionNumber, 2);
-  assert.match(pet.spritesheet, /^data:image\/png;base64,/);
-  importer.context.createImageBitmap = async function () { return { width: 256, height: 288, close() {} }; };
-  await assert.rejects(registry.importFiles(manifest, png), /8 × 11/);
-});
-
-test('invalid direct imports do not alter existing settings and re-enable the import button', async function () {
-  const initial = { pet: 'soyo', petHidden: true };
-  for (const files of [
-    [null, null],
-    [new File(['broken'], 'pet.json'), petFiles()[1]],
-    petFiles({ id: '../invalid' }),
-    petFiles({ spriteVersionNumber: 3 }),
-    petFiles({ spritesheetPath: 'other.webp' }),
-    [petFiles()[0], new File(['bad'], 'spritesheet.webp')],
-    [petFiles()[0], { name: 'spritesheet.webp', size: 8 * 1024 * 1024 }],
-  ]) {
-    const importer = createImporter(initial);
-    await importer.context.importPetFromFolder(folderFiles(files), true);
-    assert.deepEqual(await importer.context.readStoredSettings(), initial);
-    assert.equal(importer.context.els.importPet.disabled, false);
-    assert.equal(importer.statuses.at(-1).kind, 'err');
-  }
-});
-
-test('corrupt image decoding and storage quota failures leave current Pet untouched', async function () {
-  for (const failure of ['decode', 'quota']) {
-    const importer = createImporter({ pet: 'soyo' });
-    if (failure === 'decode') importer.context.createImageBitmap = async function () { throw new Error('decode'); };
-    else importer.context.chrome.storage.local.set = function (_, callback) {
-      importer.context.chrome.runtime.lastError = { message: 'QUOTA_BYTES' };
-      callback();
-      delete importer.context.chrome.runtime.lastError;
-    };
-    await importer.context.importPetFromFolder(folderFiles(petFiles()), true);
-    assert.deepEqual(await importer.context.readStoredSettings(), { pet: 'soyo' });
-    assert.equal(importer.context.els.importPet.disabled, false);
-  }
-});
-
-test('folder imports resolve nested sprite paths exactly, ignoring unrelated files with the same name', async function () {
-  const importer = createImporter({});
-  const files = folderFiles(petFiles({ spritesheetPath: 'images/spritesheet.webp' }));
-  Object.defineProperty(files[1], 'webkitRelativePath', { value: 'uploaded-pet/images/spritesheet.webp' });
-  const unrelated = folderFiles([new File(['not an image'], 'spritesheet.webp')])[0];
-  await importer.context.importPetFromFolder([unrelated, ...files], true);
-  const stored = await importer.context.readStoredSettings();
-  assert.equal(importer.statuses.at(-1).kind, 'ok');
-  assert.equal(stored.pet, 'uploaded-pet');
-  assert.equal(stored.petPackages.length, 1);
-});
-
-test('folder imports can derive a missing pet ID from the selected folder name', async function () {
-  const importer = createImporter({});
-  await importer.context.importPetFromFolder(folderFiles(petFiles({ id: undefined }), 'folder-name'), true);
-  assert.equal(importer.statuses.at(-1).kind, 'ok');
-  assert.equal((await importer.context.readStoredSettings()).pet, 'folder-name');
-});
-
-test('folder imports reject parent folders, multiple roots, duplicate paths and paths outside the folder', async function () {
-  const nested = folderFiles(petFiles());
-  nested.forEach(function (file) { Object.defineProperty(file, 'webkitRelativePath', { value: 'pets/uploaded-pet/' + file.name }); });
-  const duplicate = folderFiles(petFiles());
-  const splitRoots = [folderFiles(petFiles(), 'first')[0], folderFiles(petFiles(), 'second')[1]];
-  for (const files of [
-    nested, splitRoots, [duplicate[0], duplicate[0], duplicate[1]], petFiles(),
-    folderFiles(petFiles({ spritesheetPath: '../spritesheet.webp' })),
-    folderFiles(petFiles({ spritesheetPath: 'https://example.com/spritesheet.webp' })),
-  ]) {
-    const importer = createImporter({ pet: 'soyo' });
-    await importer.context.importPetFromFolder(files, true);
-    assert.equal(importer.statuses.at(-1).kind, 'err');
-    assert.deepEqual(await importer.context.readStoredSettings(), { pet: 'soyo' });
-  }
-});
-
-test('settings expose one folder picker and send its complete FileList to the importer', function () {
+test('options page no longer exposes the Pet import page', function () {
   const html = fs.readFileSync(path.join(ROOT, 'src/options/options.html'), 'utf8');
-  assert.match(html, /id="petFolder"[^>]*webkitdirectory[^>]*multiple/);
-  assert.doesNotMatch(html, /petManifestFile|petSpriteFile/);
-  assert.match(optionsSource, /importPetFromFolder\(els\.petFolder\.files, els\.petActivate\.checked\)/);
+  assert.doesNotMatch(html, /href="#pets"|id="pets"|id="petFolder"/);
+  assert.doesNotMatch(optionsSource, /importPetFromFolder|petImportForm/);
 });

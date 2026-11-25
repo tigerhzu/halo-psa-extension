@@ -66,7 +66,7 @@ html[data-hpx-theme="cute-ios"] :is(.hpx-toolbar, .hpx-tta, .hpx-sidebar-control
   --w4: oklch(from var(--hpx-accent) .84 .1 calc(h + 90));
 }
 
-html[data-hpx-theme="cute-ios"][data-hpxg-wash]:not([data-hpxg-wash="none"]) {
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet])[data-hpxg-wash]:not([data-hpxg-wash="none"]) {
   /* Strength is the alpha; vividness scales chroma and leaves lightness alone,
      so dark text on the wallpaper keeps its contrast at full strength. */
   --hpxg-c1: oklch(from var(--w1) l calc(c * (.85 + var(--hpxg-wash) * .6)) h / var(--hpxg-wash));
@@ -170,7 +170,7 @@ html[data-hpx-theme="cute-ios"][data-hpxg-wash]:not([data-hpxg-wash="none"]) {
 /* The native search paints both a dark wrapper and a rounded input. Give the
    wrapper sole ownership of the surface, with one radius and one border.
    Keep the original 45px search strip (5 + 35 + 5), inset from the pane edges. */
-html[data-hpx-theme="cute-ios"] .app-container.theme-light #halo-tree #main_search {
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) .app-container.theme-light #halo-tree #main_search {
   padding: 5px 8px;
   box-sizing: border-box;
   background: transparent !important;
@@ -211,7 +211,7 @@ html[data-hpx-theme="cute-ios"] .app-container.theme-light #halo-tree #main_sear
 
 /* Native ticket-list filter (All / Active / Closed), not ticket status actions.
    Leave Semantic UI's positioning, keyboard selection and visibility intact. */
-html[data-hpx-theme="cute-ios"] .app-container.theme-light #filter-dropdown {
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) .app-container.theme-light #filter-dropdown {
   box-sizing: border-box;
   padding: 2px 10px;
   border: 1px solid rgb(255 255 255 / .7);
@@ -329,7 +329,7 @@ html[data-hpx-theme="cute-ios"] .hpx-category-modal-layer button:focus-visible {
    accent-contrast filter (invert on light accents) and would invert its own
    background along with the glyph. White glass reads on both dark and light
    accents; the glyph keeps the contrast ink from workbench.css. */
-html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-branded .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-tile) {
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #app-nav-menu :is(.hpx-ultimate-timesheets-branded .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-tile) {
   display: grid !important;
   place-items: center;
   width: 38px;
@@ -342,14 +342,14 @@ html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-brand
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .55), 0 4px 10px rgb(16 24 40 / .12);
   transition: background .18s var(--hpxg-ease), border-color .18s var(--hpxg-ease), transform .18s var(--hpxg-ease);
 }
-html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-logo, .hpx-ultimate-team-logo) {
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #app-nav-menu :is(.hpx-ultimate-timesheets-logo, .hpx-ultimate-team-logo) {
   width: 22px;
   height: 22px;
   border-radius: 0;
   transform: none !important;
 }
 /* Teams without artwork: the initials sit on the tile instead of their own gradient badge. */
-html[data-hpx-theme="cute-ios"] #app-nav-menu .hpx-ultimate-team-logo-fallback {
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #app-nav-menu .hpx-ultimate-team-logo-fallback {
   width: auto;
   height: auto;
   border: 0;
@@ -357,14 +357,14 @@ html[data-hpx-theme="cute-ios"] #app-nav-menu .hpx-ultimate-team-logo-fallback {
   color: inherit;
   font-size: 12px;
 }
-html[data-hpx-theme="cute-ios"] #app-nav-menu .hpx-ultimate-team-shortcut { gap: 4px; }
-html[data-hpx-theme="cute-ios"] #app-nav-menu .hpx-ultimate-team-shortcut-label { font-size: 10.5px; letter-spacing: .1px; }
-html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-branded:hover .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-shortcut:is(:hover, :focus-visible) .hpx-ultimate-team-tile) {
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #app-nav-menu .hpx-ultimate-team-shortcut { gap: 4px; }
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #app-nav-menu .hpx-ultimate-team-shortcut-label { font-size: 10.5px; letter-spacing: .1px; }
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #app-nav-menu :is(.hpx-ultimate-timesheets-branded:hover .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-shortcut:is(:hover, :focus-visible) .hpx-ultimate-team-tile) {
   border-color: rgb(255 255 255 / .62);
   background: linear-gradient(180deg, rgb(255 255 255 / .52), rgb(255 255 255 / .2)) !important;
   transform: translateY(-1px);
 }
-html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-branded.active .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-shortcut[aria-current="page"] .hpx-ultimate-team-tile) {
+html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #app-nav-menu :is(.hpx-ultimate-timesheets-branded.active .hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-shortcut[aria-current="page"] .hpx-ultimate-team-tile) {
   border-color: color-mix(in srgb, var(--hpx-accent-ink) 70%, transparent);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .55), 0 0 0 1px color-mix(in srgb, var(--hpx-accent-ink) 70%, transparent);
 }
@@ -549,13 +549,13 @@ html[data-hpx-theme="cute-ios"] .hpx-sidebar-control--active {
   box-shadow: none;
   color: var(--hpx-accent-text);
 }
-html[data-hpx-theme="cute-ios"] .hpx-sidebar-control-state[data-hpx-sidebar-state="mode"] {
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control-state:is([data-hpx-sidebar-state="mode"],[data-hpx-sidebar-state="quiet"]) {
   padding: 3px 6px;
   background: rgba(64, 78, 108, .14);
   color: var(--hpxg-ink-2);
   font: 600 11px/1.1 var(--hpx-font);
 }
-html[data-hpx-theme="cute-ios"] .hpx-sidebar-control--active .hpx-sidebar-control-state[data-hpx-sidebar-state="mode"] {
+html[data-hpx-theme="cute-ios"] .hpx-sidebar-control--active .hpx-sidebar-control-state:is([data-hpx-sidebar-state="mode"],[data-hpx-sidebar-state="quiet"]) {
   background: var(--hpx-accent);
   color: var(--hpx-accent-ink);
 }
@@ -720,7 +720,7 @@ html[data-hpx-theme="cute-ios"] .hpx-loader--done .hpx-loader__tiger { color: #2
     --hpxg-blur: none;
     --hpxg-blur-strong: none;
   }
-  html[data-hpx-theme="cute-ios"][data-hpxg-wash] { --hpxg-wash-image: none !important; }
+  html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet])[data-hpxg-wash] { --hpxg-wash-image: none !important; }
   html[data-hpx-theme="cute-ios"] .hpx-toolbar { background: #fff; }
   html[data-hpx-theme="cute-ios"] .hpx-modal { background: #f6f8fc; }
   html[data-hpx-theme="cute-ios"] .hpx-modal-overlay { -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -731,7 +731,7 @@ html[data-hpx-theme="cute-ios"] .hpx-loader--done .hpx-loader__tiger { color: #2
     --hpx-category-edge: #e4e8f0;
   }
   html[data-hpx-theme="cute-ios"] .hpx-category-modal-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
-  html[data-hpx-theme="cute-ios"][data-hpxg-wash] .app-container.theme-light #halo-tree:has(#tv-selected-view-name[data-id="team"]) .treeviewnode[data-level="2"] {
+  html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet])[data-hpxg-wash] .app-container.theme-light #halo-tree:has(#tv-selected-view-name[data-id="team"]) .treeviewnode[data-level="2"] {
     --hpxg-person-fill: #fff;
     background-image: none !important;
     -webkit-backdrop-filter: none;
@@ -747,7 +747,7 @@ html[data-hpx-theme="cute-ios"] .hpx-loader--done .hpx-loader__tiger { color: #2
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-hpx-theme="cute-ios"] #halo-tree .treeviewnode { transition: none !important; }
+  html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #halo-tree .treeviewnode { transition: none !important; }
   html[data-hpx-theme="cute-ios"] :is(.hpx-tb-btn, .hpx-sidebar-control, .hpx-btn, .hpx-tta > .hpx-tta-btn):active { transform: none; }
-  html[data-hpx-theme="cute-ios"] #app-nav-menu :is(.hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-tile) { transform: none !important; }
+  html[data-hpx-theme="cute-ios"]:not([data-hpx-quiet]) #app-nav-menu :is(.hpx-ultimate-timesheets-icon-host, .hpx-ultimate-team-tile) { transform: none !important; }
 }

@@ -79,6 +79,8 @@
   const WRAP_MARK = 'hpx-theme-wrap'; // 左側共同 wrapper（連續背景，優先）
 
   let currentTheme = DEFAULT_THEME;
+  // 靜閱：保留擴充功能自己的元件樣式，只關閉套在 Halo 原生畫面上的配色、背景與特效。
+  let quietMode = false;
   let currentAppearance = {
     theme: DEFAULT_THEME,
     accent: DEFAULT_ACCENT,
@@ -385,7 +387,7 @@
   function updateSidebarMarker(theme) {
     // Standalone extension pages have no native Halo sidebar to discover.
     if (document.querySelector('.hpx-ew, .hpx-options, .hpx-onboarding-page')) return;
-    const isSidebarTheme = theme === 'cute-ios';
+    const isSidebarTheme = theme === 'cute-ios' && !quietMode;
     if (!isSidebarTheme) {
       clearMarkers();
       return;
@@ -467,7 +469,7 @@
   }
 
   function onStructuralChanges(records) {
-    if (currentTheme !== 'cute-ios') return;
+    if (currentTheme !== 'cute-ios' || quietMode) return;
     const root = document.getElementById('halo-tree');
     const nav = document.getElementById('app-nav-menu');
     const nativeRoots = '#halo-tree, #app-nav-menu';
@@ -493,7 +495,7 @@
   }
 
   function onSidebarAttributes(records) {
-    if (currentTheme !== 'cute-ios') return;
+    if (currentTheme !== 'cute-ios' || quietMode) return;
     if (records.some(function (record) {
       if (isThemeUi(record.target)) return false;
       // Marker writes must not schedule another geometry scan of their own.
@@ -541,10 +543,19 @@
 
   // ── 套用外觀（theme + accent + opacity）─────────────────────
 
+  function applyQuiet(quiet) {
+    quietMode = quiet === true;
+    const root = document.documentElement;
+    if (quietMode) root.setAttribute('data-hpx-quiet', 'on');
+    else root.removeAttribute('data-hpx-quiet');
+  }
+
   function applyAppearance(s, options) {
     s = s || {};
     const theme = VALID.indexOf(s.theme) !== -1 ? s.theme : DEFAULT_THEME;
     currentTheme = theme;
+    // start() 的第一次預設套用不帶 workspaceMode，沿用 bootstrap 已在第一幀設定的狀態。
+    if (Object.prototype.hasOwnProperty.call(s, 'workspaceMode')) applyQuiet(s.workspaceMode === 'quiet');
 
     const root = document.documentElement;
     root.setAttribute('data-hpx-theme', theme);
@@ -622,8 +633,16 @@
       applyAppearance(Object.assign({}, currentAppearance, { theme: name }));
     },
     applyAppearance: applyAppearance,
+    /** 即時切換靜閱：不重新整理頁面。 */
+    setQuiet: function (quiet) {
+      applyQuiet(quiet);
+      updateSidebarMarker(currentTheme);
+      if (!quietMode) scheduleStructuralUpdate();
+    },
+    isQuiet: function () { return quietMode; },
 
     start: function () {
+      quietMode = document.documentElement.getAttribute('data-hpx-quiet') === 'on';
       // 先用預設避免閃爍
       applyAppearance(
         { theme: DEFAULT_THEME, accent: DEFAULT_ACCENT, opacity: DEFAULT_OPACITY },

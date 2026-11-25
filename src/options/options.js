@@ -112,12 +112,6 @@ const els = {
   importSettings: $('importSettings'),
   importSettingsFile: $('importSettingsFile'),
   backupStatus: $('backupStatus'),
-  petImportForm: $('petImportForm'),
-  petFolder: $('petFolder'),
-  petActivate: $('petActivate'),
-  importPet: $('importPet'),
-  petImportStatus: $('petImportStatus'),
-  petImportedList: $('petImportedList'),
   saveStatus: $('saveStatus'),
   teamCount: $('teamCount'),
 };
@@ -137,7 +131,7 @@ function setSaveIndicator(text, state) {
 }
 
 function setupNavigation() {
-  const pageKeys = new Set(['workspace', 'status-notes', 'writing', 'halo', 'contacts', 'backup', 'pets']);
+  const pageKeys = new Set(['workspace', 'status-notes', 'writing', 'halo', 'contacts', 'backup']);
   function showPage(focusContent) {
     const hash = window.location.hash.slice(1);
     if (hash === 'main') return;
@@ -370,52 +364,6 @@ function normalizeTeamList(teams) {
     if (!label || seen.has(key) || list.length >= 20) return list;
     seen.add(key); list.push(label); return list;
   }, []);
-}
-
-function renderImportedPets(settings) {
-  const packages = window.HPX_PET_REGISTRY.normalizePackages(settings.petPackages || []);
-  els.petImportedList.textContent = packages.length
-    ? '已匯入的 Pet：' + packages.map(function (pet) { return pet.manifest.displayName; }).join('、')
-    : '尚未從後台匯入 Pet；內建與資料夾中的寵物仍可使用。';
-}
-
-function saveImportedPet(pet, activate) {
-  return enqueueStorageWrite(function () {
-    return readStoredSettings().then(async function (current) {
-      const packages = window.HPX_PET_REGISTRY.normalizePackages(current.petPackages || [])
-        .filter(function (item) { return item.manifest.id !== pet.manifest.id; });
-      packages.push(pet);
-      const next = Object.assign({}, current, { petPackages: window.HPX_PET_REGISTRY.normalizePackages(packages) });
-      if (activate) { next.pet = pet.manifest.id; next.petHidden = false; }
-      // Verify that the resulting pets still fit in an exportable backup before saving.
-      const backupSettings = Object.assign({}, next, { petPackages: await window.HPX_PET_REGISTRY.exportPackages(next) });
-      const backupSize = new Blob([JSON.stringify(backupSettings, null, 2)]).size;
-      if (backupSize + 1024 > SETTINGS_BACKUP_MAX_BYTES) throw new Error('匯入後的備份將超過 10 MB，請縮小圖集後重試。');
-      return new Promise(function (resolve, reject) {
-        chrome.storage.local.set({ [SETTINGS_KEY]: next }, function () {
-          const error = chrome.runtime.lastError;
-          if (error) { reject(new Error(error.message || '無法保存 Pet')); return; }
-          resolve(next);
-        });
-      });
-    });
-  });
-}
-
-function importPetFromFolder(files, activate) {
-  if (els.importPet.disabled) return Promise.resolve();
-  els.importPet.disabled = true;
-  setStatus(els.petImportStatus, '正在讀取與保存 Pet…', '');
-  return window.HPX_PET_REGISTRY.importFolder(files).then(function (pet) {
-    return saveImportedPet(pet, activate).then(function (settings) {
-      renderImportedPets(settings);
-      els.petImportForm.reset();
-      setStatus(els.petImportStatus, '已匯入「' + pet.manifest.displayName + '」' +
-        (activate ? '並設為目前 Pet' : '') + '。請重新整理 Halo 頁面；之後的備份會包含此 Pet。', 'ok');
-    });
-  }).catch(function (error) {
-    setStatus(els.petImportStatus, '匯入失敗：' + (error.message || '無法讀取 Pet'), 'err');
-  }).finally(function () { els.importPet.disabled = false; });
 }
 
 function readTeamsFromDom() {
@@ -1035,7 +983,7 @@ els.addGroup.addEventListener('click', function () {
 const workspaceMode = $('workspaceMode');
 if (workspaceMode) workspaceMode.addEventListener('change', function () {
   mergeFields({workspaceMode: workspaceMode.value}).then(function () {
-    setStatus(els.themeStatus, '已儲存，重新整理 Halo 分頁後生效', 'ok');
+    setStatus(els.themeStatus, '已自動套用 ✓', 'ok');
   }).catch(function (error) { setStatus(els.themeStatus, '無法儲存：' + error.message, 'err'); });
 });
 
@@ -1156,11 +1104,6 @@ els.exportSettingsWithKeys.addEventListener('click', function () {
   exportSettings(true);
 });
 
-els.petImportForm.addEventListener('submit', function (event) {
-  event.preventDefault();
-  importPetFromFolder(els.petFolder.files, els.petActivate.checked);
-});
-
 els.exportSettingsWithoutKeys.addEventListener('click', function () {
   exportSettings(false);
 });
@@ -1246,6 +1189,3 @@ els.test.addEventListener('click', function () {
 
 setupNavigation();
 load();
-readStoredSettings().then(renderImportedPets).catch(function (error) {
-  setStatus(els.petImportStatus, '無法讀取已匯入的 Pet：' + error.message, 'err');
-});

@@ -36,7 +36,7 @@
     NS.ui.bestiesToolbar.unmount(windowEl);
   }
 
-  function startTools(quiet, onReady) {
+  function startTools() {
     // Install message/action listeners immediately; DOM discovery runs in separate
     // idle tasks so Halo can render and handle input between feature starts.
     NS.features.noteWindow.start();
@@ -91,24 +91,22 @@
       // 只改 DOM 欄位值，不呼叫 API、不自動儲存或送出 Action。
       NS.features.timeAdjuster.start();
     }];
-    const tasks = quiet ? tools : appearance.concat(tools);
+    const tasks = appearance.concat(tools);
     let index = 0;
-    let failed = false;
     // One shared deadline avoids accumulating a separate one-second timeout
     // for every feature on a continuously busy Halo page.
     const deadline = Date.now() + 1500;
     function next() {
       if (index === tasks.length) {
-        if (onReady) onReady(!failed);
         NS.log('HaloPSA Writing Helper 已啟動');
         return;
       }
       const run = function () {
         try { tasks[index++](); }
-        catch (error) { failed = true; NS.warn('Feature startup failed', error); }
+        catch (error) { NS.warn('Feature startup failed', error); }
         next();
       };
-      if (!quiet && typeof window.requestIdleCallback === 'function') {
+      if (typeof window.requestIdleCallback === 'function') {
         window.requestIdleCallback(run, { timeout: Math.max(1, Math.min(1000, deadline - Date.now())) });
       } else {
         window.setTimeout(run, 0);
@@ -118,36 +116,7 @@
   }
 
   function init() {
-    const ready = window.__HPXUltimateBootstrap?.modeReady;
-    if (!ready) { startTools(false); return; }
-    ready.then(quiet => {
-      if (!quiet) { startTools(false); return; }
-      const dock = document.createElement('aside');
-      dock.id = 'hpx-quiet-dock';
-      dock.setAttribute('aria-label', 'Halo 輔助工具');
-      const label = document.createElement('span');
-      label.setAttribute('role', 'status');
-      label.textContent = '靜閱';
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = '啟用本頁工具';
-      const settings = document.createElement('a');
-      settings.href = chrome.runtime.getURL('src/options/options.html');
-      settings.target = '_blank';
-      settings.rel = 'noopener';
-      settings.textContent = '設定';
-      dock.append(label, button, settings);
-      document.body.appendChild(dock);
-      button.addEventListener('click', () => {
-        button.setAttribute('aria-disabled', 'true');
-        label.textContent = '啟動中';
-        window.setTimeout(() => startTools(true, ok => {
-          if (document.activeElement === button) settings.focus({preventScroll:true});
-          button.hidden = true;
-          label.textContent = ok ? '本頁工具已開啟' : '部分工具未啟動';
-        }), 0);
-      }, {once:true});
-    });
+    startTools();
   }
 
   if (document.readyState === 'loading') {

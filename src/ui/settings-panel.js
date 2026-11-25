@@ -23,6 +23,7 @@
     sidebarCollapsed: false,
     shortcutLinks: [],
     ultimateMode: false,
+    workspaceMode: 'standard',
   };
   const ACCENT_LIST = [
     { name: 'Blue', hex: '#15487e' },
@@ -85,6 +86,7 @@
       settings.sidebarCollapsed = settings.sidebarCollapsed === true;
       settings[SHORTCUTS_FIELD] = normalizeShortcutLinks(settings[SHORTCUTS_FIELD]);
       settings.ultimateMode = settings.ultimateMode === true;
+      settings.workspaceMode = settings.workspaceMode === 'quiet' ? 'quiet' : 'standard';
       cb(settings);
     });
   }
@@ -1020,6 +1022,16 @@
       modeButton.title = sidebarSettings.ultimateMode ? '關閉簡單模式' : '開啟簡單模式';
     }
     if (modeState) modeState.textContent = sidebarSettings.ultimateMode ? 'ON' : 'OFF';
+    const quietButton = sidebarControlsEl.querySelector('[data-hpx-sidebar-control="quiet"]');
+    const quietState = sidebarControlsEl.querySelector('[data-hpx-sidebar-state="quiet"]');
+    const quiet = sidebarSettings.workspaceMode === 'quiet';
+    if (quietButton) {
+      quietButton.classList.toggle('hpx-sidebar-control--active', quiet);
+      quietButton.setAttribute('aria-pressed', quiet ? 'true' : 'false');
+      quietButton.setAttribute('aria-label', '靜閱模式，' + (quiet ? '已開啟' : '已關閉'));
+      quietButton.title = quiet ? '關閉靜閱模式（恢復主題配色與特效）' : '開啟靜閱模式（Halo 原生配色）';
+    }
+    if (quietState) quietState.textContent = quiet ? 'ON' : 'OFF';
     if (colorState) {
       colorState.textContent = '';
       colorState.style.setProperty('--hpx-sidebar-color', normalizeAccent(sidebarSettings.accent));
@@ -1102,6 +1114,17 @@
     refreshSidebarControls();
   }
 
+  // 靜閱只關閉 Halo 原生畫面的配色、背景與特效；工具列與功能不變，切換即時生效。
+  function toggleSidebarQuietMode() {
+    if (!sidebarSettings) return;
+    sidebarSettings.workspaceMode = sidebarSettings.workspaceMode === 'quiet' ? 'standard' : 'quiet';
+    if (NS.ui.theme && typeof NS.ui.theme.setQuiet === 'function') {
+      NS.ui.theme.setQuiet(sidebarSettings.workspaceMode === 'quiet');
+    }
+    persistSettings({ workspaceMode: sidebarSettings.workspaceMode });
+    refreshSidebarControls();
+  }
+
   function makeSidebarControl(label, key, onClick) {
     const isSettings = key === 'settings';
     const button = el(isSettings ? 'a' : 'button', 'hpx-sidebar-control');
@@ -1147,6 +1170,7 @@
       openSidebarPopover('links');
     }));
     sidebarControlsEl.appendChild(makeSidebarControl('簡單模式', 'mode', toggleSidebarUltimateMode));
+    sidebarControlsEl.appendChild(makeSidebarControl('靜閱模式', 'quiet', toggleSidebarQuietMode));
     sidebarControlsEl.appendChild(makeSidebarControl('主題色', 'color', function () {
       openSidebarPopover('color');
     }));
@@ -1535,6 +1559,14 @@
             document.addEventListener('visibilitychange', function () {
               if (document.hidden) stopPetIdleAction();
               else schedulePetIdleAction(1800);
+            });
+            // 其他分頁或設定頁切換靜閱時，同步控制列的 ON/OFF；外觀由 theme.js 自己套用。
+            chrome.storage.onChanged.addListener(function (changes, area) {
+              if (area !== 'local' || !changes[STORAGE_KEY] || !sidebarSettings) return;
+              const next = (changes[STORAGE_KEY].newValue || {}).workspaceMode === 'quiet' ? 'quiet' : 'standard';
+              if (sidebarSettings.workspaceMode === next) return;
+              sidebarSettings.workspaceMode = next;
+              refreshSidebarControls();
             });
           }
         });
