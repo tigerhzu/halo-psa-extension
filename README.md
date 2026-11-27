@@ -32,13 +32,13 @@ Halo Companion 是 Chrome／Edge 的 Manifest V3 擴充功能。它在 HaloPSA �
 
 **操作邊界：** AI、範本和獨立編輯視窗套用到 Halo 草稿；工單的儲存或送出仍由使用者執行。啟用後台 **Halo API 與案件** 後，可直接開案、改狀態與結案；按下操作按鈕即送出至 Halo，詳見 [Halo 寫入 API 設定](docs/HALO-WRITE-API.md)。Time Taken 修改原生輸入欄位。Timesheet 的「套用」則會呼叫 Halo 原生更新流程，可能直接保存該筆工時，使用前請確認時間範圍。
 
-**只想快速瀏覽列表？** 在擴充功能設定的「外觀與 Team → 開頁模式」選「靜閱」，再重新整理 Halo。右下角只保留「啟用本頁工具」與「設定」。需要自動 CC、狀態文字或編輯工具列時，先按「啟用本頁工具」；同一分頁內換工單仍可使用，重新整理才回到待命。切回「標準」並重新整理，即恢復原本桌寵、主題、快捷列與簡單模式偏好。
+**只想快速瀏覽列表？** 在 Halo 左下控制列按「靜閱模式」，即可立即關閉 Halo 原生畫面的主題配色、背景與特效，不需重新整理；控制列與所有工具在兩種模式下都照常運作。再按一次即恢復，後台「外觀與 Team」也可切換。
 
 ## 安裝與更新
 
 圖解操作請見[使用者指南](docs/使用者指南.html)。
 
-1. 前往 [最新 Release](https://github.com/tigerhzu/halo-psa-extension/releases/latest)，下載 `halo-psa-extension-1.1.11.zip` 並解壓縮。
+1. 前往 [最新 Release](https://github.com/tigerhzu/halo-psa-extension/releases/latest)，下載 `halo-psa-extension-1.1.12.zip` 並解壓縮。
 2. 在 Chrome 開啟 `chrome://extensions`，或在 Edge 開啟 `edge://extensions`，啟用「開發人員模式」。
 3. 選擇「載入未封裝項目」，指定含有 `manifest.json` 的資料夾。
 4. 重新整理 Halo 頁面，點擊擴充功能圖示開啟設定中心。初始導覽中的每個步驟都可以略過。

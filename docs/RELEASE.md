@@ -1,13 +1,13 @@
 # 發佈指南
 
-目前公開發佈版本為 **1.1.11**。執行 `python scripts/build-release.py`，產生安裝 ZIP 與 SHA-256 校驗檔。正式 GitHub 發佈使用對應的乾淨 Git commit；本機分享包若包含未提交修改，會在 `release-info.json` 標記 `sourceIncludesWorkingTreeChanges`。
+目前公開發佈版本為 **1.1.12**。執行 `python scripts/build-release.py`，產生安裝 ZIP 與 SHA-256 校驗檔。正式 GitHub 發佈使用對應的乾淨 Git commit；本機分享包若包含未提交修改，會在 `release-info.json` 標記 `sourceIncludesWorkingTreeChanges`。
 
 ## 發佈內容
 
 | 項目 | 提供方式 |
 | --- | --- |
 | 可讀原始碼、測試與文件 | GitHub 儲存庫及對應 tag 的 Source code 下載 |
-| 可直接載入的擴充功能 | `halo-psa-extension-1.1.11.zip` |
+| 可直接載入的擴充功能 | `halo-psa-extension-1.1.12.zip` |
 | 品牌 logo、主視覺與設計資料 | `docs/assets/`，以及 Release 的品牌資產（若提供） |
 | 安裝包雜湊 | Release 的 SHA-256 校驗檔（若提供） |
 
@@ -39,6 +39,10 @@ node --test tests/*.test.js
 5. 為最終 ZIP 計算 SHA-256，再將來源 commit、版本、變更摘要與校驗檔一併放入 Release。
 
 本機執行 `Configure-Ornith.ps1` 後的 manifest 包含部署專用主機，屬於使用者的安裝設定；公開發佈仍應從示例主機版本重新組裝。
+
+## 1.1.12 公開版驗證
+
+2026-11-27：完整 Node suite **182 項，181 通過、0 失敗、1 略過**（缺少 0.9.11 歷史來源）。Manifest 的 83 個引用通過驗證，所有 JavaScript 通過 `node --check`、JSON 均可解析。本版僅驗證本機自動測試；靜閱即時切換與移除 Pet 頁面尚未在正式 Halo 租戶上實測。
 
 ## 1.1.10 公開版驗證
 
